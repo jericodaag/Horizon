@@ -17,8 +17,8 @@ const INITIAL_STATE = {
   user: INITIAL_USER,
   isLoading: false,
   isAuthenticated: false,
-  setUser: () => {},
-  setIsAuthenticated: () => {},
+  setUser: () => { },
+  setIsAuthenticated: () => { },
   checkAuthUser: async () => false as boolean,
 };
 
@@ -67,8 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // localStorage.getItem('cookieFallback) === null
-    if (localStorage.getItem('cookieFallback') === '[]') navigate('/sign-in');
+    const cookieFallback = localStorage.getItem('cookieFallback');
+    if (
+      cookieFallback === '[]' ||
+      cookieFallback === null ||
+      cookieFallback === undefined
+    ) {
+      navigate('/sign-in');
+    }
 
     checkAuthUser();
   }, []);
