@@ -16,7 +16,7 @@ import { SigninValidation } from '@/lib/validation';
 import { z } from 'zod';
 import Loader from '@/components/shared/Loader';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSignInAccount } from '@/lib/react-query/queriesAndMutations';
+import { useSignInAccount } from '@/lib/react-query/queries';
 import { useUserContext } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
