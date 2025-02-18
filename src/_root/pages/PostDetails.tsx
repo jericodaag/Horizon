@@ -80,7 +80,7 @@ const PostDetails = () => {
                                         <p className="subtle-semibold lg:small-regular ">
                                             {multiFormatDateString(post?.$createdAt)}
                                         </p>
-                                        •
+                                        -
                                         <p className="subtle-semibold lg:small-regular">
                                             {post?.location}
                                         </p>
