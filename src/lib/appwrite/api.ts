@@ -489,19 +489,18 @@ export async function getUserById(userId: string) {
 
 // ============================== UPDATE USER
 export async function updateUser(user: IUpdateUser) {
-  const hasFileToUpdate = user.file.length > 0;
   try {
     let image = {
       imageUrl: user.imageUrl,
       imageId: user.imageId,
     };
 
-    if (hasFileToUpdate) {
-      // Upload new file to appwrite storage
+    if (user.file.length > 0) {
+      // Upload new file
       const uploadedFile = await uploadFile(user.file[0]);
       if (!uploadedFile) throw Error;
 
-      // Get new file url
+      // Get file URL
       const fileUrl = getFilePreview(uploadedFile.$id);
       if (!fileUrl) {
         await deleteFile(uploadedFile.$id);
@@ -511,14 +510,14 @@ export async function updateUser(user: IUpdateUser) {
       image = { ...image, imageUrl: fileUrl, imageId: uploadedFile.$id };
     }
 
-    //  Update user
+    // Update user document
     const updatedUser = await databases.updateDocument(
       appwriteConfig.databaseId,
       appwriteConfig.userCollectionId,
       user.userId,
       {
         name: user.name,
-        bio: user.bio,
+        bio: user.bio || '', // Provide empty string if undefined
         imageUrl: image.imageUrl,
         imageId: image.imageId,
       }
@@ -526,21 +525,21 @@ export async function updateUser(user: IUpdateUser) {
 
     // Failed to update
     if (!updatedUser) {
-      // Delete new file that has been recently uploaded
-      if (hasFileToUpdate) {
+      // Delete new file that was recently uploaded
+      if (user.file.length > 0) {
         await deleteFile(image.imageId);
       }
-      // If no new file uploaded, just throw error
       throw Error;
     }
 
-    // Safely delete old file after successful update
-    if (user.imageId && hasFileToUpdate) {
+    // Delete old file if it exists and was replaced
+    if (user.imageId && user.file.length > 0) {
       await deleteFile(user.imageId);
     }
 
     return updatedUser;
   } catch (error) {
     console.log(error);
+    return null;
   }
 }
