@@ -1,50 +1,84 @@
-# React + TypeScript + Vite
+# 🌅 Horizon - Full-Stack Social Media Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
 
-Currently, two official plugins are available:
+## 📌 Project Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+<div align="center">
+  <img src="https://your-horizon-demo.gif" alt="Horizon Demo" width="700px"/>
+</div>
 
-## Expanding the ESLint configuration
+Horizon is a modern social media platform built with cutting-edge technologies, offering users a seamless and engaging experience for content creation and social interaction.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+### ✨ Live Demo
+🔗 [Visit Horizon](https://your-horizon-url.com)
 
-- Configure the top-level `parserOptions` property like this:
+## 🚀 Key Features
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- 🔐 **Secure Authentication**
+  - Email & Password login
+  - Social media authentication
+  - Protected routes & sessions
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+- 📱 **Core Social Features**
+  - Create, edit & delete posts
+  - Like & save functionality
+  - Real-time feed updates
+  - User profiles & customization
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+- 💬 **Interactive Elements**
+  - Real-time notifications
+  - Live chat functionality
+  - Post comments & reactions
+  - Media sharing capabilities
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+- 🎨 **Modern UI/UX**
+  - Responsive design
+  - Dark/Light themes
+  - Animated transitions
+  - Intuitive navigation
+
+## 🛠️ Tech Stack
+
+### Frontend
+<p align="left">
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original.svg" alt="react" width="40" height="40"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/typescript/typescript-original.svg" alt="typescript" width="40" height="40"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/tailwindcss/tailwindcss-plain.svg" alt="tailwind" width="40" height="40"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/javascript/javascript-original.svg" alt="javascript" width="40" height="40"/>
+</p>
+
+- ⚛️ **React + TypeScript** - Type-safe component development
+- 🎨 **Tailwind CSS + shadcn/ui** - Modern UI components
+- 🔄 **React Query** - Efficient data fetching & caching
+- ✨ **Framer Motion** - Smooth animations
+- 📝 **React Hook Form + Zod** - Form validation
+- 🔌 **Socket.io** - Real-time features
+- 📁 **React Dropzone** - File uploads
+
+### Backend
+<p align="left">
+  <img src="https://www.vectorlogo.zone/logos/appwriteio/appwriteio-icon.svg" alt="appwrite" width="40" height="40"/>
+  <img src="https://www.vectorlogo.zone/logos/socketio/socketio-icon.svg" alt="socket.io" width="40" height="40"/>
+</p>
+
+- ☁️ **Appwrite BaaS**
+  - Authentication & Authorization
+  - Database Management
+  - File Storage
+  - Cloud Functions
+
+## 📚 Resources
+
+| Technology | Documentation |
+|------------|--------------|
+| React | [Documentation](https://react.dev/) |
+| React Router | [Documentation](https://reactrouter.com/) |
+| React Query | [Documentation](https://tanstack.com/query/latest/docs/react/overview) |
+| Appwrite | [Documentation](https://appwrite.io/docs) |
+| Vite | [Documentation](https://vitejs.dev/guide/) |
+| Tailwind CSS | [Documentation](https://tailwindcss.com/docs) |
