@@ -8,14 +8,7 @@
 
 ## 📌 Project Overview
 
-<div align="center">
-  <img src="https://your-horizon-demo.gif" alt="Horizon Demo" width="700px"/>
-</div>
-
 Horizon is a modern social media platform built with cutting-edge technologies, offering users a seamless and engaging experience for content creation and social interaction.
-
-### ✨ Live Demo
-🔗 [Visit Horizon](https://your-horizon-url.com)
 
 ## 🚀 Key Features
 
