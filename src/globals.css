@@ -136,7 +136,7 @@
 
   /* Home */
   .home-container {
-    @apply flex flex-col flex-1 items-center gap-10 overflow-scroll py-10 px-5 md:px-8 lg:p-14 custom-scrollbar;
+    @apply flex flex-col flex-1 items-center gap-6 overflow-scroll py-6 px-5 md:px-6 lg:p-10 custom-scrollbar;
   }
 
   .home-posts {
@@ -314,4 +314,50 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #7878a3;
+}
+
+/* sign in - sign up css */
+.auth-carousel-image {
+  @apply absolute inset-0 object-cover w-full h-full;
+}
+
+.auth-form-container {
+  @apply flex flex-1 min-h-screen bg-dark-1;
+}
+
+.auth-form-section {
+  @apply flex-1 flex flex-col justify-center px-8 py-12 lg:p-16 bg-dark-2;
+}
+
+.auth-input {
+  @apply w-full h-12 bg-dark-3 rounded-lg px-4 text-light-1 
+         focus:ring-2 focus:ring-primary-500 transition-all;
+}
+
+.auth-button {
+  @apply w-full bg-primary-500 hover:bg-primary-600 text-light-1 
+         h-12 rounded-lg transition-all;
+}
+
+/* post-cards attributes */
+
+/* Add to your existing Post Card styles */
+.post-card {
+  @apply bg-dark-2 rounded-2xl border border-dark-4 overflow-hidden;
+}
+
+.post-card-header {
+  @apply flex items-center justify-between p-4 border-b border-dark-4;
+}
+
+.post-card-image {
+  @apply aspect-square w-full object-cover;
+}
+
+.post-card-actions {
+  @apply flex items-center justify-between px-4 py-2;
+}
+
+.post-card-content {
+  @apply px-4 pb-4;
 }

@@ -1,142 +1,131 @@
-import React, { useState } from 'react';
+// src/_auth/forms/AuthPage.tsx
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SigninForm from './SigninForm';
 import SignupForm from './SignupForm';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AuthPage: React.FC = () => {
-    const location = useLocation();
-    const [isSignIn, setIsSignIn] = useState(location.pathname === '/sign-in');
-    const navigate = useNavigate();
+  const location = useLocation();
+  const [isSignIn, setIsSignIn] = useState(location.pathname === '/sign-in');
+  const navigate = useNavigate();
+  const [currentImage, setCurrentImage] = useState(1);
 
-    const handleFormSwitch = (isSignInForm: boolean) => {
-        setIsSignIn(isSignInForm);
-        navigate(isSignInForm ? '/sign-in' : '/sign-up');
-    };
+  // Image carousel effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev % 3) + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const slideTransition = {
-        initial: { x: 0, opacity: 0 },
-        animate: { x: 0, opacity: 1 },
-        exit: { x: isSignIn ? -100 : 100, opacity: 0 },
-        transition: { type: "spring", stiffness: 100, damping: 20 }
-    };
+  const handleFormSwitch = (isSignInForm: boolean) => {
+    setIsSignIn(isSignInForm);
+    navigate(isSignInForm ? '/sign-in' : '/sign-up');
+  };
 
-    return (
-        <div className="flex min-h-screen w-full overflow-hidden bg-dark-1">
-            {/* Animated background elements */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <motion.div
-                    className="absolute w-96 h-96 rounded-full bg-primary-500 opacity-[0.15]"
-                    animate={{
-                        x: [0, 100, 0],
-                        y: [0, -50, 0],
-                        scale: [1, 1.2, 1],
-                    }}
-                    transition={{
-                        duration: 8,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                    style={{
-                        left: '10%',
-                        top: '20%'
-                    }}
-                />
-                <motion.div
-                    className="absolute w-96 h-96 rounded-full bg-primary-600 opacity-[0.15]"
-                    animate={{
-                        x: [0, -70, 0],
-                        y: [0, 50, 0],
-                        scale: [1, 1.1, 1],
-                    }}
-                    transition={{
-                        duration: 7,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                    style={{
-                        right: '10%',
-                        bottom: '20%'
-                    }}
-                />
+  return (
+    <div className='flex min-h-screen w-full bg-dark-1'>
+      <div className='w-full flex justify-center items-center'>
+        <div className='w-full max-w-6xl h-[800px] flex bg-dark-2 rounded-2xl overflow-hidden shadow-2xl'>
+          {/* Image Section */}
+          <div className='relative hidden lg:block w-1/2 overflow-hidden'>
+            <AnimatePresence mode='wait'>
+              <motion.img
+                key={currentImage}
+                src={`/assets/images/carousel${currentImage}.jpg`}
+                alt='carousel'
+                className='absolute inset-0 w-full h-full object-cover'
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+              />
+              <div className='absolute inset-0 bg-gradient-to-t from-dark-1/80 via-dark-1/30 to-transparent' />
+            </AnimatePresence>
+
+            {/* Welcome Text Overlay */}
+            <div className='absolute bottom-20 left-10 right-10 text-light-1'>
+              <motion.h1
+                className='text-5xl font-bold mb-4'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                {isSignIn ? 'Welcome Back!' : 'Join Horizon'}
+              </motion.h1>
+              <motion.p
+                className='text-xl text-light-2'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                {isSignIn
+                  ? 'Sign in to continue your journey with us.'
+                  : 'Create an account to start sharing your moments.'}
+              </motion.p>
             </div>
+          </div>
 
-            {/* Content container */}
-            <div className="relative w-full flex items-center justify-center p-4">
-                <div className="w-full max-w-5xl mx-auto flex items-center">
-                    {/* Welcome text side */}
-                    <motion.div
-                        className="hidden lg:flex flex-col flex-1 p-12"
-                        initial={{ opacity: 0, x: -50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        <motion.h1
-                            className="text-6xl font-bold text-light-1 mb-6"
-                            key={isSignIn ? 'signin' : 'signup'}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.5 }}
+          {/* Form Section */}
+          <div className='w-full lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center'>
+            <AnimatePresence mode='wait'>
+              <motion.div
+                key={isSignIn ? 'signin' : 'signup'}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className='w-full'
+              >
+                {isSignIn ? (
+                  <>
+                    <SigninForm />
+                    <div className='mt-6 text-center'>
+                      <p className='text-light-3'>
+                        Don't have an account?
+                        <button
+                          onClick={() => handleFormSwitch(false)}
+                          className='text-primary-500 hover:text-primary-600 transition-colors font-medium ml-1'
                         >
-                            {isSignIn ? 'Welcome Back!' : 'Join Horizon'}
-                        </motion.h1>
-                        <motion.p
-                            className="text-xl text-light-2"
-                            key={isSignIn ? 'signin-text' : 'signup-text'}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            {isSignIn
-                                ? 'Sign in to continue your journey with us.'
-                                : 'Create an account to start sharing your moments.'}
-                        </motion.p>
-                    </motion.div>
-
-                    {/* Form container */}
-                    <div className="flex-1 max-w-md w-full">
-                        <motion.div
-                            className="bg-dark-2 backdrop-blur-lg rounded-2xl shadow-xl p-8"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5 }}
-                        >
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={isSignIn ? 'signin-form' : 'signup-form'}
-                                    {...slideTransition}
-                                    className="w-full"
-                                >
-                                    {isSignIn ? (
-                                        <div className="space-y-4">
-                                            <SigninForm />
-                                            <button
-                                                onClick={() => handleFormSwitch(false)}
-                                                className="text-primary-500 hover:text-primary-600 font-medium transition-colors text-small-regular w-full text-center mt-4"
-                                            >
-                                                Don't have an account? Sign up
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <SignupForm />
-                                            <button
-                                                onClick={() => handleFormSwitch(true)}
-                                                className="text-primary-500 hover:text-primary-600 font-medium transition-colors text-small-regular w-full text-center mt-4"
-                                            >
-                                                Already have an account? Sign in
-                                            </button>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            </AnimatePresence>
-                        </motion.div>
+                          Sign up
+                        </button>
+                      </p>
                     </div>
-                </div>
-            </div>
+                  </>
+                ) : (
+                  <>
+                    <SignupForm />
+                    <div className='mt-6 text-center'>
+                      <p className='text-light-3'>
+                        Already have an account?
+                        <button
+                          onClick={() => handleFormSwitch(true)}
+                          className='text-primary-500 hover:text-primary-600 transition-colors font-medium ml-1'
+                        >
+                          Sign in
+                        </button>
+                      </p>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Copyright */}
+            <motion.p
+              className='text-light-3 text-center text-sm mt-8'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              © {new Date().getFullYear()} ALL RIGHTS RESERVED
+            </motion.p>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default AuthPage;

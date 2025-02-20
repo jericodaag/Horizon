@@ -1,106 +1,110 @@
-import { Models } from "appwrite";
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { Models } from 'appwrite';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
-import { checkIsLiked } from "@/lib/utils";
+import { checkIsLiked } from '@/lib/utils';
 import {
-    useLikePost,
-    useSavePost,
-    useDeleteSavedPost,
-    useGetCurrentUser,
-} from "@/lib/react-query/queries";
+  useLikePost,
+  useSavePost,
+  useDeleteSavedPost,
+  useGetCurrentUser,
+} from '@/lib/react-query/queries';
 
 type PostStatsProps = {
-    post: Models.Document;
-    userId: string;
+  post: Models.Document;
+  userId: string;
 };
 
 const PostStats = ({ post, userId }: PostStatsProps) => {
-    const location = useLocation();
-    const likesList = post.likes.map((user: Models.Document) => user.$id);
+  const [likes, setLikes] = useState<string[]>(
+    post.likes.map((user: Models.Document) => user.$id)
+  );
+  const [isSaved, setIsSaved] = useState(false);
+  const { mutate: likePost } = useLikePost();
+  const { mutate: savePost } = useSavePost();
+  const { mutate: deleteSavePost } = useDeleteSavedPost();
+  const { data: currentUser } = useGetCurrentUser();
 
-    const [likes, setLikes] = useState<string[]>(likesList);
-    const [isSaved, setIsSaved] = useState(false);
-
-    const { mutate: likePost } = useLikePost();
-    const { mutate: savePost } = useSavePost();
-    const { mutate: deleteSavePost } = useDeleteSavedPost();
-
-    const { data: currentUser } = useGetCurrentUser();
-
-    const savedPostRecord = currentUser?.save.find(
+  useEffect(() => {
+    setIsSaved(
+      !!currentUser?.save.find(
         (record: Models.Document) => record.post.$id === post.$id
+      )
     );
+  }, [currentUser]);
 
-    useEffect(() => {
-        setIsSaved(!!savedPostRecord);
-    }, [currentUser]);
+  const handleLikePost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-    const handleLikePost = (
-        e: React.MouseEvent<HTMLImageElement, MouseEvent>
-    ) => {
-        e.stopPropagation();
+    let likesArray = [...likes];
+    if (likesArray.includes(userId)) {
+      likesArray = likesArray.filter((Id) => Id !== userId);
+    } else {
+      likesArray.push(userId);
+    }
 
-        let likesArray = [...likes];
+    setLikes(likesArray);
+    likePost({ postId: post.$id, likesArray });
+  };
 
-        if (likesArray.includes(userId)) {
-            likesArray = likesArray.filter((Id) => Id !== userId);
-        } else {
-            likesArray.push(userId);
-        }
+  const handleSavePost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-        setLikes(likesArray);
-        likePost({ postId: post.$id, likesArray });
-    };
+    if (isSaved && currentUser?.save) {
+      const savedRecord = currentUser.save.find(
+        (record: Models.Document) => record.post.$id === post.$id
+      );
+      if (savedRecord) {
+        setIsSaved(false);
+        deleteSavePost(savedRecord.$id);
+      }
+    } else {
+      savePost({ userId, postId: post.$id });
+      setIsSaved(true);
+    }
+  };
 
-    const handleSavePost = (
-        e: React.MouseEvent<HTMLImageElement, MouseEvent>
-    ) => {
-        e.stopPropagation();
+  return (
+    <div className='flex flex-col gap-2'>
+      <div className='flex gap-4 items-center'>
+        <button
+          onClick={handleLikePost}
+          className='flex items-center gap-2 hover:opacity-80 transition-opacity'
+        >
+          <img
+            src={
+              checkIsLiked(likes, userId)
+                ? '/assets/icons/liked.svg'
+                : '/assets/icons/like.svg'
+            }
+            alt='like'
+            width={24}
+            height={24}
+          />
+        </button>
 
-        if (savedPostRecord) {
-            setIsSaved(false);
-            return deleteSavePost(savedPostRecord.$id);
-        }
+        <button
+          onClick={handleSavePost}
+          className='hover:opacity-80 transition-opacity ml-auto'
+        >
+          <img
+            src={isSaved ? '/assets/icons/saved.svg' : '/assets/icons/save.svg'}
+            alt='save'
+            width={24}
+            height={24}
+          />
+        </button>
+      </div>
 
-        savePost({ userId: userId, postId: post.$id });
-        setIsSaved(true);
-    };
-
-    const containerStyles = location.pathname.startsWith("/profile")
-        ? "w-full"
-        : "";
-
-    return (
-        <div
-            className={`flex justify-between items-center z-20 ${containerStyles}`}>
-            <div className="flex gap-2 mr-5">
-                <img
-                    src={`${checkIsLiked(likes, userId)
-                        ? "/assets/icons/liked.svg"
-                        : "/assets/icons/like.svg"
-                        }`}
-                    alt="like"
-                    width={20}
-                    height={20}
-                    onClick={(e) => handleLikePost(e)}
-                    className="cursor-pointer"
-                />
-                <p className="small-medium lg:base-medium">{likes.length}</p>
-            </div>
-
-            <div className="flex gap-2">
-                <img
-                    src={isSaved ? "/assets/icons/saved.svg" : "/assets/icons/save.svg"}
-                    alt="share"
-                    width={20}
-                    height={20}
-                    className="cursor-pointer"
-                    onClick={(e) => handleSavePost(e)}
-                />
-            </div>
-        </div>
-    );
+      {likes.length > 0 && (
+        <p className='text-light-2 text-sm'>
+          {likes.length} {likes.length === 1 ? 'like' : 'likes'}
+        </p>
+      )}
+    </div>
+  );
 };
 
 export default PostStats;
