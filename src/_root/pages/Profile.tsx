@@ -1,4 +1,3 @@
-// src/_root/pages/Profile.tsx
 import { useParams, Link } from "react-router-dom";
 import { useGetUserById, useGetUserPosts } from "@/lib/react-query/queries";
 import GridPostList from "@/components/shared/GridPostList";

@@ -390,3 +390,22 @@
   @apply mt-3 bg-primary-500 text-light-1 w-full py-2 rounded-lg 
          hover:bg-primary-600 transition-colors text-sm font-medium;
 }
+
+/* saved posts */
+
+.saved-container {
+  @apply max-w-screen-2xl flex flex-col items-center gap-10 p-6 md:p-14;
+}
+
+.saved-posts-container {
+  @apply flex flex-col items-center gap-10 py-8 px-5;
+  @apply md:px-8 lg:p-14;
+}
+
+.flex-between {
+  @apply flex justify-between items-center;
+}
+
+.body-medium {
+  @apply font-medium text-[16px] leading-[140%];
+}

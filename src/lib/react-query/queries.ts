@@ -24,6 +24,7 @@ import {
   getInfinitePosts,
   searchPosts,
   savePost,
+  getSavedPosts,
   deleteSavedPost,
 } from '@/lib/appwrite/api';
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from '@/types';
@@ -201,6 +202,14 @@ export const useDeleteSavedPost = () => {
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
       });
     },
+  });
+};
+
+export const useGetSavedPosts = (userId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_SAVED_POSTS, userId],
+    queryFn: () => getSavedPosts(userId),
+    enabled: !!userId,
   });
 };
 

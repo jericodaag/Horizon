@@ -390,6 +390,38 @@ export async function savePost(userId: string, postId: string) {
     console.log(error);
   }
 }
+
+// ============================== GET SAVED POST
+export async function getSavedPosts(userId?: string) {
+  if (!userId) return;
+
+  try {
+    const saves = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.savesCollectionId,
+      [Query.equal('user', userId), Query.orderDesc('$createdAt')]
+    );
+
+    if (!saves) throw Error;
+
+    // Get the detailed post data for each saved post
+    const posts = await Promise.all(
+      saves.documents.map(async (save) => {
+        const post = await databases.getDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.postCollectionId,
+          save.post.$id
+        );
+        return post;
+      })
+    );
+
+    return posts;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 // ============================== DELETE SAVED POST
 export async function deleteSavedPost(savedRecordId: string) {
   try {
