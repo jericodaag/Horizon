@@ -38,7 +38,7 @@ const PostCard = ({ post }: PostCardProps) => {
               </p>
               {post.location && (
                 <>
-                  <span>•</span>
+                  <span>-</span>
                   <p className='subtle-semibold'>{post.location}</p>
                 </>
               )}
