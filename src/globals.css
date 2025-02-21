@@ -362,3 +362,31 @@
 .post-card-content {
   @apply px-4 pb-4;
 }
+
+/* Right Sidebar Styles */
+.top-creators-grid {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.creator-card {
+  @apply flex flex-col items-center bg-dark-2 rounded-xl p-4 
+         hover:bg-dark-4 transition-all;
+}
+
+.creator-avatar {
+  @apply w-14 h-14 rounded-full object-cover;
+}
+
+.creator-avatar-placeholder {
+  @apply w-14 h-14 rounded-full bg-primary-500 flex-center 
+         text-lg text-light-1 font-bold;
+}
+
+.creator-info {
+  @apply text-center mt-2;
+}
+
+.follow-button {
+  @apply mt-3 bg-primary-500 text-light-1 w-full py-2 rounded-lg 
+         hover:bg-primary-600 transition-colors text-sm font-medium;
+}
