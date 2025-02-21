@@ -51,9 +51,9 @@ const SigninForm = () => {
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-bold">Welcome Back 👋</h2>
           <p className="text-light-3">
-            Today is a new day. It's your day. You shape it.
+            Step into a new world of connections and possibilities.
             <br />
-            Sign in to start managing your projects.
+            Sign in and start your journey today!
           </p>
         </div>
 
@@ -68,9 +68,9 @@ const SigninForm = () => {
               <FormItem>
                 <FormLabel className="text-light-2">Email</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="email" 
-                    className="shad-input bg-dark-3" 
+                  <Input
+                    type="email"
+                    className="shad-input bg-dark-3"
                     placeholder="example@email.com"
                     {...field}
                   />
@@ -87,9 +87,9 @@ const SigninForm = () => {
               <FormItem>
                 <FormLabel className="text-light-2">Password</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="password" 
-                    className="shad-input bg-dark-3" 
+                  <Input
+                    type="password"
+                    className="shad-input bg-dark-3"
                     placeholder="At least 8 characters"
                     {...field}
                   />
@@ -103,8 +103,8 @@ const SigninForm = () => {
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
           >
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-primary-500 hover:bg-primary-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8"
               disabled={isUserLoading}
             >
