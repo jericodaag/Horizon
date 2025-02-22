@@ -57,3 +57,14 @@ export type INewUser = {
   username: string;
   password: string;
 };
+
+export interface ICreatorWithFollowers {
+  id: string;
+  $id: string;
+  name: string;
+  username: string;
+  email: string;
+  imageUrl: string;
+  bio: string;
+  followerCount: number;
+}

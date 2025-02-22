@@ -1,7 +1,9 @@
-import { ID, Query } from 'appwrite';
+import { ID, Query, Models } from 'appwrite';
 
 import { appwriteConfig, account, databases, storage, avatars } from './config';
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '../react-query/queryKeys';
 
 // ============================================================
 // AUTH
@@ -573,5 +575,249 @@ export async function updateUser(user: IUpdateUser) {
   } catch (error) {
     console.log(error);
     return null;
+  }
+}
+
+// ============================================================
+// FOLLOW RELATIONSHIPS
+// ============================================================
+
+export async function followUser(followerId: string, followingId: string) {
+  try {
+    const followRecord = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      ID.unique(),
+      {
+        follower: followerId,
+        following: followingId,
+        createdAt: new Date().toISOString(),
+      }
+    );
+
+    if (!followRecord) throw Error;
+
+    return followRecord;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+export async function unfollowUser(followerId: string, followingId: string) {
+  try {
+    // First, find the follow relationship record
+    const follows = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [
+        Query.equal('follower', followerId),
+        Query.equal('following', followingId),
+      ]
+    );
+
+    if (!follows || follows.documents.length === 0) throw Error;
+
+    // Delete the follow relationship
+    const status = await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      follows.documents[0].$id
+    );
+
+    return { status: 'Ok' };
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+export async function getFollowers(userId: string): Promise<Models.Document[]> {
+  try {
+    const followers = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [Query.equal('following', userId)]
+    );
+
+    if (!followers) throw Error;
+
+    // Get detailed user information for each follower
+    const followerUsers = await Promise.all(
+      followers.documents.map(async (follow) => {
+        const user = await getUserById(follow.follower);
+        return user;
+      })
+    );
+
+    return followerUsers.filter(
+      (user): user is Models.Document => user !== null && user !== undefined
+    );
+  } catch (error) {
+    console.log(error);
+    return []; // Return empty array instead of null
+  }
+}
+
+export async function getFollowing(userId: string): Promise<Models.Document[]> {
+  try {
+    const following = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [Query.equal('follower', userId)]
+    );
+
+    if (!following) throw Error;
+
+    // Get detailed user information for each following
+    const followingUsers = await Promise.all(
+      following.documents.map(async (follow) => {
+        const user = await getUserById(follow.following);
+        return user;
+      })
+    );
+
+    return followingUsers.filter(
+      (user): user is Models.Document => user !== null && user !== undefined
+    );
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
+
+export async function isFollowing(followerId: string, followingId: string) {
+  try {
+    const follows = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [
+        Query.equal('follower', followerId),
+        Query.equal('following', followingId),
+      ]
+    );
+
+    return follows.documents.length > 0;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+}
+
+// src/lib/react-query/queries.ts
+// Add these query hooks to your existing queries.ts file
+
+export const useFollowUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      followerId,
+      followingId,
+    }: {
+      followerId: string;
+      followingId: string;
+    }) => followUser(followerId, followingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWING],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_CURRENT_USER],
+      });
+    },
+  });
+};
+
+export const useUnfollowUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      followerId,
+      followingId,
+    }: {
+      followerId: string;
+      followingId: string;
+    }) => unfollowUser(followerId, followingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWING],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_CURRENT_USER],
+      });
+    },
+  });
+};
+
+export const useGetFollowers = (userId: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS, userId],
+    queryFn: () => getFollowers(userId),
+    enabled: !!userId,
+  });
+};
+
+export const useGetFollowing = (userId: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_USER_FOLLOWING, userId],
+    queryFn: () => getFollowing(userId),
+    enabled: !!userId,
+  });
+};
+
+export const useIsFollowing = (followerId: string, followingId: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS, followerId, followingId],
+    queryFn: () => isFollowing(followerId, followingId),
+    enabled: !!followerId && !!followingId,
+  });
+};
+
+// Top Creators Condition
+export async function getTopCreators(limit: number = 6) {
+  try {
+    // First get all follows to count followers for each user
+    const follows = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.followsCollectionId,
+      [Query.orderDesc('$createdAt')]
+    );
+
+    // Count followers for each user
+    const followerCount: { [key: string]: number } = {};
+    follows.documents.forEach((follow) => {
+      const followingId = follow.following;
+      followerCount[followingId] = (followerCount[followingId] || 0) + 1;
+    });
+
+    // Get all users
+    const users = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId
+    );
+
+    // Add follower count to users and sort
+    const usersWithFollowers = users.documents.map((user) => ({
+      ...user,
+      followerCount: followerCount[user.$id] || 0,
+    }));
+
+    // Sort by follower count and get top N
+    const topUsers = usersWithFollowers
+      .sort((a, b) => b.followerCount - a.followerCount)
+      .slice(0, limit);
+
+    return topUsers;
+  } catch (error) {
+    console.log(error);
+    return [];
   }
 }

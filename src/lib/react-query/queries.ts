@@ -26,8 +26,15 @@ import {
   savePost,
   getSavedPosts,
   deleteSavedPost,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
+  isFollowing,
+  getTopCreators,
 } from '@/lib/appwrite/api';
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from '@/types';
+import { Models } from 'appwrite';
 
 // ============================================================
 // AUTH QUERIES
@@ -251,5 +258,84 @@ export const useUpdateUser = () => {
         queryKey: [QUERY_KEYS.GET_USER_BY_ID, data?.$id],
       });
     },
+  });
+};
+
+// following
+// Add these new queries to your queries.ts file
+export const useFollowUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      followerId,
+      followingId,
+    }: {
+      followerId: string;
+      followingId: string;
+    }) => followUser(followerId, followingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWING],
+      });
+    },
+  });
+};
+
+export const useUnfollowUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      followerId,
+      followingId,
+    }: {
+      followerId: string;
+      followingId: string;
+    }) => unfollowUser(followerId, followingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_FOLLOWING],
+      });
+    },
+  });
+};
+
+export const useGetFollowers = (userId: string) => {
+  return useQuery<Models.Document[]>({
+    queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS, userId],
+    queryFn: () => getFollowers(userId),
+    enabled: !!userId,
+    initialData: [],
+  });
+};
+
+export const useGetFollowing = (userId: string) => {
+  return useQuery<Models.Document[]>({
+    queryKey: [QUERY_KEYS.GET_USER_FOLLOWING, userId],
+    queryFn: () => getFollowing(userId),
+    enabled: !!userId,
+    initialData: [],
+  });
+};
+
+export const useIsFollowing = (followerId: string, followingId: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS, followerId, followingId],
+    queryFn: () => isFollowing(followerId, followingId),
+    enabled: !!followerId && !!followingId,
+  });
+};
+
+// Get Top creators
+export const useGetTopCreators = (limit: number = 6) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_TOP_CREATORS],
+    queryFn: () => getTopCreators(limit),
+    initialData: [],
   });
 };
