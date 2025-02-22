@@ -15,6 +15,11 @@
 }
 
 @layer utilities {
+  /*  */
+  .landing-page-cursor {
+    cursor: none;
+  }
+
   /* TYPOGRAPHY */
   .h1-bold {
     @apply text-[36px] font-bold leading-[140%] tracking-tighter;
@@ -408,4 +413,12 @@
 
 .body-medium {
   @apply font-medium text-[16px] leading-[140%];
+}
+
+/* Scrolling */
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
