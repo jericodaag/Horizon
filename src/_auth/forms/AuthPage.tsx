@@ -1,9 +1,9 @@
-// src/_auth/forms/AuthPage.tsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SigninForm from './SigninForm';
 import SignupForm from './SignupForm';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react'; // Import ArrowLeft icon
 
 const AuthPage: React.FC = () => {
   const location = useLocation();
@@ -24,8 +24,25 @@ const AuthPage: React.FC = () => {
     navigate(isSignInForm ? '/sign-in' : '/sign-up');
   };
 
+  // Add this at the top level of your component
+  const handleBackToLanding = () => {
+    navigate('/');
+  };
+
   return (
     <div className='flex min-h-screen w-full bg-dark-1'>
+      {/* Add the back button */}
+      <motion.button
+        onClick={handleBackToLanding}
+        className='fixed top-6 left-6 z-20 flex items-center gap-2 text-light-1 hover:text-primary-500 transition-colors'
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <ArrowLeft className='w-5 h-5' />
+        <span className='font-medium'>Back to Home</span>
+      </motion.button>
+
       <div className='w-full flex justify-center items-center'>
         <div className='w-full max-w-6xl h-[800px] flex bg-dark-2 rounded-2xl overflow-hidden shadow-2xl'>
           {/* Image Section */}

@@ -1,8 +1,7 @@
-import { useNavigate } from 'react-router-dom';
 import { createContext, useContext, useEffect, useState } from 'react';
-
 import { IUser } from '@/types';
 import { getCurrentUser } from '@/lib/appwrite/api';
+import { useNavigate } from 'react-router-dom';
 
 export const INITIAL_USER = {
   id: '',
@@ -17,8 +16,8 @@ const INITIAL_STATE = {
   user: INITIAL_USER,
   isLoading: false,
   isAuthenticated: false,
-  setUser: () => { },
-  setIsAuthenticated: () => { },
+  setUser: () => {},
+  setIsAuthenticated: () => {},
   checkAuthUser: async () => false as boolean,
 };
 
@@ -40,26 +39,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const checkAuthUser = async () => {
-    setIsLoading(true);
     try {
-      const currentAccount = await getCurrentUser();
-      if (currentAccount) {
-        setUser({
-          id: currentAccount.$id,
-          name: currentAccount.name,
-          username: currentAccount.username,
-          email: currentAccount.email,
-          imageUrl: currentAccount.imageUrl,
-          bio: currentAccount.bio,
-        });
-        setIsAuthenticated(true);
+      setIsLoading(true);
 
-        return true;
+      const currentAccount = await getCurrentUser();
+
+      if (!currentAccount) {
+        setUser(INITIAL_USER);
+        setIsAuthenticated(false);
+        return false;
       }
 
-      return false;
+      setUser({
+        id: currentAccount.$id,
+        name: currentAccount.name,
+        username: currentAccount.username,
+        email: currentAccount.email,
+        imageUrl: currentAccount.imageUrl,
+        bio: currentAccount.bio,
+      });
+      setIsAuthenticated(true);
+
+      return true;
     } catch (error) {
-      console.error(error);
+      console.error('Auth check failed:', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -67,16 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Only check auth if there's a cookie
     const cookieFallback = localStorage.getItem('cookieFallback');
-    if (
-      cookieFallback === '[]' ||
-      cookieFallback === null ||
-      cookieFallback === undefined
-    ) {
-      navigate('/sign-in');
+    if (cookieFallback && cookieFallback !== '[]') {
+      checkAuthUser();
     }
-
-    checkAuthUser();
   }, []);
 
   const value = {
@@ -91,4 +89,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useUserContext = () => useContext(AuthContext);
+export const useUserContext = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error('useUserContext must be used within an AuthProvider');
+  }
+
+  return context;
+};

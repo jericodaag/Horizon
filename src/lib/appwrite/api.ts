@@ -63,11 +63,29 @@ export async function saveUserToDB(user: {
 // ============================== SIGN IN
 export async function signInAccount(user: { email: string; password: string }) {
   try {
-    const session = await account.createEmailSession(user.email, user.password);
+    // Add delay between attempts
+    const delay = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
 
+    try {
+      // First try to delete existing session
+      await account.deleteSession('current');
+      // Add small delay after session deletion
+      await delay(500);
+    } catch (error) {
+      // Ignore error if no session exists
+    }
+
+    // Then create new session
+    const session = await account.createEmailSession(user.email, user.password);
     return session;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    // Handle rate limiting specifically
+    if (error.message?.includes('Rate limit')) {
+      throw new Error('Too many attempts. Please wait a moment and try again.');
+    }
+    console.error('SignIn error:', error);
+    throw error;
   }
 }
 
@@ -108,10 +126,9 @@ export async function getCurrentUser() {
 export async function signOutAccount() {
   try {
     const session = await account.deleteSession('current');
-
     return session;
   } catch (error) {
-    console.log(error);
+    console.error('SignOut error:', error);
   }
 }
 

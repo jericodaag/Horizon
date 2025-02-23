@@ -11,7 +11,6 @@ const CustomCursor: React.FC<CursorProps> = ({ position }) => (
     className='fixed top-0 left-0 w-4 h-4 border border-white rounded-full pointer-events-none z-[100] mix-blend-difference'
     style={{
       transform: `translate(${position.x - 8}px, ${position.y - 8}px)`,
-      transition: 'transform 0.05s linear',
     }}
   />
 );
@@ -51,8 +50,13 @@ const LandingPage: React.FC = () => {
   // Handle cursor movement
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setCursorPos({ x: e.clientX, y: e.clientY });
+      // Direct position update without any smoothing
+      setCursorPos({
+        x: e.clientX,
+        y: e.clientY,
+      });
     };
+
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
