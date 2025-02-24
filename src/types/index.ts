@@ -1,5 +1,27 @@
 import React from 'react';
 
+export type IComment = {
+  $id: string;
+  userId: string;
+  postId: string;
+  content: string;
+  createdAt: string;
+  likes: string[];
+  user?: {
+    $id: string;
+    name: string;
+    username: string;
+    imageUrl: string;
+  };
+};
+
+export type INewComment = {
+  userId: string;
+  postId: string;
+  content: string;
+};
+
+// Update IContextType to remain the same
 export type IContextType = {
   user: IUser;
   isLoading: boolean;
@@ -30,6 +52,7 @@ export type INewPost = {
   file: File[];
   location?: string;
   tags?: string;
+  comments?: IComment[];
 };
 
 export type IUpdatePost = {
@@ -40,6 +63,7 @@ export type IUpdatePost = {
   file: File[];
   location?: string;
   tags?: string;
+  comments?: IComment[];
 };
 
 export type IUser = {
@@ -67,4 +91,14 @@ export interface ICreatorWithFollowers {
   imageUrl: string;
   bio: string;
   followerCount: number;
+}
+
+export interface IPost extends Omit<INewPost, 'tags'> {
+  $id: string;
+  creator: IUser;
+  imageUrl: string;
+  likes: string[];
+  tags: string[];
+  comments: IComment[];
+  save?: boolean;
 }

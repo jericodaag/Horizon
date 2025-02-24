@@ -1,7 +1,6 @@
 import { Models } from 'appwrite';
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import { checkIsLiked } from '@/lib/utils';
 import {
   useLikePost,
@@ -16,15 +15,20 @@ type PostStatsProps = {
 };
 
 const PostStats = ({ post, userId }: PostStatsProps) => {
+  // Initialize states and navigation
+  const navigate = useNavigate();
   const [likes, setLikes] = useState<string[]>(
     post.likes.map((user: Models.Document) => user.$id)
   );
   const [isSaved, setIsSaved] = useState(false);
+
+  // Get mutations and current user data
   const { mutate: likePost } = useLikePost();
   const { mutate: savePost } = useSavePost();
   const { mutate: deleteSavePost } = useDeleteSavedPost();
   const { data: currentUser } = useGetCurrentUser();
 
+  // Check if post is saved by current user
   useEffect(() => {
     setIsSaved(
       !!currentUser?.save.find(
@@ -33,6 +37,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     );
   }, [currentUser]);
 
+  // Handle liking/unliking a post
   const handleLikePost = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -48,6 +53,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     likePost({ postId: post.$id, likesArray });
   };
 
+  // Handle saving/unsaving a post
   const handleSavePost = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -66,9 +72,17 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     }
   };
 
+  // Navigate to post details for commenting
+  const handleCommentClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/posts/${post.$id}`);
+  };
+
   return (
     <div className='flex flex-col gap-2'>
       <div className='flex gap-4 items-center'>
+        {/* Like Button */}
         <button
           onClick={handleLikePost}
           className='flex items-center gap-2 hover:opacity-80 transition-opacity'
@@ -85,6 +99,20 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
           />
         </button>
 
+        {/* Comment Button */}
+        <button
+          onClick={handleCommentClick}
+          className='flex items-center gap-2 hover:opacity-80 transition-opacity'
+        >
+          <img
+            src='/assets/icons/comment.svg'
+            alt='comment'
+            width={24}
+            height={24}
+          />
+        </button>
+
+        {/* Save Button */}
         <button
           onClick={handleSavePost}
           className='hover:opacity-80 transition-opacity ml-auto'
@@ -98,11 +126,22 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
         </button>
       </div>
 
-      {likes.length > 0 && (
-        <p className='text-light-2 text-sm'>
-          {likes.length} {likes.length === 1 ? 'like' : 'likes'}
-        </p>
-      )}
+      {/* Stats Display */}
+      <div className='flex gap-4'>
+        {/* Like Count */}
+        {likes.length > 0 && (
+          <p className='text-light-2 text-sm'>
+            {likes.length} {likes.length === 1 ? 'like' : 'likes'}
+          </p>
+        )}
+        {/* Comment Count */}
+        {post.comments?.length > 0 && (
+          <p className='text-light-2 text-sm'>
+            {post.comments.length}{' '}
+            {post.comments.length === 1 ? 'comment' : 'comments'}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

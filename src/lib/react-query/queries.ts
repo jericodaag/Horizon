@@ -4,7 +4,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from '@tanstack/react-query';
-
+import { Query } from 'appwrite';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 import {
   createUserAccount,
@@ -34,7 +34,8 @@ import {
   getTopCreators,
 } from '@/lib/appwrite/api';
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from '@/types';
-import { Models } from 'appwrite';
+import { ID, Models } from 'appwrite';
+import { appwriteConfig, databases } from '../appwrite/config';
 
 // ============================================================
 // AUTH QUERIES
@@ -337,5 +338,85 @@ export const useGetTopCreators = (limit: number = 6) => {
     queryKey: [QUERY_KEYS.GET_TOP_CREATORS],
     queryFn: () => getTopCreators(limit),
     initialData: [],
+  });
+};
+
+// Get Comments
+export const useGetPostComments = (postId: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
+    queryFn: () =>
+      databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.commentsCollectionId,
+        [
+          Query.equal('postId', postId),
+          Query.orderDesc('$createdAt'),
+          Query.limit(100),
+        ]
+      ),
+    enabled: !!postId,
+  });
+};
+
+export const useCreateComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      postId,
+      content,
+      userId,
+    }: {
+      postId: string;
+      content: string;
+      userId: string;
+    }) => {
+      const comment = await databases.createDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.commentsCollectionId,
+        ID.unique(),
+        {
+          postId,
+          content,
+          userId,
+          createdAt: new Date().toISOString(),
+          likes: [],
+        }
+      );
+      return comment;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_POST_COMMENTS, variables.postId],
+      });
+    },
+  });
+};
+
+export const useDeleteComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      commentId,
+      postId,
+    }: {
+      commentId: string;
+      postId: string;
+    }) => {
+      const status = await databases.deleteDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.commentsCollectionId,
+        commentId
+      );
+      return status;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_POST_COMMENTS, variables.postId],
+      });
+    },
   });
 };

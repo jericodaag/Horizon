@@ -18,6 +18,7 @@ export enum QUERY_KEYS {
   GET_USER_FOLLOWERS = 'getUserFollowers',
   GET_USER_FOLLOWING = 'getUserFollowing',
   GET_TOP_CREATORS = 'getTopCreators',
+  GET_POST_COMMENTS = 'getPostComments',
 
   //  SEARCH KEYS
   SEARCH_POSTS = 'getSearchPosts',

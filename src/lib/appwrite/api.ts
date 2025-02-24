@@ -838,3 +838,135 @@ export async function getTopCreators(limit: number = 6) {
     return [];
   }
 }
+
+// ======================
+// Create comment
+export async function createComment(comment: {
+  postId: string;
+  userId: string;
+  content: string;
+}) {
+  try {
+    // Create the comment
+    const newComment = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      ID.unique(),
+      {
+        postId: comment.postId,
+        userId: comment.userId,
+        content: comment.content,
+        createdAt: new Date().toISOString(),
+        likes: [],
+      }
+    );
+
+    // Get the user data
+    const userData = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      comment.userId
+    );
+
+    // Return comment with user data
+    return {
+      ...newComment,
+      user: userData,
+    };
+  } catch (error) {
+    console.error('Error creating comment:', error);
+    throw error;
+  }
+}
+// Get comments for a post
+export async function getPostComments(postId: string) {
+  try {
+    // First get the comments
+    const comments = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      [Query.equal('postId', postId), Query.orderDesc('$createdAt')]
+    );
+
+    // If there are no comments, return early
+    if (!comments || comments.documents.length === 0) {
+      return comments;
+    }
+
+    // Get all unique user IDs from comments
+    const userIds = [
+      ...new Set(comments.documents.map((comment) => comment.userId)),
+    ];
+
+    // Fetch all users in one batch
+    const userPromises = userIds.map((userId) =>
+      databases.getDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        userId
+      )
+    );
+
+    // Wait for all user data to be fetched
+    const users = await Promise.all(userPromises);
+
+    // Create a map of userId to user data for easy lookup
+    // Fix: Define proper type for the userMap
+    const userMap: Record<string, Models.Document> = users.reduce(
+      (map: Record<string, Models.Document>, user) => {
+        map[user.$id] = user;
+        return map;
+      },
+      {}
+    );
+
+    // Enhance comments with user data
+    const enhancedComments = comments.documents.map((comment) => ({
+      ...comment,
+      user: userMap[comment.userId],
+    }));
+
+    // Return the enhanced comments
+    return {
+      ...comments,
+      documents: enhancedComments,
+    };
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    throw error;
+  }
+}
+
+// Delete comment
+export async function deleteComment(commentId: string) {
+  try {
+    await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      commentId
+    );
+    return { status: 'ok' };
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    throw error;
+  }
+}
+
+// Like/Unlike comment
+export async function likeComment(commentId: string, likesArray: string[]) {
+  try {
+    const updatedComment = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      commentId,
+      {
+        likes: likesArray,
+      }
+    );
+
+    return updatedComment;
+  } catch (error) {
+    console.error('Error updating comment likes:', error);
+    throw error;
+  }
+}
