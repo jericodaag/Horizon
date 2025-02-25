@@ -3,9 +3,6 @@ import {
   useGetPostById,
   useGetUserPosts,
   useDeletePost,
-  useCreateComment,
-  useGetPostComments,
-  useGetUserById,
 } from '@/lib/react-query/queries';
 import { multiFormatDateString } from '@/lib/utils';
 import { useUserContext } from '@/context/AuthContext';
@@ -13,118 +10,27 @@ import { Button } from '@/components/ui/button';
 import { Loader } from 'lucide-react';
 import PostStats from '@/components/shared/PostStats';
 import GridPostList from '@/components/shared/GridPostList';
-import { useState, useEffect } from 'react';
-import { Models } from 'appwrite';
-import { IComment } from '@/types';
-import { appwriteConfig, databases } from '@/lib/appwrite/config';
-import { useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
+import CommentSection from '@/components/shared/CommentSection';
 
 const PostDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useUserContext();
-  const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<IComment[]>([]);
-  const queryClient = useQueryClient();
 
   const { data: post, isLoading } = useGetPostById(id);
   const { data: userPosts, isLoading: isUserPostLoading } = useGetUserPosts(
     post?.creator.$id
   );
   const { mutate: deletePost } = useDeletePost();
-  const { data: commentsData, isLoading: isCommentsLoading } =
-    useGetPostComments(id || '');
-  const { mutate: createComment, isPending: isCommentSubmitting } =
-    useCreateComment();
 
   // Get related posts
   const relatedPosts = userPosts?.documents.filter(
     (userPost) => userPost.$id !== id
   );
 
-  // Update comments when data changes
-  useEffect(() => {
-    const fetchCommentsWithUserDetails = async () => {
-      if (commentsData?.documents) {
-        // For each comment, fetch the user details
-        const enhancedComments = await Promise.all(
-          commentsData.documents.map(async (comment: Models.Document) => {
-            try {
-              // Fetch user data for this comment's userId
-              const userData = await databases.getDocument(
-                appwriteConfig.databaseId,
-                appwriteConfig.userCollectionId,
-                comment.userId
-              );
-
-              // Return the comment with user data
-              return {
-                $id: comment.$id,
-                userId: comment.userId,
-                postId: comment.postId,
-                content: comment.content,
-                createdAt: comment.createdAt,
-                likes: comment.likes || [],
-                user: {
-                  $id: userData.$id,
-                  name: userData.name,
-                  username: userData.username,
-                  imageUrl: userData.imageUrl,
-                },
-              } as IComment;
-            } catch (error) {
-              console.error('Error fetching user for comment:', error);
-              // If fetching user fails, return comment with placeholder user data
-              return {
-                $id: comment.$id,
-                userId: comment.userId,
-                postId: comment.postId,
-                content: comment.content,
-                createdAt: comment.createdAt,
-                likes: comment.likes || [],
-                user: {
-                  $id: comment.userId,
-                  name: 'User',
-                  username: '',
-                  imageUrl: '/assets/icons/profile-placeholder.svg',
-                },
-              } as IComment;
-            }
-          })
-        );
-
-        setComments(enhancedComments);
-      }
-    };
-
-    fetchCommentsWithUserDetails();
-  }, [commentsData]);
-
   const handleDeletePost = () => {
     deletePost({ postId: id, imageId: post?.imageId });
     navigate(-1);
-  };
-
-  const handleSubmitComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim()) return;
-
-    createComment(
-      {
-        postId: id || '',
-        content: commentText.trim(),
-        userId: user.id,
-      },
-      {
-        onSuccess: () => {
-          setCommentText('');
-          queryClient.invalidateQueries({
-            queryKey: [QUERY_KEYS.GET_POST_COMMENTS, id],
-          });
-        },
-      }
-    );
   };
 
   return (
@@ -201,9 +107,8 @@ const PostDetails = () => {
                 <Button
                   onClick={handleDeletePost}
                   variant='ghost'
-                  className={`post_details-delete_btn ${
-                    user.id !== post?.creator.$id && 'hidden'
-                  }`}
+                  className={`post_details-delete_btn ${user.id !== post?.creator.$id && 'hidden'
+                    }`}
                 >
                   <img
                     src={'/assets/icons/delete.svg'}
@@ -235,78 +140,10 @@ const PostDetails = () => {
               <PostStats post={post} userId={user.id} />
             </div>
 
-            {/* Comments Section */}
-            <div className='w-full mt-4'>
-              {/* Comment Input */}
-              <div className='flex items-center gap-3 pt-2'>
-                <img
-                  src={user.imageUrl || '/assets/icons/profile-placeholder.svg'}
-                  alt='user profile'
-                  className='w-8 h-8 rounded-full object-cover'
-                />
-                <div className='flex-1 flex gap-2'>
-                  <input
-                    type='text'
-                    placeholder='Write a comment...'
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className='flex-1 bg-dark-3 text-light-1 rounded-lg px-4 py-2.5 
-                              focus:outline-none text-sm'
-                  />
-                  <Button
-                    onClick={handleSubmitComment}
-                    disabled={isCommentSubmitting || !commentText.trim()}
-                    className='bg-primary-500 px-5 py-1.5 rounded-lg text-light-1 
-                              hover:bg-primary-600 disabled:opacity-50'
-                  >
-                    {isCommentSubmitting ? (
-                      <Loader className='w-4 h-4 animate-spin' />
-                    ) : (
-                      'Post'
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Comments List */}
-              <div className='mt-6 space-y-4'>
-                {isCommentsLoading ? (
-                  <Loader />
-                ) : commentsData?.documents &&
-                  commentsData.documents.length > 0 ? (
-                  commentsData.documents.map((comment) => (
-                    <div key={comment.$id} className='flex gap-3 items-start'>
-                      <Link to={`/profile/${comment.userId}`}>
-                        <img
-                          src={
-                            comment.user?.imageUrl ||
-                            '/assets/icons/profile-placeholder.svg'
-                          }
-                          alt='commenter'
-                          className='w-8 h-8 rounded-full object-cover'
-                        />
-                      </Link>
-                      <div>
-                        <Link
-                          to={`/profile/${comment.userId}`}
-                          className='text-light-1 font-medium hover:underline'
-                        >
-                          {comment.user?.name || 'User'}
-                        </Link>{' '}
-                        <span className='text-light-2'>{comment.content}</span>
-                        <p className='text-light-3 text-sm mt-1'>
-                          {multiFormatDateString(comment.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className='text-light-3 text-center py-6'>
-                    No comments yet. Be the first to comment!
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* Comments Section using the new component */}
+            {post && id && (
+              <CommentSection postId={id} />
+            )}
           </div>
         </div>
       )}

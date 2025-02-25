@@ -345,16 +345,18 @@ export const useGetTopCreators = (limit: number = 6) => {
 export const useGetPostComments = (postId: string) => {
   return useQuery({
     queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
-    queryFn: () =>
-      databases.listDocuments(
+    queryFn: async () => {
+      if (!postId) return { documents: [] };
+
+      // Get comments
+      const comments = await databases.listDocuments(
         appwriteConfig.databaseId,
         appwriteConfig.commentsCollectionId,
-        [
-          Query.equal('postId', postId),
-          Query.orderDesc('$createdAt'),
-          Query.limit(100),
-        ]
-      ),
+        [Query.equal('postId', postId), Query.orderDesc('$createdAt')]
+      );
+
+      return comments;
+    },
     enabled: !!postId,
   });
 };

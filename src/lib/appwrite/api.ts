@@ -840,7 +840,6 @@ export async function getTopCreators(limit: number = 6) {
 }
 
 // ======================
-// Create comment
 export async function createComment(comment: {
   postId: string;
   userId: string;
@@ -878,6 +877,7 @@ export async function createComment(comment: {
     throw error;
   }
 }
+
 // Get comments for a post
 export async function getPostComments(postId: string) {
   try {
@@ -911,7 +911,6 @@ export async function getPostComments(postId: string) {
     const users = await Promise.all(userPromises);
 
     // Create a map of userId to user data for easy lookup
-    // Fix: Define proper type for the userMap
     const userMap: Record<string, Models.Document> = users.reduce(
       (map: Record<string, Models.Document>, user) => {
         map[user.$id] = user;
