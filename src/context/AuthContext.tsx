@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { IUser } from '@/types';
 import { getCurrentUser } from '@/lib/appwrite/api';
-import { useNavigate } from 'react-router-dom';
 
 export const INITIAL_USER = {
   id: '',
@@ -14,10 +13,10 @@ export const INITIAL_USER = {
 
 const INITIAL_STATE = {
   user: INITIAL_USER,
-  isLoading: false,
+  isLoading: true, // Start with loading true
   isAuthenticated: false,
-  setUser: () => { },
-  setIsAuthenticated: () => { },
+  setUser: () => {},
+  setIsAuthenticated: () => {},
   checkAuthUser: async () => false as boolean,
 };
 
@@ -33,15 +32,12 @@ type IContextType = {
 const AuthContext = createContext<IContextType>(INITIAL_STATE);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
   const [user, setUser] = useState<IUser>(INITIAL_USER);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
 
   const checkAuthUser = async () => {
     try {
-      setIsLoading(true);
-
       const currentAccount = await getCurrentUser();
 
       if (!currentAccount) {
@@ -65,15 +61,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Auth check failed:', error);
       return false;
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Set loading to false regardless of outcome
     }
   };
 
   useEffect(() => {
-    // Only check auth if there's a cookie
+    // Check for authentication on initial load
     const cookieFallback = localStorage.getItem('cookieFallback');
+
     if (cookieFallback && cookieFallback !== '[]') {
       checkAuthUser();
+    } else {
+      // If no cookie, we know we're not authenticated
+      setIsLoading(false);
     }
   }, []);
 
