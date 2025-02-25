@@ -104,9 +104,8 @@ const LandingPage: React.FC = () => {
       {/* Header */}
       <header
         ref={headerRef}
-        className={`w-full py-4 px-6 fixed top-0 z-40 transition-all duration-500 ${
-          isScrolled ? 'bg-black/80 backdrop-blur-sm' : 'bg-transparent'
-        }`}
+        className={`w-full py-4 px-6 fixed top-0 z-40 transition-all duration-500 ${isScrolled ? 'bg-black/80 backdrop-blur-sm' : 'bg-transparent'
+          }`}
       >
         <nav className='flex justify-between items-center max-w-[1400px] mx-auto w-full'>
           <h1 className='text-3xl font-inter font-bold tracking-tight'>
@@ -146,7 +145,7 @@ const LandingPage: React.FC = () => {
           >
             <source src='/public/assets/images/bg-vid.mp4' type='video/mp4' />
           </video>
-          <div className='absolute inset-0 bg-black/60 backdrop-blur-[1px]' />
+          <div className='absolute inset-0 backdrop-blur-[1px]' />
         </div>
 
         {/* Hero Content */}
@@ -191,9 +190,8 @@ const LandingPage: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className={`relative group ${
-                  index % 5 === 0 ? 'md:col-span-2 md:row-span-2' : ''
-                }`}
+                className={`relative group ${index % 5 === 0 ? 'md:col-span-2 md:row-span-2' : ''
+                  }`}
               >
                 <img
                   src={post.imageUrl}
@@ -248,7 +246,7 @@ const LandingPage: React.FC = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.2 }}
                   viewport={{ once: true }}
-                  className='text-center p-8 rounded-2xl bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-500'
+                  className='text-center p-8 rounded-2xl bg-white/5 backdrop-blur-sm transition-all duration-500'
                 >
                   <h3 className='text-2xl font-bold mb-4 font-inter'>
                     {feature.title}
