@@ -3,13 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SigninForm from './SigninForm';
 import SignupForm from './SignupForm';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react'; // Import ArrowLeft icon
+import { ArrowLeft } from 'lucide-react';
+import Loader from '@/components/shared/Loader';
 
 const AuthPage: React.FC = () => {
   const location = useLocation();
   const [isSignIn, setIsSignIn] = useState(location.pathname === '/sign-in');
   const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+
+  useEffect(() => {
+    setLoadingMessage(isSignIn ? 'Signing in...' : 'Creating account...');
+  }, [isSignIn]);
 
   // Image carousel effect
   useEffect(() => {
@@ -24,14 +31,17 @@ const AuthPage: React.FC = () => {
     navigate(isSignInForm ? '/sign-in' : '/sign-up');
   };
 
-  // Add this at the top level of your component
   const handleBackToLanding = () => {
     navigate('/');
   };
 
+  const handleLoadingChange = (loading: boolean) => {
+    setIsLoading(loading);
+  };
+
   return (
     <div className='flex min-h-screen w-full bg-dark-1'>
-      {/* Add the back button */}
+      {/* Back button */}
       <motion.button
         onClick={handleBackToLanding}
         className='fixed top-6 left-6 z-20 flex items-center gap-2 text-light-1 hover:text-primary-500 transition-colors'
@@ -85,7 +95,17 @@ const AuthPage: React.FC = () => {
           </div>
 
           {/* Form Section */}
-          <div className='w-full lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center'>
+          <div className='w-full lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden'>
+            {/* Centralized full-page loading overlay */}
+            {isLoading && (
+              <div className='absolute inset-0 bg-dark-2/80 backdrop-blur-sm z-30 flex items-center justify-center'>
+                <div className='bg-dark-3 p-6 rounded-lg shadow-lg border border-dark-4 flex flex-col items-center gap-4'>
+                  <Loader />
+                  <p className='text-light-1 font-medium'>{loadingMessage}</p>
+                </div>
+              </div>
+            )}
+
             <AnimatePresence mode='wait'>
               <motion.div
                 key={isSignIn ? 'signin' : 'signup'}
@@ -97,7 +117,7 @@ const AuthPage: React.FC = () => {
               >
                 {isSignIn ? (
                   <>
-                    <SigninForm />
+                    <SigninForm onLoadingChange={handleLoadingChange} />
                     <div className='mt-6 text-center'>
                       <p className='text-light-3'>
                         Don't have an account?
@@ -112,7 +132,7 @@ const AuthPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <SignupForm />
+                    <SignupForm onLoadingChange={handleLoadingChange} />
                     <div className='mt-6 text-center'>
                       <p className='text-light-3'>
                         Already have an account?

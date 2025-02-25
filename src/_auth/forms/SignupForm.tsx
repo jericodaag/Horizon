@@ -1,4 +1,4 @@
-// src/_auth/forms/SignupForm.tsx
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { SignupValidation } from '@/lib/validation';
@@ -21,9 +21,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import Loader from '@/components/shared/Loader';
 
-const SignupForm = () => {
+interface SignupFormProps {
+  onLoadingChange?: (isLoading: boolean) => void;
+}
+
+const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
   const { toast } = useToast();
   const { checkAuthUser, isLoading: isUserLoading } = useUserContext();
   const navigate = useNavigate();
@@ -31,6 +34,20 @@ const SignupForm = () => {
     useCreateUserAccount();
   const { mutateAsync: signInAccount, isPending: isSigningIn } =
     useSignInAccount();
+
+  // Track local loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Combined loading state
+  const isLoading =
+    isUserLoading || isCreatingAccount || isSigningIn || isSubmitting;
+
+  // Update parent component loading state
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(isLoading);
+    }
+  }, [isLoading, onLoadingChange]);
 
   const form = useForm<z.infer<typeof SignupValidation>>({
     resolver: zodResolver(SignupValidation),
@@ -43,26 +60,59 @@ const SignupForm = () => {
   });
 
   async function onSubmit(values: z.infer<typeof SignupValidation>) {
-    const newUser = await createUserAccount(values);
+    try {
+      setIsSubmitting(true); // Start local loading
 
-    if (!newUser) {
-      return toast({ title: 'Sign up failed. Please try again.' });
-    }
+      const newUser = await createUserAccount(values);
 
-    const session = await signInAccount({
-      email: values.email,
-      password: values.password,
-    });
+      if (!newUser) {
+        setIsSubmitting(false); // Stop local loading
+        return toast({
+          title: 'Sign up failed',
+          description: 'Please try again later.',
+          variant: 'destructive',
+        });
+      }
 
-    if (!session) {
-      return toast({ title: 'Sign in failed. Please try again.' });
-    }
+      const session = await signInAccount({
+        email: values.email,
+        password: values.password,
+      });
 
-    const isLoggedIn = await checkAuthUser();
+      if (!session) {
+        setIsSubmitting(false); // Stop local loading
+        return toast({
+          title: 'Sign in failed',
+          description:
+            'Account created but sign in failed. Please sign in manually.',
+          variant: 'destructive',
+        });
+      }
 
-    if (isLoggedIn) {
+      const isLoggedIn = await checkAuthUser();
+
+      if (isLoggedIn) {
+        form.reset();
+        // Don't stop loading since we're navigating away
+        navigate('/home');
+      } else {
+        setIsSubmitting(false); // Stop local loading
+        toast({
+          title: 'Authentication failed',
+          description: 'Please try signing in manually.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      setIsSubmitting(false); // Stop local loading
+
+      toast({
+        title: 'Sign up failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+
       form.reset();
-      navigate('/home');
     }
   }
 
@@ -157,20 +207,16 @@ const SignupForm = () => {
             )}
           />
 
-          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+          <motion.div
+            whileHover={{ scale: isLoading ? 1 : 1.01 }}
+            whileTap={{ scale: isLoading ? 1 : 0.99 }}
+          >
             <Button
               type='submit'
               className='bg-primary-500 hover:bg-primary-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8'
-              disabled={isCreatingAccount || isSigningIn}
+              disabled={isLoading}
             >
-              {isCreatingAccount || isSigningIn ? (
-                <div className='flex-center gap-2'>
-                  <Loader />
-                  Loading...
-                </div>
-              ) : (
-                'Sign up'
-              )}
+              Sign up
             </Button>
           </motion.div>
         </form>

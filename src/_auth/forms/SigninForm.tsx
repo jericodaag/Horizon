@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { SigninValidation } from '@/lib/validation';
@@ -18,17 +18,34 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import Loader from '@/components/shared/Loader';
 
-const SigninForm = () => {
+interface SigninFormProps {
+  onLoadingChange?: (isLoading: boolean) => void;
+}
+
+const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
   const { toast } = useToast();
   const { checkAuthUser, isLoading: isUserLoading } = useUserContext();
   const navigate = useNavigate();
-  const { mutateAsync: signInAccount } = useSignInAccount();
+  const { mutateAsync: signInAccount, isPending: isSigningIn } =
+    useSignInAccount();
+
+  // Track local loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Add rate limiting state
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [attemptCount, setAttemptCount] = useState(0);
+
+  // Combine all loading states
+  const isLoading = isUserLoading || isSigningIn || isSubmitting;
+
+  // Update parent component loading state
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(isLoading);
+    }
+  }, [isLoading, onLoadingChange]);
 
   const form = useForm<z.infer<typeof SigninValidation>>({
     resolver: zodResolver(SigninValidation),
@@ -66,12 +83,15 @@ const SigninForm = () => {
     }
 
     try {
+      setIsSubmitting(true); // Start local loading
+
       const session = await signInAccount({
         email: values.email,
         password: values.password,
       });
 
       if (!session) {
+        setIsSubmitting(false); // Stop local loading
         return toast({
           title: 'Sign in failed',
           description: 'Please check your credentials and try again.',
@@ -83,8 +103,10 @@ const SigninForm = () => {
 
       if (isLoggedIn) {
         form.reset();
+        // Don't stop loading since we're navigating away
         navigate('/home');
       } else {
+        setIsSubmitting(false); // Stop local loading
         toast({
           title: 'Sign in failed',
           description: 'Unable to verify authentication. Please try again.',
@@ -92,6 +114,8 @@ const SigninForm = () => {
         });
       }
     } catch (error: any) {
+      setIsSubmitting(false); // Stop local loading
+
       // Handle different types of errors
       if (error.message?.includes('Rate limit')) {
         setIsRateLimited(true);
@@ -178,24 +202,15 @@ const SigninForm = () => {
           />
 
           <motion.div
-            whileHover={{ scale: isRateLimited || isUserLoading ? 1 : 1.01 }}
-            whileTap={{ scale: isRateLimited || isUserLoading ? 1 : 0.99 }}
+            whileHover={{ scale: isLoading || isRateLimited ? 1 : 1.01 }}
+            whileTap={{ scale: isLoading || isRateLimited ? 1 : 0.99 }}
           >
             <Button
               type='submit'
               className='bg-primary-500 hover:bg-primary-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8'
-              disabled={isUserLoading || isRateLimited}
+              disabled={isLoading || isRateLimited}
             >
-              {isUserLoading ? (
-                <div className='flex-center gap-2'>
-                  <Loader />
-                  Loading...
-                </div>
-              ) : isRateLimited ? (
-                'Please wait...'
-              ) : (
-                'Sign in'
-              )}
+              {isRateLimited ? 'Please wait...' : 'Sign in'}
             </Button>
           </motion.div>
 
