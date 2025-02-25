@@ -246,7 +246,7 @@ const LandingPage: React.FC = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.2 }}
                   viewport={{ once: true }}
-                  className='text-center p-8 rounded-2xl bg-white/5 backdrop-blur-sm transition-all duration-500'
+                  className='text-center p-8 rounded-2xl transition-all duration-500'
                 >
                   <h3 className='text-2xl font-bold mb-4 font-inter'>
                     {feature.title}
