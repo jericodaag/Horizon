@@ -6,7 +6,7 @@ import PostStats from './PostStats';
 import { useEffect, useState } from 'react';
 import { IComment } from '@/types';
 import { appwriteConfig, databases } from '@/lib/appwrite/config';
-import { ID, Query } from 'appwrite';
+import { Query } from 'appwrite';
 
 type PostCardProps = {
   post: Models.Document;
@@ -53,14 +53,14 @@ const PostCard = ({ post }: PostCardProps) => {
       try {
         setIsLoadingComments(true);
 
-        // Get the latest 3 comments for this post
+        // CHANGED: Get only the latest 1 comment for this post instead of 3
         const commentsData = await databases.listDocuments(
           appwriteConfig.databaseId,
           appwriteConfig.commentsCollectionId,
           [
             Query.equal('postId', [post.$id]),
             Query.orderDesc('$createdAt'),
-            Query.limit(3)
+            Query.limit(1)  // Changed from 3 to 1
           ]
         );
 
@@ -171,7 +171,7 @@ const PostCard = ({ post }: PostCardProps) => {
           </div>
         </div>
 
-        {/* Edit Post Button */}
+        {/* Edit Post Button - Only shown to post creator */}
         {user.id === post.creator.$id && (
           <Link
             to={`/update-post/${post.$id}`}
@@ -208,18 +208,16 @@ const PostCard = ({ post }: PostCardProps) => {
           <p className='text-light-2'>{post.caption}</p>
         </div>
 
-        {/* Comment Preview */}
+        {/* Comment Preview - Show only 1 comment */}
         {commentCount > 0 && (
           <div className='mt-2'>
             <Link
               to={`/posts/${post.$id}`}
               className='text-light-3 text-sm hover:text-light-2'
             >
-              {commentCount > 3
+              {commentCount > 1
                 ? `View all ${commentCount} comments`
-                : commentCount === 1
-                  ? 'View 1 comment'
-                  : `View all ${commentCount} comments`}
+                : 'View 1 comment'}
             </Link>
             {!isLoadingComments && comments.length > 0 && (
               <div className='mt-1 space-y-1'>

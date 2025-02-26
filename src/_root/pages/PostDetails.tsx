@@ -11,11 +11,15 @@ import { Loader } from 'lucide-react';
 import PostStats from '@/components/shared/PostStats';
 import GridPostList from '@/components/shared/GridPostList';
 import CommentSection from '@/components/shared/CommentSection';
+import { useState, useEffect } from 'react';
+import DeleteConfirmationModal from '@/components/shared/DeleteConfirmationModal';
 
 const PostDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useUserContext();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPostCreator, setIsPostCreator] = useState(false);
 
   const { data: post, isLoading } = useGetPostById(id);
   const { data: userPosts, isLoading: isUserPostLoading } = useGetUserPosts(
@@ -23,18 +27,57 @@ const PostDetails = () => {
   );
   const { mutate: deletePost } = useDeletePost();
 
+  // Check if current user is the post creator
+  useEffect(() => {
+    if (post && user) {
+      // Explicit comparison and console log for debugging
+      const creatorId = post.creator.$id;
+      const currentUserId = user.id;
+      const isCreator = currentUserId === creatorId;
+
+      console.log("Current user ID:", currentUserId);
+      console.log("Post creator ID:", creatorId);
+      console.log("Is creator:", isCreator);
+
+      setIsPostCreator(isCreator);
+    }
+  }, [post, user]);
+
   // Get related posts
   const relatedPosts = userPosts?.documents.filter(
     (userPost) => userPost.$id !== id
   );
 
-  const handleDeletePost = () => {
+  const handleDeleteConfirm = () => {
+    // This function is called when user confirms deletion in the modal
+    if (!isPostCreator) {
+      console.error("You don't have permission to delete this post");
+      return;
+    }
+
     deletePost({ postId: id, imageId: post?.imageId });
     navigate(-1);
   };
 
+  const openDeleteModal = () => {
+    // This function is called when delete button is clicked
+    if (!isPostCreator) {
+      console.error("You don't have permission to delete this post");
+      return;
+    }
+
+    setIsDeleteModalOpen(true);
+  };
+
   return (
     <div className='post_details-container'>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+      />
+
       <div className='hidden md:flex max-w-5xl w-full'>
         <Button
           onClick={() => navigate(-1)}
@@ -80,7 +123,7 @@ const PostDetails = () => {
                     {post?.creator.name}
                   </p>
                   <div className='flex-center gap-2 text-light-3'>
-                    <p className='subtle-semibold lg:small-regular '>
+                    <p className='subtle-semibold lg:small-regular'>
                       {multiFormatDateString(post?.$createdAt)}
                     </p>
                     -
@@ -92,31 +135,35 @@ const PostDetails = () => {
               </Link>
 
               <div className='flex-center gap-4'>
-                <Link
-                  to={`/update-post/${post?.$id}`}
-                  className={`${user.id !== post?.creator.$id && 'hidden'}`}
-                >
-                  <img
-                    src={'/assets/icons/edit.svg'}
-                    alt='edit'
-                    width={24}
-                    height={24}
-                  />
-                </Link>
+                {/* Edit button - Only render if post creator */}
+                {isPostCreator && (
+                  <Link
+                    to={`/update-post/${post?.$id}`}
+                  >
+                    <img
+                      src={'/assets/icons/edit.svg'}
+                      alt='edit'
+                      width={24}
+                      height={24}
+                    />
+                  </Link>
+                )}
 
-                <Button
-                  onClick={handleDeletePost}
-                  variant='ghost'
-                  className={`post_details-delete_btn ${user.id !== post?.creator.$id && 'hidden'
-                    }`}
-                >
-                  <img
-                    src={'/assets/icons/delete.svg'}
-                    alt='delete'
-                    width={24}
-                    height={24}
-                  />
-                </Button>
+                {/* Delete button - Only render if post creator */}
+                {isPostCreator && (
+                  <Button
+                    onClick={openDeleteModal}
+                    variant='ghost'
+                    className="post_details-delete_btn"
+                  >
+                    <img
+                      src={'/assets/icons/delete.svg'}
+                      alt='delete'
+                      width={24}
+                      height={24}
+                    />
+                  </Button>
+                )}
               </div>
             </div>
 
