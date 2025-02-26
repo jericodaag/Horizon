@@ -15,25 +15,29 @@ import FollowButton from '@/components/shared/FollowButton';
 import FollowModal from '@/components/shared/FollowModal';
 
 const Profile = () => {
+  // Get profile ID from URL parameters
   const { id } = useParams();
-  const { user } = useUserContext();
-  const [showFollowModal, setShowFollowModal] = useState(false);
-  const [followModalType, setFollowModalType] = useState<
-    'followers' | 'following'
-  >('followers');
 
-  const { data: currentUser, isLoading: isUserLoading } = useGetUserById(
-    id || ''
-  );
+  // Get current user from auth context
+  const { user } = useUserContext();
+
+  // State for followers/following modal
+  const [showFollowModal, setShowFollowModal] = useState(false);
+  const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
+
+  // Fetch profile data using React Query hooks
+  const { data: currentUser, isLoading: isUserLoading } = useGetUserById(id || '');
   const { data: userPosts, isLoading: isPostLoading } = useGetUserPosts(id);
   const { data: followers } = useGetFollowers(id || '');
   const { data: following } = useGetFollowing(id || '');
 
+  // Handler to open followers/following modal
   const handleShowFollowModal = (type: 'followers' | 'following') => {
     setFollowModalType(type);
     setShowFollowModal(true);
   };
 
+  // Show loading state while fetching user data
   if (isUserLoading) {
     return (
       <div className='flex-center w-full h-full'>
@@ -42,6 +46,7 @@ const Profile = () => {
     );
   }
 
+  // Handle case where user is not found
   if (!currentUser) {
     return (
       <div className='flex-center w-full h-full'>
@@ -54,8 +59,9 @@ const Profile = () => {
     <div className='flex flex-1'>
       <div className='common-container'>
         <div className='flex flex-col items-center max-w-5xl w-full mx-auto gap-8 md:gap-12'>
-          {/* Profile Header */}
+          {/* Profile Header Section */}
           <div className='flex flex-col items-center gap-6 w-full'>
+            {/* Profile Image */}
             <div className='relative w-28 h-28 rounded-full overflow-hidden'>
               <img
                 src={
@@ -67,6 +73,7 @@ const Profile = () => {
               />
             </div>
 
+            {/* Name and Username */}
             <div className='flex flex-col items-center'>
               <h2 className='h3-bold md:h2-bold text-center'>
                 {currentUser.name}
@@ -76,27 +83,32 @@ const Profile = () => {
               </p>
             </div>
 
+            {/* Edit Profile or Follow Button */}
             {currentUser.$id === user.id ? (
+              // Show Edit Profile button for own profile
               <Link to={`/update-profile/${currentUser.$id}`}>
                 <Button variant='ghost' className='shad-button_ghost'>
                   Edit Profile
                 </Button>
               </Link>
             ) : (
+              // Show Follow/Unfollow button for other profiles
               <FollowButton userId={currentUser.$id} />
             )}
 
-            {/* Stats */}
+            {/* User Stats (Posts, Followers, Following) */}
             <div className='flex gap-8'>
+              {/* Posts count */}
               <div className='flex-center gap-2'>
                 <p className='small-semibold lg:body-bold text-primary-500'>
-                  {userPosts?.documents.length || 0}
+                  {userPosts?.documents?.length || 0}
                 </p>
                 <p className='small-medium lg:base-medium text-light-2'>
                   Posts
                 </p>
               </div>
 
+              {/* Followers count with modal trigger */}
               <button
                 className='flex-center gap-2'
                 onClick={() => handleShowFollowModal('followers')}
@@ -109,6 +121,7 @@ const Profile = () => {
                 </p>
               </button>
 
+              {/* Following count with modal trigger */}
               <button
                 className='flex-center gap-2'
                 onClick={() => handleShowFollowModal('following')}
@@ -122,7 +135,7 @@ const Profile = () => {
               </button>
             </div>
 
-            {/* Bio */}
+            {/* User Bio (if available) */}
             {currentUser.bio && (
               <p className='text-light-2 text-center max-w-lg'>
                 {currentUser.bio}
@@ -130,9 +143,10 @@ const Profile = () => {
             )}
           </div>
 
-          {/* Posts Tabs */}
+          {/* Posts and Liked Posts Tabs */}
           <div className='w-full'>
             <Tabs defaultValue='posts' className='w-full'>
+              {/* Tab Navigation */}
               <TabsList className='w-full flex gap-4 bg-dark-2 p-1 rounded-xl'>
                 <TabsTrigger
                   value='posts'
@@ -149,6 +163,7 @@ const Profile = () => {
                   </div>
                 </TabsTrigger>
 
+                {/* Only show Liked Posts tab on user's own profile */}
                 {currentUser.$id === user.id && (
                   <TabsTrigger
                     value='liked'
@@ -167,21 +182,26 @@ const Profile = () => {
                 )}
               </TabsList>
 
+              {/* Tab Content */}
               <div className='mt-8'>
+                {/* User's Own Posts Tab */}
                 <TabsContent value='posts'>
                   {isPostLoading ? (
+                    // Show loader while fetching posts
                     <div className='flex-center w-full h-40'>
                       <Loader />
                     </div>
                   ) : (
                     <>
                       {userPosts?.documents &&
-                      userPosts.documents.length > 0 ? (
+                        userPosts.documents.length > 0 ? (
+                        // Display posts in grid layout if available
                         <GridPostList
                           posts={userPosts.documents}
                           showStats={false}
                         />
                       ) : (
+                        // Show empty state message if no posts
                         <p className='text-light-4 text-center w-full'>
                           No posts yet
                         </p>
@@ -190,15 +210,18 @@ const Profile = () => {
                   )}
                 </TabsContent>
 
+                {/* Liked Posts Tab (only visible on own profile) */}
                 {currentUser.$id === user.id && (
                   <TabsContent value='liked'>
                     {currentUser.liked && currentUser.liked.length > 0 ? (
+                      // Display liked posts in grid layout if available
                       <GridPostList
                         posts={currentUser.liked}
                         showStats={false}
                         showUser={true}
                       />
                     ) : (
+                      // Show empty state message if no liked posts
                       <p className='text-light-4 text-center w-full'>
                         No liked posts yet
                       </p>
@@ -211,7 +234,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Followers/Following Modal */}
+      {/* Followers/Following Modal - shown when triggered */}
       <FollowModal
         userId={currentUser.$id}
         type={followModalType}

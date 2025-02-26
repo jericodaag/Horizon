@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import FollowButton from '@/components/shared/FollowButton';
 
 const AllUsers = () => {
+  // Fetch all users from database
   const { data: users, isLoading } = useGetUsers();
 
   return (
@@ -13,12 +14,15 @@ const AllUsers = () => {
         <h2 className='h3-bold md:h2-bold text-left w-full'>All Users</h2>
 
         {isLoading ? (
+          // Display loader while fetching users
           <div className='flex-center w-full h-[200px]'>
             <Loader />
           </div>
         ) : (
+          // Display grid of user cards
           <ul className='user-grid'>
             {users?.documents.map((user) => (
+              // Animate each user card entrance
               <motion.li
                 key={user.$id}
                 initial={{ opacity: 0, y: 20 }}
@@ -26,6 +30,7 @@ const AllUsers = () => {
                 className='flex-1 min-w-[200px] w-full'
               >
                 <Link to={`/profile/${user.$id}`} className='user-card'>
+                  {/* User profile image */}
                   <img
                     src={
                       user.imageUrl || '/assets/icons/profile-placeholder.svg'
@@ -34,6 +39,7 @@ const AllUsers = () => {
                     className='rounded-full w-14 h-14'
                   />
 
+                  {/* User name and username */}
                   <div className='flex-center flex-col gap-1'>
                     <p className='base-medium text-light-1 text-center line-clamp-1'>
                       {user.name}
@@ -43,7 +49,7 @@ const AllUsers = () => {
                     </p>
                   </div>
 
-                  {/* Stats */}
+                  {/* User stats (post count and likes) */}
                   <div className='flex gap-4 mt-4 items-center text-light-3'>
                     <div className='flex-center gap-2'>
                       <img
@@ -69,6 +75,7 @@ const AllUsers = () => {
                     </div>
                   </div>
 
+                  {/* Follow/unfollow button */}
                   <FollowButton userId={user.$id} className='mt-4 w-full' />
                 </Link>
               </motion.li>

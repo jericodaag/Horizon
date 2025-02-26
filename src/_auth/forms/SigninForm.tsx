@@ -30,23 +30,24 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
   const { mutateAsync: signInAccount, isPending: isSigningIn } =
     useSignInAccount();
 
-  // Track local loading state
+  // State for managing form submission
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Add rate limiting state
+  // Add rate limiting state to prevent brute force attacks
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [attemptCount, setAttemptCount] = useState(0);
 
-  // Combine all loading states
+  // Combine all loading states for UI feedback
   const isLoading = isUserLoading || isSigningIn || isSubmitting;
 
-  // Update parent component loading state
+  // Notify parent component of loading state changes
   useEffect(() => {
     if (onLoadingChange) {
       onLoadingChange(isLoading);
     }
   }, [isLoading, onLoadingChange]);
 
+  // Initialize form with validation schema
   const form = useForm<z.infer<typeof SigninValidation>>({
     resolver: zodResolver(SigninValidation),
     defaultValues: {
@@ -55,8 +56,9 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
     },
   });
 
+  // Form submission handler
   async function onSubmit(values: z.infer<typeof SigninValidation>) {
-    // Check if rate limited
+    // Check if user is rate limited
     if (isRateLimited) {
       toast({
         title: 'Please wait',
@@ -66,7 +68,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
       return;
     }
 
-    // Increment attempt count
+    // Track login attempts for rate limiting
     setAttemptCount((prev) => prev + 1);
     if (attemptCount >= 3) {
       setIsRateLimited(true);
@@ -83,15 +85,16 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
     }
 
     try {
-      setIsSubmitting(true); // Start local loading
+      setIsSubmitting(true); // Start loading indicator
 
+      // Attempt to sign in with provided credentials
       const session = await signInAccount({
         email: values.email,
         password: values.password,
       });
 
       if (!session) {
-        setIsSubmitting(false); // Stop local loading
+        setIsSubmitting(false);
         return toast({
           title: 'Sign in failed',
           description: 'Please check your credentials and try again.',
@@ -99,14 +102,15 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
         });
       }
 
+      // Verify user authentication state
       const isLoggedIn = await checkAuthUser();
 
       if (isLoggedIn) {
         form.reset();
-        // Don't stop loading since we're navigating away
+        // Keep loading indicator on during navigation
         navigate('/home');
       } else {
-        setIsSubmitting(false); // Stop local loading
+        setIsSubmitting(false);
         toast({
           title: 'Sign in failed',
           description: 'Unable to verify authentication. Please try again.',
@@ -114,9 +118,9 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
         });
       }
     } catch (error: any) {
-      setIsSubmitting(false); // Stop local loading
+      setIsSubmitting(false);
 
-      // Handle different types of errors
+      // Handle different types of authentication errors
       if (error.message?.includes('Rate limit')) {
         setIsRateLimited(true);
         setTimeout(() => {
@@ -149,7 +153,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
   return (
     <Form {...form}>
       <div className='w-full flex flex-col gap-6'>
-        {/* Form Header */}
+        {/* Form header */}
         <div className='flex flex-col gap-2'>
           <h2 className='text-3xl font-bold'>Welcome Back 👋</h2>
           <p className='text-light-3'>
@@ -163,6 +167,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
           onSubmit={form.handleSubmit(onSubmit)}
           className='flex flex-col gap-5'
         >
+          {/* Email field with validation */}
           <FormField
             control={form.control}
             name='email'
@@ -182,6 +187,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             )}
           />
 
+          {/* Password field with validation */}
           <FormField
             control={form.control}
             name='password'
@@ -201,6 +207,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             )}
           />
 
+          {/* Submit button */}
           <motion.div
             whileHover={{ scale: isLoading || isRateLimited ? 1 : 1.01 }}
             whileTap={{ scale: isLoading || isRateLimited ? 1 : 0.99 }}
@@ -214,7 +221,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             </Button>
           </motion.div>
 
-          {/* Password Reset Link */}
+          {/* Password reset link (not required) */}
           <p className='text-light-2 text-center text-sm mt-2'>
             Forgot your password?{' '}
             <button

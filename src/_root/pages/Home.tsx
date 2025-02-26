@@ -7,18 +7,22 @@ import { Button } from '@/components/ui/button';
 import { ArrowUp } from 'lucide-react';
 
 const Home = () => {
+  // Fetch recent posts from the Appwrite database
   const { data: posts, isPending: isPostLoading } = useGetRecentPosts();
+
+  // Track when to show the scroll-to-top button
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  // Add scroll listener to show button after scrolling down
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Smooth scroll function to return to top of page
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -32,15 +36,16 @@ const Home = () => {
         <h2 className='h3-bold md:h2-bold text-left w-full max-w-screen-sm mt-0 mb-3'>
           Home Feed
         </h2>
-
         <div className='home-posts'>
           {isPostLoading ? (
+            // Show skeleton loaders while posts are being fetched
             <div className='flex flex-col gap-4 w-full max-w-screen-sm'>
               {[1, 2].map((i) => (
                 <PostCardSkeleton key={i} />
               ))}
             </div>
           ) : (
+            // Display actual posts once loaded
             <div className='flex flex-col gap-4 w-full max-w-screen-sm'>
               {posts?.documents.map((post: Models.Document) => (
                 <PostCard key={post.$id} post={post} />
@@ -48,8 +53,7 @@ const Home = () => {
             </div>
           )}
         </div>
-
-        {/* Scroll to top button - keep simple animation only for this element */}
+        {/* Scroll to top button - appears after scrolling down */}
         {showScrollTop && (
           <div className='fixed bottom-20 right-4 md:bottom-8 md:right-8 z-50'>
             <Button
@@ -64,5 +68,4 @@ const Home = () => {
     </div>
   );
 };
-
 export default Home;

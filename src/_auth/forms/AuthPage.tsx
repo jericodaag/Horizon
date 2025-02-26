@@ -7,18 +7,24 @@ import { ArrowLeft } from 'lucide-react';
 import Loader from '@/components/shared/Loader';
 
 const AuthPage: React.FC = () => {
+  // Get current location and navigate function from React Router
   const location = useLocation();
+
+  // Determine if we're on the sign-in page based on the URL
   const [isSignIn, setIsSignIn] = useState(location.pathname === '/sign-in');
   const navigate = useNavigate();
+
+  // State for image carousel and loading UI
   const [currentImage, setCurrentImage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
+  // Update loading message based on current auth mode
   useEffect(() => {
     setLoadingMessage(isSignIn ? 'Signing in...' : 'Creating account...');
   }, [isSignIn]);
 
-  // Image carousel effect
+  // Set up image carousel to rotate every 5secs
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev % 3) + 1);
@@ -26,15 +32,18 @@ const AuthPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Handler to switch between sign-in and sign-up forms
   const handleFormSwitch = (isSignInForm: boolean) => {
     setIsSignIn(isSignInForm);
     navigate(isSignInForm ? '/sign-in' : '/sign-up');
   };
 
+  // Navigate back to landing page
   const handleBackToLanding = () => {
     navigate('/');
   };
 
+  // Allow child components to update loading state
   const handleLoadingChange = (loading: boolean) => {
     setIsLoading(loading);
   };
@@ -55,7 +64,7 @@ const AuthPage: React.FC = () => {
 
       <div className='w-full flex justify-center items-center'>
         <div className='w-full max-w-6xl h-[800px] flex bg-dark-2 rounded-2xl overflow-hidden shadow-2xl'>
-          {/* Image Section */}
+          {/* Left side: Image carousel (hidden upon switched to mobile) */}
           <div className='relative hidden lg:block w-1/2 overflow-hidden'>
             <AnimatePresence mode='wait'>
               <motion.img
@@ -68,10 +77,11 @@ const AuthPage: React.FC = () => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
               />
+              {/* Gradient overlay for better text visibility */}
               <div className='absolute inset-0 bg-gradient-to-t from-dark-1/80 via-dark-1/30 to-transparent' />
             </AnimatePresence>
 
-            {/* Welcome Text Overlay */}
+            {/* Welcome text overlay on carousel */}
             <div className='absolute bottom-20 left-10 right-10 text-light-1'>
               <motion.h1
                 className='text-5xl font-bold mb-4'
@@ -94,9 +104,9 @@ const AuthPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Form Section */}
+          {/* Right side: Form section */}
           <div className='w-full lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden'>
-            {/* Centralized full-page loading overlay */}
+            {/* Loading overlay - appears during authentication operations */}
             {isLoading && (
               <div className='absolute inset-0 bg-dark-2/80 backdrop-blur-sm z-30 flex items-center justify-center'>
                 <div className='bg-dark-3 p-6 rounded-lg shadow-lg border border-dark-4 flex flex-col items-center gap-4'>
@@ -106,6 +116,7 @@ const AuthPage: React.FC = () => {
               </div>
             )}
 
+            {/* Animated form container - switches between sign-in and sign-up */}
             <AnimatePresence mode='wait'>
               <motion.div
                 key={isSignIn ? 'signin' : 'signup'}
@@ -149,7 +160,7 @@ const AuthPage: React.FC = () => {
               </motion.div>
             </AnimatePresence>
 
-            {/* Copyright */}
+            {/* Copyright footer */}
             <motion.p
               className='text-light-3 text-center text-sm mt-8'
               initial={{ opacity: 0 }}
