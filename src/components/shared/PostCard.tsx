@@ -39,11 +39,9 @@ const PostCard = ({ post }: PostCardProps) => {
     if (typeof userIdData === 'object' && userIdData !== null) {
       if (userIdData.$id) return String(userIdData.$id);
       if (userIdData.id) return String(userIdData.id);
-      // Try to stringify it if nothing else works
       return String(userIdData);
     }
 
-    // If it's already a string, return it
     return String(userIdData);
   };
 
@@ -53,7 +51,7 @@ const PostCard = ({ post }: PostCardProps) => {
       try {
         setIsLoadingComments(true);
 
-        // CHANGED: Get only the latest 1 comment for this post instead of 3
+        // Get only the latest 1 comment for this post
         const commentsData = await databases.listDocuments(
           appwriteConfig.databaseId,
           appwriteConfig.commentsCollectionId,
@@ -120,6 +118,8 @@ const PostCard = ({ post }: PostCardProps) => {
             content: comment.content as string,
             createdAt: comment.createdAt as string || comment.$createdAt,
             likes: comment.likes as string[] || [],
+            gifUrl: comment.gifUrl as string || null,
+            gifId: comment.gifId as string || null,
             user: userData
           } as IComment;
         });
@@ -187,15 +187,18 @@ const PostCard = ({ post }: PostCardProps) => {
         )}
       </div>
 
-      {/* Post Image */}
+      {/* Post Content */}
       <Link to={`/posts/${post.$id}`}>
-        <div className='relative aspect-square rounded-xl overflow-hidden my-3'>
-          <img
-            src={post.imageUrl || '/assets/icons/profile-placeholder.svg'}
-            alt='post image'
-            className='w-full h-full object-cover'
-          />
-        </div>
+        {/* Post Image (if exists) */}
+        {post.imageUrl && (
+          <div className='relative aspect-square rounded-xl overflow-hidden my-3'>
+            <img
+              src={post.imageUrl}
+              alt='post image'
+              className='w-full h-full object-cover'
+            />
+          </div>
+        )}
       </Link>
 
       {/* Post Stats */}
@@ -222,13 +225,37 @@ const PostCard = ({ post }: PostCardProps) => {
             {!isLoadingComments && comments.length > 0 && (
               <div className='mt-1 space-y-1'>
                 {comments.map((comment) => (
-                  <div key={comment.$id} className='flex gap-2'>
-                    <p className='text-light-1 text-sm font-medium'>
-                      {comment.user?.name || 'User'}
-                    </p>
-                    <p className='text-light-2 text-sm line-clamp-1'>
-                      {comment.content}
-                    </p>
+                  <div key={comment.$id} className='flex flex-col'>
+                    <div className='flex gap-2'>
+                      <p className='text-light-1 text-sm font-medium'>
+                        {comment.user?.name || 'User'}
+                      </p>
+
+                      {/* Only show text content if it exists */}
+                      {comment.content && (
+                        <p className='text-light-2 text-sm line-clamp-1'>
+                          {comment.content}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Show GIF preview if comment has a GIF */}
+                    {comment.gifUrl && (
+                      <div className='mt-1 ml-8'>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-primary-500 text-xs'>
+                            [GIF]
+                          </span>
+                          <div className='h-8 w-8 rounded overflow-hidden bg-dark-3'>
+                            <img
+                              src={comment.gifUrl}
+                              alt="GIF comment"
+                              className='h-full w-full object-cover'
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

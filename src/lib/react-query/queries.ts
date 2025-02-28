@@ -32,8 +32,17 @@ import {
   getFollowing,
   isFollowing,
   getTopCreators,
+  createComment,
+  deleteComment,
+  likeComment,
 } from '@/lib/appwrite/api';
-import { INewPost, INewUser, IUpdatePost, IUpdateUser } from '@/types';
+import {
+  INewPost,
+  INewUser,
+  IUpdatePost,
+  IUpdateUser,
+  INewComment,
+} from '@/types';
 import { ID, Models } from 'appwrite';
 import { appwriteConfig, databases } from '../appwrite/config';
 
@@ -361,33 +370,12 @@ export const useGetPostComments = (postId: string) => {
   });
 };
 
+// Create a comment (with support for GIFs)
 export const useCreateComment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      postId,
-      content,
-      userId,
-    }: {
-      postId: string;
-      content: string;
-      userId: string;
-    }) => {
-      const comment = await databases.createDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.commentsCollectionId,
-        ID.unique(),
-        {
-          postId,
-          content,
-          userId,
-          createdAt: new Date().toISOString(),
-          likes: [],
-        }
-      );
-      return comment;
-    },
+    mutationFn: (comment: INewComment) => createComment(comment),
     onSuccess: (_, variables) => {
       // Invalidate and refetch
       queryClient.invalidateQueries({
@@ -397,6 +385,7 @@ export const useCreateComment = () => {
   });
 };
 
+// Delete a comment
 export const useDeleteComment = () => {
   const queryClient = useQueryClient();
 
@@ -408,12 +397,33 @@ export const useDeleteComment = () => {
       commentId: string;
       postId: string;
     }) => {
-      const status = await databases.deleteDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.commentsCollectionId,
-        commentId
-      );
-      return status;
+      const status = await deleteComment(commentId);
+      return { status, postId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_POST_COMMENTS, variables.postId],
+      });
+    },
+  });
+};
+
+// Like/unlike a comment
+export const useLikeComment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      commentId,
+      likesArray,
+      postId,
+    }: {
+      commentId: string;
+      likesArray: string[];
+      postId: string;
+    }) => {
+      const updatedComment = await likeComment(commentId, likesArray);
+      return { updatedComment, postId };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

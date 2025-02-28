@@ -7,6 +7,8 @@ export type IComment = {
   content: string;
   createdAt: string;
   likes: string[];
+  gifUrl?: string; // New field for GIF URL
+  gifId?: string; // New field for GIF ID
   user?: {
     $id: string;
     name: string;
@@ -19,9 +21,10 @@ export type INewComment = {
   userId: string;
   postId: string;
   content: string;
+  gifUrl?: string; // New field for GIF URL
+  gifId?: string; // New field for GIF ID
 };
 
-// Update IContextType to remain the same
 export type IContextType = {
   user: IUser;
   isLoading: boolean;
@@ -53,6 +56,8 @@ export type INewPost = {
   location?: string;
   tags?: string;
   comments?: IComment[];
+  gifUrl?: string; // New field for GIF URL
+  gifId?: string; // New field for GIF ID
 };
 
 export type IUpdatePost = {
@@ -64,6 +69,8 @@ export type IUpdatePost = {
   location?: string;
   tags?: string;
   comments?: IComment[];
+  gifUrl?: string; // New field for GIF URL
+  gifId?: string; // New field for GIF ID
 };
 
 export type IUser = {
@@ -101,4 +108,6 @@ export interface IPost extends Omit<INewPost, 'tags'> {
   tags: string[];
   comments: IComment[];
   save?: boolean;
+  gifUrl?: string; // New field for GIF URL
+  gifId?: string; // New field for GIF ID
 }

@@ -98,11 +98,15 @@ const PostDetails = () => {
         <Loader />
       ) : (
         <div className='post_details-card'>
-          <img
-            src={post?.imageUrl}
-            alt='creator'
-            className='post_details-img'
-          />
+          {/* Post Image */}
+          {post.imageUrl && (
+            <img
+              src={post.imageUrl}
+              alt='post image'
+              className='post_details-img'
+            />
+          )}
+
 
           <div className='post_details-info'>
             <div className='flex-between w-full'>

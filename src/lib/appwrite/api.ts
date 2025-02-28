@@ -1,7 +1,13 @@
 import { ID, Query, Models } from 'appwrite';
 
 import { appwriteConfig, account, databases, storage, avatars } from './config';
-import { IUpdatePost, INewPost, INewUser, IUpdateUser } from '@/types';
+import {
+  IUpdatePost,
+  INewPost,
+  INewUser,
+  IUpdateUser,
+  INewComment,
+} from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../react-query/queryKeys';
 
@@ -840,11 +846,7 @@ export async function getTopCreators(limit: number = 6) {
 }
 
 // ======================
-export async function createComment(comment: {
-  postId: string;
-  userId: string;
-  content: string;
-}) {
+export async function createComment(comment: INewComment) {
   try {
     // Create the comment
     const newComment = await databases.createDocument(
@@ -857,6 +859,8 @@ export async function createComment(comment: {
         content: comment.content,
         createdAt: new Date().toISOString(),
         likes: [],
+        gifUrl: comment.gifUrl || null,
+        gifId: comment.gifId || null,
       }
     );
 
@@ -936,7 +940,7 @@ export async function getPostComments(postId: string) {
   }
 }
 
-// Delete comment
+// Delete a comment (including any associated GIF)
 export async function deleteComment(commentId: string) {
   try {
     await databases.deleteDocument(

@@ -7,9 +7,10 @@ import { appwriteConfig, databases } from '@/lib/appwrite/config';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 import { Button } from '@/components/ui/button';
-import { Loader } from 'lucide-react';
+import { Loader, X, SmilePlus } from 'lucide-react';
 import { IComment } from '@/types';
 import { ID, Query } from 'appwrite';
+import GiphyPicker from './GiphyPicker';
 
 type CommentSectionProps = {
   postId: string;
@@ -28,8 +29,6 @@ interface UserMap {
   [key: string]: UserData;
 }
 
-// We don't need a separate RawComment interface anymore
-
 const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const { user } = useUserContext();
   const [commentText, setCommentText] = useState<string>('');
@@ -37,6 +36,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const queryClient = useQueryClient();
+
+  // GIF states
+  const [showGiphyPicker, setShowGiphyPicker] = useState(false);
+  const [selectedGif, setSelectedGif] = useState({ url: '', id: '' });
 
   // Extract user ID safely from potentially object or string
   const getUserId = (userIdData: any): string => {
@@ -52,6 +55,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
 
     // If it's already a string, return it
     return String(userIdData);
+  };
+
+  // Handler for GIF selection
+  const handleGifSelect = (gifUrl: string, gifId: string) => {
+    setSelectedGif({ url: gifUrl, id: gifId });
+    setShowGiphyPicker(false);
   };
 
   // Fetch comments and user data
@@ -81,7 +90,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
           try {
             // Extract the proper user ID from the userId field - handle it as any type
             const actualUserId = getUserId(document.userId);
-            console.log(`Processing comment ${document.$id}, userId:`, document.userId, "extracted:", actualUserId);
 
             // Only try to fetch user if we have a valid ID
             if (actualUserId && actualUserId.length > 0) {
@@ -99,6 +107,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                   content: document.content as string,
                   createdAt: document.createdAt as string || document.$createdAt,
                   likes: document.likes as string[] || [],
+                  gifUrl: document.gifUrl as string || null,
+                  gifId: document.gifId as string || null,
                   user: {
                     $id: userData.$id,
                     name: userData.name as string,
@@ -116,6 +126,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                   content: document.content as string,
                   createdAt: document.createdAt as string || document.$createdAt,
                   likes: document.likes as string[] || [],
+                  gifUrl: document.gifUrl as string || null,
+                  gifId: document.gifId as string || null,
                   user: {
                     $id: actualUserId,
                     name: 'User',
@@ -133,6 +145,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                 content: document.content as string,
                 createdAt: document.createdAt as string || document.$createdAt,
                 likes: document.likes as string[] || [],
+                gifUrl: document.gifUrl as string || null,
+                gifId: document.gifId as string || null,
                 user: {
                   $id: 'unknown',
                   name: 'Unknown User',
@@ -168,14 +182,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   // Submit a new comment
   const handleSubmitComment = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+
+    // Need either text or GIF to submit a comment
+    if (!commentText.trim() && !selectedGif.url) return;
 
     try {
       setIsSubmitting(true);
 
       // Ensure user.id is a string
       const userId = String(user.id);
-      console.log("Creating comment with userId:", userId, "Type:", typeof userId);
 
       // Create the comment
       await databases.createDocument(
@@ -185,14 +200,17 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
         {
           postId,
           content: commentText.trim(),
-          userId, // Using the string version
+          userId,
           createdAt: new Date().toISOString(),
           likes: [],
+          gifUrl: selectedGif.url || null,
+          gifId: selectedGif.id || null,
         }
       );
 
       // Clear input and refresh comments
       setCommentText('');
+      setSelectedGif({ url: '', id: '' });
       fetchComments();
 
       // Invalidate relevant queries
@@ -230,36 +248,78 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   return (
     <div className="w-full space-y-4 mt-6">
       {/* Comment Form */}
-      <form onSubmit={handleSubmitComment} className="flex gap-3">
-        <Link to={`/profile/${user.id}`}>
-          <img
-            src={user.imageUrl || '/assets/icons/profile-placeholder.svg'}
-            alt="user profile"
-            className="w-8 h-8 rounded-full object-cover"
-          />
-        </Link>
-        <div className="flex-1 flex gap-2">
-          <input
-            type="text"
-            placeholder="Write a comment..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            className="flex-1 bg-dark-3 text-light-1 rounded-lg px-4 py-2.5 
+      <form onSubmit={handleSubmitComment} className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <Link to={`/profile/${user.id}`}>
+            <img
+              src={user.imageUrl || '/assets/icons/profile-placeholder.svg'}
+              alt="user profile"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          </Link>
+          <div className="flex-1 flex gap-2">
+            <input
+              type="text"
+              placeholder="Write a comment..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="flex-1 bg-dark-3 text-light-1 rounded-lg px-4 py-2.5 
                       focus:outline-none text-sm"
-          />
-          <Button
-            type="submit"
-            disabled={isSubmitting || !commentText.trim()}
-            className="bg-primary-500 px-5 py-1.5 rounded-lg text-light-1 
+            />
+            <Button
+              type="button"
+              onClick={() => setShowGiphyPicker(!showGiphyPicker)}
+              className="bg-dark-3 p-2 rounded-lg hover:bg-dark-4"
+              title="Add a GIF"
+            >
+              <SmilePlus className="h-5 w-5 text-primary-500" />
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || (!commentText.trim() && !selectedGif.url)}
+              className="bg-primary-500 px-5 py-1.5 rounded-lg text-light-1 
                       hover:bg-primary-600 disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <Loader className="w-4 h-4 animate-spin" />
-            ) : (
-              'Post'
-            )}
-          </Button>
+            >
+              {isSubmitting ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                'Post'
+              )}
+            </Button>
+          </div>
         </div>
+
+        {/* GIF preview if selected */}
+        {selectedGif.url && (
+          <div className="relative ml-11">
+            <div className="bg-dark-3 p-2 rounded-lg">
+              <img
+                src={selectedGif.url}
+                alt="Selected GIF"
+                className="max-h-60 rounded-lg object-contain"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-4 right-4 h-8 w-8 rounded-full bg-dark-4"
+                onClick={() => setSelectedGif({ url: '', id: '' })}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* GIF Picker */}
+        {showGiphyPicker && (
+          <div className="absolute z-50 mt-16 ml-11">
+            <GiphyPicker
+              onGifSelect={handleGifSelect}
+              onClose={() => setShowGiphyPicker(false)}
+            />
+          </div>
+        )}
       </form>
 
       {/* Comments List */}
@@ -297,7 +357,23 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                     {multiFormatDateString(comment.createdAt)}
                   </span>
                 </div>
-                <p className="text-light-2 mt-1">{comment.content}</p>
+
+                {/* Comment text content */}
+                {comment.content && (
+                  <p className="text-light-2 mt-1">{comment.content}</p>
+                )}
+
+                {/* Display GIF if present */}
+                {comment.gifUrl && (
+                  <div className="mt-2 max-w-xs overflow-hidden rounded-md">
+                    <img
+                      src={comment.gifUrl}
+                      alt="Comment GIF"
+                      className="w-full h-auto object-contain rounded-md"
+                    />
+                  </div>
+                )}
+
                 <div className="flex gap-4 mt-2">
                   <button type="button" className="text-light-3 hover:text-light-1 text-sm">
                     Like
