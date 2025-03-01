@@ -12,9 +12,10 @@ import {
 type PostStatsProps = {
   post: Models.Document;
   userId: string;
+  isGridView?: boolean; // Add this prop to adjust layout for grid vs detailed view
 };
 
-const PostStats = ({ post, userId }: PostStatsProps) => {
+const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
   // Initialize states and navigation
   const navigate = useNavigate();
   const [likes, setLikes] = useState<string[]>(
@@ -79,6 +80,45 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
     navigate(`/posts/${post.$id}`);
   };
 
+  // Grid view - use a more compact layout
+  if (isGridView) {
+    return (
+      <div className='flex-center gap-1'>
+        <button onClick={handleLikePost} className='flex-center'>
+          <img
+            src={
+              checkIsLiked(likes, userId)
+                ? '/assets/icons/liked.svg'
+                : '/assets/icons/like.svg'
+            }
+            alt='like'
+            width={20}
+            height={20}
+          />
+        </button>
+
+        <button onClick={handleCommentClick} className='flex-center'>
+          <img
+            src='/assets/icons/comment.svg'
+            alt='comment'
+            width={20}
+            height={20}
+          />
+        </button>
+
+        <button onClick={handleSavePost} className='flex-center'>
+          <img
+            src={isSaved ? '/assets/icons/saved.svg' : '/assets/icons/save.svg'}
+            alt='save'
+            width={20}
+            height={20}
+          />
+        </button>
+      </div>
+    );
+  }
+
+  // Regular detailed view
   return (
     <div className='flex flex-col gap-2'>
       <div className='flex gap-4 items-center'>
