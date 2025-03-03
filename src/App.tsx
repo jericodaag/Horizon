@@ -17,6 +17,7 @@ import {
   UpdateProfile,
 } from './_root/pages';
 import { Toaster } from '@/components/ui/toaster';
+import Messages from './_root/pages/Messages';
 
 // Create a loading component
 const LoadingScreen = () => (
@@ -70,6 +71,7 @@ const App = () => {
           <Route path='/posts/:id' element={<PostDetails />} />
           <Route path='/profile/:id/*' element={<Profile />} />
           <Route path='/update-profile/:id' element={<UpdateProfile />} />
+          <Route path='/messages' element={<Messages />} />
         </Route>
 
         {/* Catch all unknown routes and redirect to landing */}

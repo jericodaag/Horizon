@@ -92,8 +92,24 @@ const Profile = () => {
                 </Button>
               </Link>
             ) : (
-              // Show Follow/Unfollow button for other profiles
-              <FollowButton userId={currentUser.$id} />
+              // For other users' profiles, show Follow/Unfollow and Message buttons
+              <div className="flex gap-4">
+                <FollowButton userId={currentUser.$id} />
+
+                {/* Message button */}
+                <Link to={`/messages`} state={{ initialConversation: currentUser }}>
+                  <Button variant='secondary' className='shad-button_secondary'>
+                    <img
+                      src='/assets/icons/message.svg'
+                      alt='message'
+                      width={20}
+                      height={20}
+                      className="mr-2"
+                    />
+                    Message
+                  </Button>
+                </Link>
+              </div>
             )}
 
             {/* User Stats (Posts, Followers, Following) */}

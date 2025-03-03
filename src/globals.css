@@ -422,3 +422,71 @@
     scroll-behavior: smooth;
   }
 }
+
+/* Messages */
+
+.messages-container {
+  @apply flex flex-col flex-1 items-center gap-5 py-5 px-3 md:px-6 lg:px-8;
+}
+
+.message-area {
+  @apply flex-1 overflow-hidden flex flex-col;
+  height: calc(100vh - 220px);
+}
+
+.messages-scrollbar::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.messages-scrollbar::-webkit-scrollbar-track {
+  background: #09090a;
+}
+
+.messages-scrollbar::-webkit-scrollbar-thumb {
+  background: #5c5c7b;
+  border-radius: 50px;
+}
+
+.messages-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7878a3;
+}
+
+/* Make attachment previews more attractive */
+.attachment-preview {
+  @apply relative inline-block rounded-lg overflow-hidden border border-dark-4 transition-all;
+}
+
+.attachment-preview img {
+  @apply rounded-lg object-cover;
+  max-height: 160px;
+  transform: scale(1);
+  transition: transform 0.3s ease;
+}
+
+.attachment-preview:hover img {
+  transform: scale(1.02);
+}
+
+/* Message bubble animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Top creators area in messages view */
+.top-creators-message {
+  @apply hidden xl:flex flex-col w-72 px-4 py-8 gap-6 overflow-y-auto custom-scrollbar;
+  height: calc(100vh - 180px);
+}

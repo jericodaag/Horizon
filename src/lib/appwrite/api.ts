@@ -7,6 +7,7 @@ import {
   INewUser,
   IUpdateUser,
   INewComment,
+  INewMessage,
 } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../react-query/queryKeys';
@@ -970,6 +971,178 @@ export async function likeComment(commentId: string, likesArray: string[]) {
     return updatedComment;
   } catch (error) {
     console.error('Error updating comment likes:', error);
+    throw error;
+  }
+}
+
+// ============================================================
+// MESSAGES
+// ============================================================
+
+// For the markMessagesAsRead function
+export interface MarkMessagesAsReadParams {
+  conversationPartnerId: string;
+  userId: string;
+}
+// Create a new message
+export async function sendMessage(messageData: INewMessage) {
+  try {
+    const message = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      ID.unique(),
+      {
+        sender: messageData.senderId,
+        receiver: messageData.receiverId,
+        content: messageData.content,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+        attachmentUrl: messageData.attachmentUrl,
+        attachmentType: messageData.attachmentType,
+      }
+    );
+
+    return message;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+}
+
+// Get conversation messages between two users
+export async function getConversation(userOneId: string, userTwoId: string) {
+  try {
+    // Since orQueries and andQueries aren't in the type definition,
+    // we'll use the Query.equal with multiple conditions
+    const messages = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      [
+        // This will find messages where either:
+        // 1. userOne is sender AND userTwo is receiver OR
+        // 2. userTwo is sender AND userOne is receiver
+        Query.equal('sender', [userOneId, userTwoId]),
+        Query.equal('receiver', [userTwoId, userOneId]),
+        Query.orderDesc('createdAt'),
+      ]
+    );
+
+    return messages;
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    throw error;
+  }
+}
+
+// Get all conversations for a user
+export async function getUserConversations(userId: string) {
+  try {
+    // Get sent messages
+    const sentMessages = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      [Query.equal('sender', userId), Query.orderDesc('createdAt')]
+    );
+
+    // Get received messages
+    const receivedMessages = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      [Query.equal('receiver', userId), Query.orderDesc('createdAt')]
+    );
+
+    // Combine all messages
+    const allMessages = [
+      ...sentMessages.documents,
+      ...receivedMessages.documents,
+    ];
+
+    // Sort by creation date (most recent first)
+    allMessages.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Extract unique conversation partners
+    const conversations = new Map();
+
+    for (const message of allMessages) {
+      // Determine who is the conversation partner
+      const partnerId =
+        message.sender.$id === userId
+          ? message.receiver.$id
+          : message.sender.$id;
+
+      // Skip if this is a message to self
+      if (partnerId === userId) continue;
+
+      if (!conversations.has(partnerId)) {
+        try {
+          // Get user details for the partner
+          const partner = await getUserById(partnerId);
+
+          if (!partner) continue;
+
+          conversations.set(partnerId, {
+            user: partner,
+            lastMessage: message,
+            unreadCount:
+              message.receiver.$id === userId && !message.isRead ? 1 : 0,
+          });
+        } catch (err) {
+          // Skip this partner if there's an error
+        }
+      } else if (
+        new Date(message.createdAt) >
+        new Date(conversations.get(partnerId).lastMessage.createdAt)
+      ) {
+        // Update last message if this one is newer
+        const convo = conversations.get(partnerId);
+        convo.lastMessage = message;
+        conversations.set(partnerId, convo);
+      }
+
+      // Count unread messages
+      if (message.receiver.$id === userId && !message.isRead) {
+        const convo = conversations.get(partnerId);
+        convo.unreadCount = (convo.unreadCount || 0) + 1;
+        conversations.set(partnerId, convo);
+      }
+    }
+
+    return Array.from(conversations.values());
+  } catch (error) {
+    return []; // Return empty array instead of throwing
+  }
+}
+
+// Mark messages as read
+export async function markMessagesAsRead(params: MarkMessagesAsReadParams) {
+  try {
+    const unreadMessages = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      [
+        Query.equal('sender', params.conversationPartnerId),
+        Query.equal('receiver', params.userId),
+        Query.equal('isRead', false),
+      ]
+    );
+
+    const updatePromises = unreadMessages.documents.map((message) =>
+      databases.updateDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.messagesCollectionId,
+        message.$id,
+        { isRead: true }
+      )
+    );
+
+    await Promise.all(updatePromises);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
     throw error;
   }
 }

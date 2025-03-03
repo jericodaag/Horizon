@@ -20,6 +20,11 @@ export const sidebarLinks = [
     label: 'Saved',
   },
   {
+    imgURL: '/assets/icons/message.svg', // Live Message
+    route: '/messages',
+    label: 'Messages',
+  },
+  {
     imgURL: '/assets/icons/gallery-add.svg',
     route: '/create-post',
     label: 'Create Post',
@@ -36,6 +41,11 @@ export const bottombarLinks = [
     imgURL: '/assets/icons/wallpaper.svg',
     route: '/explore',
     label: 'Explore',
+  },
+  {
+    imgURL: '/assets/icons/message.svg', // Mobile Live Message
+    route: '/messages',
+    label: 'Messages',
   },
   {
     imgURL: '/assets/icons/bookmark.svg',

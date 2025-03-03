@@ -111,3 +111,47 @@ export interface IPost extends Omit<INewPost, 'tags'> {
   gifUrl?: string; // New field for GIF URL
   gifId?: string; // New field for GIF ID
 }
+
+// Message types
+export type IMessage = {
+  $id: string;
+  sender: {
+    $id: string;
+    name?: string;
+    username?: string;
+    imageUrl?: string;
+  };
+  receiver: {
+    $id: string;
+    name?: string;
+    username?: string;
+    imageUrl?: string;
+  };
+  content: string;
+  createdAt: string;
+  isRead: boolean;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
+};
+
+export type INewMessage = {
+  senderId: string;
+  receiverId: string;
+  content: string;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
+};
+
+export type IConversation = {
+  user: {
+    $id?: string;
+    id?: string;
+    name: string;
+    username: string;
+    imageUrl?: string;
+    bio?: string;
+    email?: string;
+  };
+  lastMessage: IMessage;
+  unreadCount: number;
+};

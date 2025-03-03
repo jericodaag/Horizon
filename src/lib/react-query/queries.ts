@@ -35,6 +35,11 @@ import {
   createComment,
   deleteComment,
   likeComment,
+  sendMessage,
+  getConversation,
+  getUserConversations,
+  markMessagesAsRead,
+  MarkMessagesAsReadParams,
 } from '@/lib/appwrite/api';
 import {
   INewPost,
@@ -42,6 +47,8 @@ import {
   IUpdatePost,
   IUpdateUser,
   INewComment,
+  INewMessage,
+  IConversation,
 } from '@/types';
 import { ID, Models } from 'appwrite';
 import { appwriteConfig, databases } from '../appwrite/config';
@@ -428,6 +435,73 @@ export const useLikeComment = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_POST_COMMENTS, variables.postId],
+      });
+    },
+  });
+};
+
+// ============================================================
+// MESSAGE QUERIES
+// ============================================================
+export const useSendMessage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageData: INewMessage) => sendMessage(messageData),
+    onSuccess: (_, variables) => {
+      // Invalidate relevant queries
+      if (variables.senderId && variables.receiverId) {
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.senderId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [
+            QUERY_KEYS.GET_CONVERSATION,
+            variables.senderId,
+            variables.receiverId,
+          ],
+        });
+      }
+    },
+  });
+};
+
+export const useGetUserConversations = (userId?: string) => {
+  return useQuery<IConversation[]>({
+    queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, userId],
+    queryFn: async () => {
+      const data = await getUserConversations(userId || '');
+      return data || [];
+    },
+    enabled: !!userId,
+    refetchInterval: 30000, // Refetch every 30 seconds as a fallback
+    staleTime: 10000, // Consider data stale after 10 seconds
+  });
+};
+
+export const useGetConversation = (userOneId?: string, userTwoId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_CONVERSATION, userOneId, userTwoId],
+    queryFn: () => getConversation(userOneId || '', userTwoId || ''),
+    enabled: !!userOneId && !!userTwoId,
+    refetchInterval: 15000, // Refetch every 15 seconds as a fallback
+  });
+};
+
+export const useMarkMessagesAsRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: MarkMessagesAsReadParams) =>
+      markMessagesAsRead(params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          QUERY_KEYS.GET_CONVERSATION,
+          variables.userId,
+          variables.conversationPartnerId,
+        ],
       });
     },
   });
