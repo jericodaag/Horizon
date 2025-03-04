@@ -1,4 +1,3 @@
-// src/hooks/useMessagingRealtime.ts
 import { useEffect, useRef } from 'react';
 import { client } from '@/lib/appwrite/config';
 import { appwriteConfig } from '@/lib/appwrite/config';
@@ -6,26 +5,26 @@ import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 
 /**
- * Custom hook for Appwrite real-time subscriptions with reliable reconnection
+ * Unified hook for managing Appwrite real-time subscriptions for messages
+ *
  * @param userId Current user's ID
- * @param activeConversationId ID of the current conversation partner (if any)
- * @returns Object containing subscription status
+ * @param activeConversationId Optional ID of the current conversation partner
+ * @returns Object containing subscription status and metadata
  */
 export const useMessagingRealtime = (
   userId: string,
   activeConversationId?: string
 ) => {
   const queryClient = useQueryClient();
-  const subscriptionRef = useRef<any>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 5;
-  const reconnectDelayMs = 2000;
+  const subscriptionRef = useRef<(() => void) | null>(null);
+  const isActive = useRef(true);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let isActive = true;
-    const reconnectTimeoutId = useRef<NodeJS.Timeout | null>(null);
+    isActive.current = true;
 
-    const clearSubscription = () => {
+    const setupSubscription = () => {
+      // Clear any existing subscription first
       if (subscriptionRef.current) {
         try {
           subscriptionRef.current();
@@ -35,29 +34,14 @@ export const useMessagingRealtime = (
         }
       }
 
-      if (reconnectTimeoutId.current) {
-        clearTimeout(reconnectTimeoutId.current);
-        reconnectTimeoutId.current = null;
-      }
-    };
-
-    const setupSubscription = () => {
       try {
-        // Clear existing subscription first
-        clearSubscription();
-
-        // Create new subscription
         subscriptionRef.current = client.subscribe(
           [
             `databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.messagesCollectionId}.documents`,
           ],
           (response) => {
-            if (!isActive) return;
+            if (!isActive.current) return;
 
-            // Reset reconnect counter on successful message
-            reconnectAttemptsRef.current = 0;
-
-            // Handle new message events
             if (
               response.events.includes(
                 'databases.*.collections.*.documents.create'
@@ -65,22 +49,23 @@ export const useMessagingRealtime = (
             ) {
               const newMessage = response.payload as any;
 
-              // Check if the message is relevant to the current user
-              const isSender = newMessage.sender?.$id === userId;
-              const isReceiver = newMessage.receiver?.$id === userId;
-
-              if (isSender || isReceiver) {
-                // Refresh user conversations list
+              // Check if message is relevant to current user
+              if (
+                newMessage.sender?.$id === userId ||
+                newMessage.receiver?.$id === userId
+              ) {
+                // More targeted query invalidation based on event type
                 queryClient.invalidateQueries({
                   queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, userId],
+                  exact: false,
                 });
 
-                // If we're in an active conversation that this message belongs to,
-                // also refresh the conversation messages
+                // Only refresh the active conversation if the message belongs to it
                 if (activeConversationId) {
-                  const conversationPartnerId = isSender
-                    ? newMessage.receiver?.$id
-                    : newMessage.sender?.$id;
+                  const conversationPartnerId =
+                    newMessage.sender?.$id === userId
+                      ? newMessage.receiver?.$id
+                      : newMessage.sender?.$id;
 
                   if (conversationPartnerId === activeConversationId) {
                     queryClient.invalidateQueries({
@@ -89,61 +74,47 @@ export const useMessagingRealtime = (
                         userId,
                         activeConversationId,
                       ],
+                      exact: true,
                     });
                   }
                 }
               }
             }
-
-            // Handle message updates (read status changes)
-            if (
-              response.events.includes(
-                'databases.*.collections.*.documents.update'
-              )
-            ) {
-              const updatedMessage = response.payload as any;
-
-              // If the current user is involved in this message
-              if (
-                updatedMessage.sender?.$id === userId ||
-                updatedMessage.receiver?.$id === userId
-              ) {
-                // Refresh conversations to update unread counts
-                queryClient.invalidateQueries({
-                  queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, userId],
-                });
-              }
-            }
           }
         );
       } catch (error) {
-        // If subscription fails and we haven't exceeded max attempts, try again
-        if (reconnectAttemptsRef.current < maxReconnectAttempts && isActive) {
-          reconnectAttemptsRef.current += 1;
+        console.error('Error setting up real-time subscription:', error);
 
-          reconnectTimeoutId.current = setTimeout(() => {
-            if (isActive) {
-              setupSubscription();
-            }
-          }, reconnectDelayMs * reconnectAttemptsRef.current);
+        // Handle reconnection with backoff
+        if (isActive.current && !reconnectTimerRef.current) {
+          reconnectTimerRef.current = setTimeout(() => {
+            reconnectTimerRef.current = null;
+            if (isActive.current) setupSubscription();
+          }, 2000);
         }
       }
     };
 
-    // Initial setup
     if (userId) {
       setupSubscription();
     }
 
-    // Cleanup on unmount or when dependencies change
     return () => {
-      isActive = false;
-      clearSubscription();
+      isActive.current = false;
+
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+
+      if (subscriptionRef.current) {
+        try {
+          subscriptionRef.current();
+          subscriptionRef.current = null;
+        } catch (error) {
+          console.log('Error clearing subscription on unmount');
+        }
+      }
     };
   }, [userId, activeConversationId, queryClient]);
-
-  return {
-    isSubscribed: !!subscriptionRef.current,
-    reconnectAttempts: reconnectAttemptsRef.current,
-  };
 };

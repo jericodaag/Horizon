@@ -1,16 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserContext } from '@/context/AuthContext';
 import { useGetUserConversations, useGetUsers } from '@/lib/react-query/queries';
+import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
 import { Loader, PlusCircle, Search } from 'lucide-react';
 import ConversationList from '@/components/shared/ConversationList';
 import MessageChat from '@/components/shared/MessageChat';
-import { client } from '@/lib/appwrite/config';
-import { appwriteConfig } from '@/lib/appwrite/config';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 import { useLocation } from 'react-router-dom';
 import { IUser, IConversation } from '@/types';
-
 // Dialog components
 import {
     Dialog,
@@ -35,20 +33,14 @@ const Messages = () => {
     const {
         data: conversations,
         isLoading: isLoadingConversations,
-        refetch: refetchConversations
-    } = useGetUserConversations(user.id) as {
-        data: IConversation[] | undefined;
-        isLoading: boolean;
-        refetch: () => void;
-    };
+    } = useGetUserConversations(user.id);
 
     // Fetch all users for new conversation dialog
     const { data: allUsers, isLoading: isLoadingUsers } = useGetUsers();
 
-    // Function to manually refresh conversations
-    const refreshConversations = useCallback(() => {
-        refetchConversations();
-    }, [refetchConversations]);
+    // Enable real-time updates for the conversation list
+    // This replaces the manual subscription setup in your current code
+    useMessagingRealtime(user.id);
 
     // Initialize with conversation from location state (if coming from profile)
     useEffect(() => {
@@ -58,78 +50,6 @@ const Messages = () => {
             setShowChat(true);
         }
     }, [initialConversation, selectedConversation]);
-
-    // Periodically refresh conversations as backup for realtime
-    useEffect(() => {
-        const interval = setInterval(() => {
-            refreshConversations();
-        }, 10000); // Check every 10 seconds
-
-        return () => clearInterval(interval);
-    }, [refreshConversations]);
-
-    // Simple robust Appwrite realtime subscription
-    useEffect(() => {
-        let unsubscribe: any = null;
-
-        const setupSubscription = () => {
-            try {
-                // Clear previous subscription if it exists
-                if (unsubscribe) {
-                    try {
-                        unsubscribe();
-                    } catch (e) {
-                        // Ignore errors when cleaning up
-                    }
-                }
-
-                // Set up new subscription
-                unsubscribe = client.subscribe(
-                    [`databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.messagesCollectionId}.documents`],
-                    (response) => {
-                        // Handle message events
-                        if (response.events.includes('databases.*.collections.*.documents.create')) {
-                            const newMessage = response.payload as any;
-
-                            // Check if message involves current user
-                            if (newMessage.sender?.$id === user.id || newMessage.receiver?.$id === user.id) {
-                                // Refresh conversation list
-                                refreshConversations();
-
-                                // If in a conversation, refresh messages
-                                if (selectedConversation &&
-                                    (newMessage.sender?.$id === selectedConversation.id ||
-                                        newMessage.receiver?.$id === selectedConversation.id)) {
-                                    queryClient.invalidateQueries({
-                                        queryKey: [QUERY_KEYS.GET_CONVERSATION, user.id, selectedConversation.id],
-                                    });
-                                }
-                            }
-                        }
-                    }
-                );
-            } catch (error) {
-                // If subscription fails, retry once after delay
-                setTimeout(() => {
-                    setupSubscription();
-                }, 3000);
-            }
-        };
-
-        // Initial setup
-        setupSubscription();
-
-        // Cleanup
-        return () => {
-            if (unsubscribe) {
-                try {
-                    unsubscribe();
-                } catch (error) {
-                    // Ignore errors when cleaning up
-                }
-            }
-        };
-    }, [user.id, selectedConversation, queryClient, refreshConversations]);
 
     // Handle mobile view toggle
     const [showChat, setShowChat] = useState(false);
@@ -172,7 +92,6 @@ const Messages = () => {
         <div className="flex flex-1 items-center justify-center px-3 py-6 md:p-8 lg:p-10">
             <div className="messages-container w-full max-w-5xl">
                 <h2 className="h3-bold md:h2-bold w-full mb-5">Messages</h2>
-
                 <div className="w-full flex h-[calc(100vh-220px)] rounded-2xl overflow-hidden bg-dark-2 border border-dark-4">
                     {/* Conversation list - hidden on mobile when viewing a chat */}
                     <div className={`conversation-list flex-shrink-0 w-full md:w-80 border-r border-dark-4 ${showChat ? 'hidden md:block' : 'block'}`}>
@@ -187,7 +106,6 @@ const Messages = () => {
                                 <PlusCircle size={20} className="text-light-2" />
                             </button>
                         </div>
-
                         {isLoadingConversations ? (
                             <div className="flex-center w-full h-full">
                                 <Loader />
@@ -210,7 +128,7 @@ const Messages = () => {
                             <MessageChat
                                 conversation={selectedConversation}
                                 currentUserId={user.id}
-                                onBack={handleBackToList} // For mobile back button
+                                onBack={handleBackToList}
                             />
                         ) : (
                             <div className="flex-center w-full h-full text-light-3 flex-col gap-4">
@@ -234,7 +152,6 @@ const Messages = () => {
                     <DialogHeader>
                         <DialogTitle>New Message</DialogTitle>
                     </DialogHeader>
-
                     <div className="flex items-center gap-2 bg-dark-3 rounded-lg px-3 py-2 mb-4">
                         <Search size={18} className="text-light-3" />
                         <Input
@@ -245,7 +162,6 @@ const Messages = () => {
                             className="border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-light-1 placeholder:text-light-3"
                         />
                     </div>
-
                     <div className="max-h-72 overflow-y-auto custom-scrollbar pr-1">
                         {isLoadingUsers ? (
                             <div className="flex-center py-8">

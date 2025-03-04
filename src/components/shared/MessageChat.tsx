@@ -1,20 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     useGetConversation,
     useSendMessage,
-    useMarkMessagesAsRead
+    useMarkMessagesAsRead,
 } from '@/lib/react-query/queries';
+import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader, ArrowLeft, Send, Image, X } from 'lucide-react';
 import { uploadFile, getFilePreview } from '@/lib/appwrite/api';
-import { client } from '@/lib/appwrite/config';
 import { formatDistanceToNow } from 'date-fns';
-import { appwriteConfig } from '@/lib/appwrite/config';
-import { useQueryClient } from '@tanstack/react-query';
 import { IMessage, IUser, INewMessage } from '@/types';
-import { Models } from 'appwrite';
-import { useUserContext } from '@/context/AuthContext';
 
 interface MessageChatProps {
     conversation: IUser;
@@ -28,19 +24,20 @@ interface MessageBubbleProps {
 }
 
 const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) => {
-    const { user } = useUserContext();
     const [newMessage, setNewMessage] = useState('');
     const [attachment, setAttachment] = useState<File | null>(null);
+    const [localMessages, setLocalMessages] = useState<IMessage[]>([]);
     const conversationId = conversation.id;
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const queryClient = useQueryClient();
+
+    // Enable real-time updates specifically for this conversation
+    useMessagingRealtime(currentUserId, conversationId);
 
     // Fetch conversation messages
     const {
         data: messages,
         isLoading: isLoadingMessages,
-        refetch: refetchMessages
     } = useGetConversation(currentUserId, conversationId);
 
     // Send message mutation
@@ -49,14 +46,12 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
     // Mark messages as read mutation
     const { mutate: markAsRead } = useMarkMessagesAsRead();
 
-    // Periodically refresh messages as a fallback for realtime
+    // Update local messages when server data changes
     useEffect(() => {
-        const interval = setInterval(() => {
-            refetchMessages();
-        }, 10000); // Every 10 seconds
-
-        return () => clearInterval(interval);
-    }, [refetchMessages]);
+        if (messages?.documents) {
+            setLocalMessages(messages.documents as unknown as IMessage[]);
+        }
+    }, [messages?.documents]);
 
     // Mark messages as read when conversation is opened
     useEffect(() => {
@@ -65,81 +60,14 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
         }
     }, [conversationId, currentUserId, markAsRead]);
 
-    // Improved scroll to bottom effect
+    // Scroll to bottom when messages change
     useEffect(() => {
-        // Ensure we have messages and the ref exists
-        if (messages?.documents?.length && messagesEndRef.current) {
-            // Use a short timeout to ensure DOM has updated
+        if (messagesEndRef.current) {
             setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, 100);
         }
-    }, [messages?.documents?.length]);
-
-    // Simple robust Appwrite realtime subscription
-    useEffect(() => {
-        let unsubscribe: any = null;
-
-        const setupSubscription = () => {
-            try {
-                // Clear previous subscription if it exists
-                if (unsubscribe) {
-                    try {
-                        unsubscribe();
-                    } catch (e) {
-                        // Ignore errors when cleaning up
-                    }
-                }
-
-                // Set up new subscription
-                unsubscribe = client.subscribe(
-                    [`databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.messagesCollectionId}.documents`],
-                    (response) => {
-                        if (response.events.includes('databases.*.collections.*.documents.create')) {
-                            const newMessage = response.payload as any;
-
-                            // Check if message belongs to this conversation
-                            const isRelevant =
-                                (newMessage.sender?.$id === currentUserId && newMessage.receiver?.$id === conversationId) ||
-                                (newMessage.sender?.$id === conversationId && newMessage.receiver?.$id === currentUserId);
-
-                            if (isRelevant) {
-                                // Force refresh messages
-                                refetchMessages();
-
-                                // Mark as read if needed
-                                if (newMessage.sender?.$id === conversationId && newMessage.receiver?.$id === currentUserId) {
-                                    markAsRead({
-                                        conversationPartnerId: conversationId,
-                                        userId: currentUserId
-                                    });
-                                }
-                            }
-                        }
-                    }
-                );
-            } catch (error) {
-                // If subscription fails, retry once after a short delay
-                setTimeout(() => {
-                    setupSubscription();
-                }, 3000);
-            }
-        };
-
-        // Initial setup
-        setupSubscription();
-
-        // Cleanup
-        return () => {
-            if (unsubscribe) {
-                try {
-                    unsubscribe();
-                } catch (error) {
-                    // Ignore cleanup errors
-                }
-            }
-        };
-    }, [conversationId, currentUserId, refetchMessages, markAsRead]);
+    }, [localMessages.length]);
 
     // Handle file attachment
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,55 +81,104 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
         setAttachment(null);
     };
 
-    // Send message handler
+    // Optimized send message handler with instant UI updates
     const handleSendMessage = async () => {
         if ((!newMessage.trim() && !attachment) || isSending) return;
 
-        let attachmentUrl: string | undefined = undefined;
-        let attachmentType: string | undefined = undefined;
+        // Create temporary message ID for optimistic updates
+        const tempId = 'temp-' + Date.now();
 
-        try {
-            // Upload attachment if present
-            if (attachment) {
+        // Start with local message data
+        const messageContent = newMessage.trim() || (attachment ? 'Sent an attachment' : '');
+
+        // Clear input immediately for better UX
+        setNewMessage('');
+
+        // Create optimistic message object
+        const optimisticMessage: IMessage = {
+            $id: tempId,
+            sender: { $id: currentUserId },
+            receiver: { $id: conversationId },
+            content: messageContent,
+            createdAt: new Date().toISOString(),
+            isRead: false,
+            _isOptimistic: true
+        } as IMessage;
+
+        // Handle attachment upload and preview
+        if (attachment) {
+            try {
+                // Show optimistic message with "uploading" state first
+                setLocalMessages(prev => [optimisticMessage, ...prev]);
+
+                // Upload file to Appwrite
                 const uploadedFile = await uploadFile(attachment);
                 if (uploadedFile) {
                     const fileUrl = getFilePreview(uploadedFile.$id);
                     if (fileUrl) {
-                        attachmentUrl = fileUrl.toString();
-                        attachmentType = attachment.type.split('/')[0];
+                        // Update optimistic message with attachment info
+                        optimisticMessage.attachmentUrl = fileUrl.toString();
+                        optimisticMessage.attachmentType = attachment.type.split('/')[0];
+
+                        // Update local messages with attachment info
+                        setLocalMessages(prev =>
+                            prev.map(msg =>
+                                msg.$id === tempId ? optimisticMessage : msg
+                            )
+                        );
                     }
                 }
-            }
 
-            // Send message
+                // Clear attachment
+                setAttachment(null);
+
+                // Prepare final message data for sending to Appwrite
+                const messageData: INewMessage = {
+                    senderId: currentUserId,
+                    receiverId: conversationId,
+                    content: messageContent,
+                    attachmentUrl: optimisticMessage.attachmentUrl || null,
+                    attachmentType: optimisticMessage.attachmentType || null,
+                };
+
+                // Send message to Appwrite (optimistic UI is already showing)
+                sendMessage(messageData);
+
+            } catch (error) {
+                // Handle attachment upload error
+                console.error('Error uploading attachment:', error);
+
+                // Show error state in UI
+                setLocalMessages(prev =>
+                    prev.map(msg =>
+                        msg.$id === tempId ? { ...msg, content: 'Error sending message', _isError: true } : msg
+                    )
+                );
+
+                // Clear attachment
+                setAttachment(null);
+            }
+        } else {
+            // For text-only messages, update UI immediately
+            setLocalMessages(prev => [optimisticMessage, ...prev]);
+
+            // Prepare message data
             const messageData: INewMessage = {
                 senderId: currentUserId,
                 receiverId: conversationId,
-                content: newMessage.trim() || (attachment ? 'Sent an attachment' : ''),
-                attachmentUrl: attachmentUrl || null,
-                attachmentType: attachmentType || null,
+                content: messageContent,
+                attachmentUrl: null,
+                attachmentType: null,
             };
 
-            sendMessage(messageData, {
-                onSuccess: () => {
-                    // Clear form first
-                    setNewMessage('');
-                    setAttachment(null);
-
-                    // Manually refresh after sending
-                    setTimeout(() => {
-                        refetchMessages();
-
-                        // Make sure we scroll to the bottom
-                        setTimeout(() => {
-                            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                        }, 300);
-                    }, 500);
-                }
-            });
-        } catch (error) {
-            // Handle errors silently
+            // Send to Appwrite (optimistic UI is already showing)
+            sendMessage(messageData);
         }
+
+        // Scroll to bottom
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     };
 
     return (
@@ -231,7 +208,7 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
                 </div>
             </div>
 
-            {/* Messages area with fixed layout */}
+            {/* Messages area */}
             <div
                 ref={messagesContainerRef}
                 className="flex-1 p-4 overflow-y-auto bg-dark-2 custom-scrollbar"
@@ -240,37 +217,33 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
                     minHeight: '250px'
                 }}
             >
-                {isLoadingMessages ? (
+                {isLoadingMessages && localMessages.length === 0 ? (
                     <div className="flex items-center justify-center w-full h-full">
                         <Loader className="text-primary-500" />
                     </div>
-                ) : !messages?.documents || messages.documents.length === 0 ? (
+                ) : localMessages.length === 0 ? (
                     <div className="flex items-center justify-center w-full h-full text-light-3 flex-col gap-2">
                         <p>No messages yet. Say hello!</p>
                         <div className="w-16 h-1 bg-dark-4 rounded-full mt-2"></div>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {messages.documents.map((document: Models.Document, index: number) => {
-                            try {
-                                // Convert Appwrite document to IMessage
-                                const message = document as unknown as IMessage;
-
-                                // Skip invalid messages
-                                if (!message || !message.sender || !message.receiver) {
-                                    return null;
-                                }
-
-                                return (
-                                    <MessageBubble
-                                        key={message.$id || `msg-${index}`}
-                                        message={message}
-                                        isOwnMessage={message.sender.$id === currentUserId}
-                                    />
-                                );
-                            } catch (error) {
+                        {localMessages.map((message, index) => {
+                            // Skip invalid messages
+                            if (!message || !message.sender || !message.receiver) {
                                 return null;
                             }
+
+                            const messageId = message.$id || `msg-${index}`;
+                            const isOwnMessage = message.sender.$id === currentUserId;
+
+                            return (
+                                <MessageBubble
+                                    key={messageId}
+                                    message={message}
+                                    isOwnMessage={isOwnMessage}
+                                />
+                            );
                         })}
                         <div ref={messagesEndRef} />
                     </div>
@@ -355,18 +328,24 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
 
 const MessageBubble = ({ message, isOwnMessage }: MessageBubbleProps) => {
     // Format the timestamp with error handling
-    let timeAgo = 'recently';
+    let timeAgo = 'just now';
     try {
         timeAgo = formatDistanceToNow(new Date(message.createdAt), { addSuffix: true });
     } catch (error) {
         // Use default if formatting fails
     }
 
+    // Handle optimistic messages specially
+    const isOptimistic = message._isOptimistic;
+    const hasError = message._isError;
+
     return (
-        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-1`}>
+        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-1 message-bubble`}>
             <div
                 className={`max-w-[75%] rounded-2xl px-4 py-3 ${isOwnMessage
-                    ? 'bg-primary-500 text-light-1 rounded-tr-none'
+                    ? hasError
+                        ? 'bg-red-800 text-light-1 rounded-tr-none'
+                        : 'bg-primary-500 text-light-1 rounded-tr-none'
                     : 'bg-dark-3 text-light-1 rounded-tl-none'
                     }`}
             >
@@ -387,7 +366,12 @@ const MessageBubble = ({ message, isOwnMessage }: MessageBubbleProps) => {
 
                 {/* Message text */}
                 {message.content && (
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                        {message.content}
+                        {isOptimistic && !hasError && (
+                            <span className="inline-block ml-1 opacity-70 text-xs"> (sending...)</span>
+                        )}
+                    </p>
                 )}
 
                 {/* Timestamp */}

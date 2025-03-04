@@ -132,6 +132,9 @@ export type IMessage = {
   isRead: boolean;
   attachmentUrl?: string | null;
   attachmentType?: string | null;
+  // Add these properties for optimistic UI
+  _isOptimistic?: boolean;
+  _isError?: boolean;
 };
 
 export type INewMessage = {

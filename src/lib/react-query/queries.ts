@@ -51,7 +51,8 @@ import {
   IConversation,
 } from '@/types';
 import { ID, Models } from 'appwrite';
-import { appwriteConfig, databases } from '../appwrite/config';
+import { appwriteConfig, client, databases } from '../appwrite/config';
+import { useEffect } from 'react';
 
 // ============================================================
 // AUTH QUERIES
@@ -447,20 +448,149 @@ export const useSendMessage = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (messageData: INewMessage) => sendMessage(messageData),
-    onSuccess: (_, variables) => {
-      // Invalidate relevant queries
-      if (variables.senderId && variables.receiverId) {
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.senderId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: [
+
+    // Add optimistic updates
+    onMutate: async (newMessage) => {
+      // Cancel outgoing refetches to avoid overwriting our optimistic update
+      await queryClient.cancelQueries({
+        queryKey: [
+          QUERY_KEYS.GET_CONVERSATION,
+          newMessage.senderId,
+          newMessage.receiverId,
+        ],
+      });
+
+      // Get current conversation for potential rollback
+      const previousConversation = queryClient.getQueryData([
+        QUERY_KEYS.GET_CONVERSATION,
+        newMessage.senderId,
+        newMessage.receiverId,
+      ]);
+
+      // Get current conversation list for potential rollback
+      const previousConversationList = queryClient.getQueryData([
+        QUERY_KEYS.GET_USER_CONVERSATIONS,
+        newMessage.senderId,
+      ]);
+
+      // Create optimistic message
+      const optimisticMessage = {
+        $id: 'temp-' + Date.now(),
+        sender: { $id: newMessage.senderId },
+        receiver: { $id: newMessage.receiverId },
+        content: newMessage.content,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+        attachmentUrl: newMessage.attachmentUrl,
+        attachmentType: newMessage.attachmentType,
+        _isOptimistic: true,
+      };
+
+      // Update conversation messages
+      queryClient.setQueryData(
+        [
+          QUERY_KEYS.GET_CONVERSATION,
+          newMessage.senderId,
+          newMessage.receiverId,
+        ],
+        (old: any) => {
+          if (!old || !old.documents) return old;
+
+          return {
+            ...old,
+            documents: [optimisticMessage, ...old.documents],
+          };
+        }
+      );
+
+      // Also update conversations list
+      queryClient.setQueryData(
+        [QUERY_KEYS.GET_USER_CONVERSATIONS, newMessage.senderId],
+        (old: IConversation[] | undefined) => {
+          if (!old) return old;
+
+          const updatedConversations = [...old];
+          const conversationIndex = updatedConversations.findIndex(
+            (conv) =>
+              conv.user.$id === newMessage.receiverId ||
+              conv.user.id === newMessage.receiverId
+          );
+
+          if (conversationIndex >= 0) {
+            // Update existing conversation
+            updatedConversations[conversationIndex] = {
+              ...updatedConversations[conversationIndex],
+              lastMessage: optimisticMessage as any,
+              unreadCount: 0, // Reset unread for sender's view
+            };
+          } else {
+            // This is a new conversation, we might need user details here
+            // In a complete implementation, we'd need to get user info separately
+          }
+
+          // Sort by latest message
+          return updatedConversations.sort(
+            (a, b) =>
+              new Date(b.lastMessage.createdAt).getTime() -
+              new Date(a.lastMessage.createdAt).getTime()
+          );
+        }
+      );
+
+      return { previousConversation, previousConversationList };
+    },
+
+    // If the mutation fails, roll back to the previous state
+    onError: (err, newMessage, context) => {
+      if (context) {
+        queryClient.setQueryData(
+          [
             QUERY_KEYS.GET_CONVERSATION,
-            variables.senderId,
-            variables.receiverId,
+            newMessage.senderId,
+            newMessage.receiverId,
           ],
-        });
+          context.previousConversation
+        );
+
+        queryClient.setQueryData(
+          [QUERY_KEYS.GET_USER_CONVERSATIONS, newMessage.senderId],
+          context.previousConversationList
+        );
       }
+    },
+
+    // When the mutation succeeds, update with the actual data and clean up any optimistic records
+    onSuccess: (actualMessage, variables) => {
+      // Update conversation with actual message and remove optimistic flags
+      queryClient.setQueryData(
+        [QUERY_KEYS.GET_CONVERSATION, variables.senderId, variables.receiverId],
+        (old: any) => {
+          if (!old || !old.documents) return old;
+
+          return {
+            ...old,
+            documents: old.documents.map((msg: any) =>
+              msg._isOptimistic
+                ? { ...actualMessage, _isOptimistic: false }
+                : msg
+            ),
+          };
+        }
+      );
+
+      // Also invalidate to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.senderId],
+      });
+
+      // We still invalidate to ensure data consistency, but the UI will already be updated
+      queryClient.invalidateQueries({
+        queryKey: [
+          QUERY_KEYS.GET_CONVERSATION,
+          variables.senderId,
+          variables.receiverId,
+        ],
+      });
     },
   });
 };
@@ -473,8 +603,10 @@ export const useGetUserConversations = (userId?: string) => {
       return data || [];
     },
     enabled: !!userId,
-    refetchInterval: 30000, // Refetch every 30 seconds as a fallback
-    staleTime: 10000, // Consider data stale after 10 seconds
+    refetchInterval: 15000, // Reduced from 30s to 15s for better fallback performance
+    staleTime: 5000, // Consider data stale after 5 seconds (reduced from 10s)
+    refetchOnWindowFocus: true, // Refresh when window regains focus
+    retry: 3, // Retry failed requests
   });
 };
 
@@ -483,7 +615,10 @@ export const useGetConversation = (userOneId?: string, userTwoId?: string) => {
     queryKey: [QUERY_KEYS.GET_CONVERSATION, userOneId, userTwoId],
     queryFn: () => getConversation(userOneId || '', userTwoId || ''),
     enabled: !!userOneId && !!userTwoId,
-    refetchInterval: 15000, // Refetch every 15 seconds as a fallback
+    refetchInterval: 10000, // Reduced from 15s to 10s for better fallback performance
+    staleTime: 5000, // Consider data stale after 5 seconds
+    refetchOnWindowFocus: true, // Refresh when window regains focus
+    retry: 3, // Retry failed requests
   });
 };
 
@@ -492,6 +627,104 @@ export const useMarkMessagesAsRead = () => {
   return useMutation({
     mutationFn: (params: MarkMessagesAsReadParams) =>
       markMessagesAsRead(params),
+
+    // Add optimistic update for read status
+    onMutate: async (params) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: [
+          QUERY_KEYS.GET_CONVERSATION,
+          params.userId,
+          params.conversationPartnerId,
+        ],
+      });
+
+      await queryClient.cancelQueries({
+        queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, params.userId],
+      });
+
+      // Save current state
+      const previousConversation = queryClient.getQueryData([
+        QUERY_KEYS.GET_CONVERSATION,
+        params.userId,
+        params.conversationPartnerId,
+      ]);
+
+      const previousConversationList = queryClient.getQueryData([
+        QUERY_KEYS.GET_USER_CONVERSATIONS,
+        params.userId,
+      ]);
+
+      // Optimistically update conversation messages as read
+      queryClient.setQueryData(
+        [
+          QUERY_KEYS.GET_CONVERSATION,
+          params.userId,
+          params.conversationPartnerId,
+        ],
+        (old: any) => {
+          if (!old || !old.documents) return old;
+
+          return {
+            ...old,
+            documents: old.documents.map((message: any) => {
+              if (
+                message.sender?.$id === params.conversationPartnerId &&
+                message.receiver?.$id === params.userId &&
+                !message.isRead
+              ) {
+                return { ...message, isRead: true };
+              }
+              return message;
+            }),
+          };
+        }
+      );
+
+      // Update unread count in conversations list
+      queryClient.setQueryData(
+        [QUERY_KEYS.GET_USER_CONVERSATIONS, params.userId],
+        (old: IConversation[] | undefined) => {
+          if (!old) return old;
+
+          return old.map((conversation) => {
+            if (
+              conversation.user.$id === params.conversationPartnerId ||
+              conversation.user.id === params.conversationPartnerId
+            ) {
+              return {
+                ...conversation,
+                unreadCount: 0,
+              };
+            }
+            return conversation;
+          });
+        }
+      );
+
+      return { previousConversation, previousConversationList };
+    },
+
+    // If marking as read fails, restore previous state
+    onError: (err, params, context) => {
+      if (context) {
+        queryClient.setQueryData(
+          [
+            QUERY_KEYS.GET_CONVERSATION,
+            params.userId,
+            params.conversationPartnerId,
+          ],
+          context.previousConversation
+        );
+
+        queryClient.setQueryData(
+          [QUERY_KEYS.GET_USER_CONVERSATIONS, params.userId],
+          context.previousConversationList
+        );
+      }
+    },
+
+    // On success, invalidate to ensure consistency
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.userId],

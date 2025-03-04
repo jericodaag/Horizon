@@ -86,7 +86,7 @@ const ConversationItem = ({
     const senderId = lastMessage?.sender?.$id || lastMessage?.sender;
     const messagePrefix = senderId === currentUserId ? 'You: ' : '';
 
-    // Format timestamp with robust error handling
+    // Format timestamp with error handling
     let timeAgo = 'recently';
     try {
         if (lastMessage?.createdAt) {
