@@ -62,10 +62,14 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
 
     // Scroll to bottom when messages change
     useEffect(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        // This will run once when the component mounts or when messages first load
+        if (messagesEndRef.current && localMessages.length > 0) {
+            // Force scroll to bottom with a slight delay to ensure rendering is complete
+            setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            }, 300);
         }
-    }, [localMessages.length]);
+    }, [conversationId]);
 
     // Handle file attachment
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
