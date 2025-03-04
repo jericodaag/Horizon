@@ -1,12 +1,8 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Button } from '@/components/ui/button';
 
-// Mock the cn utility function
-jest.mock('@/lib/utils', () => ({
-    cn: (...args: any[]) => args.filter(Boolean).join(' '),
-}));
+// No need to mock the cn utility - since it's done globally in setup.ts
 
 describe('Button Component', () => {
     test('renders button with correct text', () => {

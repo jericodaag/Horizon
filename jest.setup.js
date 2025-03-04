@@ -1,4 +1,3 @@
-// Add any jest setup code you need
 import '@testing-library/jest-dom';
 
 // Mock window properties that might be undefined in the test environment
@@ -8,8 +7,8 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
