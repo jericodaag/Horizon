@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserContext } from "@/context/AuthContext";
 import { useState } from "react";
-import Loader from "@/components/shared/Loader";
+import { Loader } from "lucide-react";
 import ProfileUploader from "@/components/shared/ProfileUploader";
 
 // Zod validation schema for profile form
