@@ -1,29 +1,223 @@
-import { Loader2 } from 'lucide-react';
+import React from 'react';
+import styled from 'styled-components';
 
-interface LoaderProps {
-  size?: 'sm' | 'md' | 'lg';
+const Loader = () => {
+  return (
+    <StyledWrapper>
+      <svg viewBox="0 0 240 240" height={240} width={240} className="loader">
+        <circle strokeLinecap="round" strokeDashoffset={-330} strokeDasharray="0 660" strokeWidth={20} stroke="#000" fill="none" r={105} cy={120} cx={120} className="loader-ring loader-ring-a" />
+        <circle strokeLinecap="round" strokeDashoffset={-110} strokeDasharray="0 220" strokeWidth={20} stroke="#000" fill="none" r={35} cy={120} cx={120} className="loader-ring loader-ring-b" />
+        <circle strokeLinecap="round" strokeDasharray="0 440" strokeWidth={20} stroke="#000" fill="none" r={70} cy={120} cx={85} className="loader-ring loader-ring-c" />
+        <circle strokeLinecap="round" strokeDasharray="0 440" strokeWidth={20} stroke="#000" fill="none" r={70} cy={120} cx={155} className="loader-ring loader-ring-d" />
+      </svg>
+    </StyledWrapper>
+  );
 }
 
-/**
- * Reusable spinner component for loading states
- * @param {object} props - Component properties
- * @param {string} [props.size='md'] - Size of the loader (sm, md, lg)
- */
-const Loader = ({ size = 'md' }: LoaderProps) => {
-  // Size mapping for different loader sizes
-  const sizeMap = {
-    sm: 'h-5 w-5',
-    md: 'h-8 w-8',
-    lg: 'h-10 w-10',
-  };
+const StyledWrapper = styled.div`
+  .loader {
+    width: 6em;
+    height: 6em;
+  }
 
-  const sizeClass = sizeMap[size];
+  .loader-ring {
+    animation: ringA 2s linear infinite;
+  }
 
-  return (
-    <div className='flex-center w-full'>
-      <Loader2 className={`${sizeClass} text-primary-500 animate-spin`} />
-    </div>
-  );
-};
+  .loader-ring-a {
+    stroke: #9708F4;
+  }
+
+  .loader-ring-b {
+    animation-name: ringB;
+    stroke: #5E14E4;
+  }
+
+  .loader-ring-c {
+    animation-name: ringC;
+    stroke: #9708F4;
+  }
+
+  .loader-ring-d {
+    animation-name: ringD;
+    stroke: #5E14E4;
+  }
+
+  /* Animations */
+  @keyframes ringA {
+    from, 4% {
+      stroke-dasharray: 0 660;
+      stroke-width: 20;
+      stroke-dashoffset: -330;
+    }
+
+    12% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -335;
+    }
+
+    32% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -595;
+    }
+
+    40%, 54% {
+      stroke-dasharray: 0 660;
+      stroke-width: 20;
+      stroke-dashoffset: -660;
+    }
+
+    62% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -665;
+    }
+
+    82% {
+      stroke-dasharray: 60 600;
+      stroke-width: 30;
+      stroke-dashoffset: -925;
+    }
+
+    90%, to {
+      stroke-dasharray: 0 660;
+      stroke-width: 20;
+      stroke-dashoffset: -990;
+    }
+  }
+
+  @keyframes ringB {
+    from, 12% {
+      stroke-dasharray: 0 220;
+      stroke-width: 20;
+      stroke-dashoffset: -110;
+    }
+
+    20% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -115;
+    }
+
+    40% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -195;
+    }
+
+    48%, 62% {
+      stroke-dasharray: 0 220;
+      stroke-width: 20;
+      stroke-dashoffset: -220;
+    }
+
+    70% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -225;
+    }
+
+    90% {
+      stroke-dasharray: 20 200;
+      stroke-width: 30;
+      stroke-dashoffset: -305;
+    }
+
+    98%, to {
+      stroke-dasharray: 0 220;
+      stroke-width: 20;
+      stroke-dashoffset: -330;
+    }
+  }
+
+  @keyframes ringC {
+    from {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: 0;
+    }
+
+    8% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -5;
+    }
+
+    28% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -175;
+    }
+
+    36%, 58% {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -220;
+    }
+
+    66% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -225;
+    }
+
+    86% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -395;
+    }
+
+    94%, to {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -440;
+    }
+  }
+
+  @keyframes ringD {
+    from, 8% {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: 0;
+    }
+
+    16% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -5;
+    }
+
+    36% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -175;
+    }
+
+    44%, 50% {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -220;
+    }
+
+    58% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -225;
+    }
+
+    78% {
+      stroke-dasharray: 40 400;
+      stroke-width: 30;
+      stroke-dashoffset: -395;
+    }
+
+    86%, to {
+      stroke-dasharray: 0 440;
+      stroke-width: 20;
+      stroke-dashoffset: -440;
+    }
+  }`;
 
 export default Loader;

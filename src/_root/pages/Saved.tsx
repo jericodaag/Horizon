@@ -2,7 +2,7 @@ import { useGetSavedPosts } from "@/lib/react-query/queries";
 import { useUserContext } from "@/context/AuthContext";
 import { Models } from "appwrite";
 import GridPostList from '@/components/shared/GridPostList';
-import { Loader } from "lucide-react";
+import Loader from '@/components/shared/Loader';
 
 const Saved = () => {
     // Get current user from auth context

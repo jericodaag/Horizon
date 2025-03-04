@@ -615,10 +615,10 @@ export const useGetConversation = (userOneId?: string, userTwoId?: string) => {
     queryKey: [QUERY_KEYS.GET_CONVERSATION, userOneId, userTwoId],
     queryFn: () => getConversation(userOneId || '', userTwoId || ''),
     enabled: !!userOneId && !!userTwoId,
-    refetchInterval: 10000, // Reduced from 15s to 10s for better fallback performance
-    staleTime: 5000, // Consider data stale after 5 seconds
-    refetchOnWindowFocus: true, // Refresh when window regains focus
-    retry: 3, // Retry failed requests
+    refetchInterval: 3000, // Reduce from 10000 to 3000 for more responsive updates
+    staleTime: 1000, // Reduce stale time
+    refetchOnWindowFocus: true,
+    retry: 2, // Reduce retries for faster error recovery
   });
 };
 

@@ -7,7 +7,7 @@ import {
   useGetFollowing,
 } from '@/lib/react-query/queries';
 import GridPostList from '@/components/shared/GridPostList';
-import { Loader } from 'lucide-react';
+import Loader from '@/components/shared/Loader';
 import { Button } from '@/components/ui/button';
 import { useUserContext } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

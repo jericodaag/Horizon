@@ -6,7 +6,7 @@ import { useUserContext } from '@/context/AuthContext';
 import { sidebarLinks } from '@/constants';
 import { INavLink } from '@/types';
 import { LogOut } from 'lucide-react';
-import Loader from '@/components/shared/Loader';
+import { Loader2 } from 'lucide-react';
 
 const LeftSidebar = () => {
   const { pathname } = useLocation();
@@ -82,7 +82,7 @@ const LeftSidebar = () => {
       >
         {isSigningOut ? (
           <div className='flex gap-2 items-center'>
-            <Loader size='sm' />
+            <Loader2 size='sm' />
             <p className='small-medium lg:base-medium'>Logging out...</p>
           </div>
         ) : (

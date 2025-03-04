@@ -18,20 +18,18 @@ import {
 } from './_root/pages';
 import { Toaster } from '@/components/ui/toaster';
 import Messages from './_root/pages/Messages';
-
-// Create a loading component
-const LoadingScreen = () => (
-  <div className='flex items-center justify-center w-full h-screen bg-dark-1'>
-    <div className='w-10 h-10 border-4 border-primary-500 rounded-full animate-spin border-t-transparent'></div>
-  </div>
-);
+import Loader from '@/components/shared/Loader'; // Import your Loader component
 
 const App = () => {
   const { isAuthenticated, isLoading } = useUserContext();
 
   // Show loading screen while authentication state is being determined
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <div className='flex items-center justify-center w-full h-screen bg-dark-1'>
+        <Loader />
+      </div>
+    );
   }
 
   return (

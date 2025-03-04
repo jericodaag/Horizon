@@ -1,5 +1,5 @@
 import { useGetUsers } from '@/lib/react-query/queries';
-import { Loader } from 'lucide-react';
+import Loader from '@/components/shared/Loader';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import FollowButton from '@/components/shared/FollowButton';

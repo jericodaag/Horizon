@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import {
     useGetConversation,
     useSendMessage,
@@ -63,9 +63,7 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
     // Scroll to bottom when messages change
     useEffect(() => {
         if (messagesEndRef.current) {
-            setTimeout(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [localMessages.length]);
 
@@ -109,7 +107,7 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
         if (attachment) {
             try {
                 // Show optimistic message with "uploading" state first
-                setLocalMessages(prev => [optimisticMessage, ...prev]);
+                setLocalMessages(prev => [...prev, optimisticMessage]);
 
                 // Upload file to Appwrite
                 const uploadedFile = await uploadFile(attachment);
@@ -145,22 +143,18 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
                 sendMessage(messageData);
 
             } catch (error) {
-                // Handle attachment upload error
                 console.error('Error uploading attachment:', error);
-
                 // Show error state in UI
                 setLocalMessages(prev =>
                     prev.map(msg =>
                         msg.$id === tempId ? { ...msg, content: 'Error sending message', _isError: true } : msg
                     )
                 );
-
-                // Clear attachment
                 setAttachment(null);
             }
         } else {
             // For text-only messages, update UI immediately
-            setLocalMessages(prev => [optimisticMessage, ...prev]);
+            setLocalMessages(prev => [...prev, optimisticMessage]);
 
             // Prepare message data
             const messageData: INewMessage = {
@@ -218,33 +212,36 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
                 }}
             >
                 {isLoadingMessages && localMessages.length === 0 ? (
-                    <div className="flex items-center justify-center w-full h-full">
+                    <div className="flex-center w-full h-full">
                         <Loader className="text-primary-500" />
                     </div>
                 ) : localMessages.length === 0 ? (
-                    <div className="flex items-center justify-center w-full h-full text-light-3 flex-col gap-2">
+                    <div className="flex-center w-full h-full text-light-3 flex-col gap-2">
                         <p>No messages yet. Say hello!</p>
                         <div className="w-16 h-1 bg-dark-4 rounded-full mt-2"></div>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {localMessages.map((message, index) => {
-                            // Skip invalid messages
-                            if (!message || !message.sender || !message.receiver) {
-                                return null;
-                            }
+                        {localMessages
+                            .slice() // Create a copy
+                            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort chronologically
+                            .map((message, index) => {
+                                // Skip invalid messages
+                                if (!message || !message.sender || !message.receiver) {
+                                    return null;
+                                }
 
-                            const messageId = message.$id || `msg-${index}`;
-                            const isOwnMessage = message.sender.$id === currentUserId;
+                                const messageId = message.$id || `msg-${index}`;
+                                const isOwnMessage = message.sender.$id === currentUserId;
 
-                            return (
-                                <MessageBubble
-                                    key={messageId}
-                                    message={message}
-                                    isOwnMessage={isOwnMessage}
-                                />
-                            );
-                        })}
+                                return (
+                                    <MessageBubble
+                                        key={messageId}
+                                        message={message}
+                                        isOwnMessage={isOwnMessage}
+                                    />
+                                );
+                            })}
                         <div ref={messagesEndRef} />
                     </div>
                 )}
@@ -326,7 +323,8 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
     );
 };
 
-const MessageBubble = ({ message, isOwnMessage }: MessageBubbleProps) => {
+// Memoize MessageBubble to prevent unnecessary re-renders
+const MessageBubble = memo(({ message, isOwnMessage }: MessageBubbleProps) => {
     // Format the timestamp with error handling
     let timeAgo = 'just now';
     try {
@@ -381,6 +379,6 @@ const MessageBubble = ({ message, isOwnMessage }: MessageBubbleProps) => {
             </div>
         </div>
     );
-};
+});
 
 export default MessageChat;
