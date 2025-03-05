@@ -490,3 +490,64 @@
   @apply hidden xl:flex flex-col w-72 px-4 py-8 gap-6 overflow-y-auto custom-scrollbar;
   height: calc(100vh - 180px);
 }
+
+/* Add these styles to your global.css file */
+
+.post_details-card {
+  @apply bg-dark-2 w-full max-w-5xl rounded-[30px] flex-col flex xl:flex-row border border-dark-4 xl:rounded-l-[24px] overflow-hidden;
+}
+
+/* Left side - Image container */
+.post-image-side {
+  @apply w-full xl:w-[48%] h-auto bg-dark-1;
+}
+
+.post_details-img {
+  @apply h-auto w-full xl:h-full rounded-t-[30px] xl:rounded-l-[24px] xl:rounded-tr-none object-cover p-0;
+  max-height: 600px;
+}
+
+/* Right side - Info and comments */
+.post_details-info {
+  @apply bg-dark-2 flex flex-col gap-0 flex-1 p-5 md:p-7 rounded-[30px] h-full;
+  max-height: 600px;
+}
+
+/* Comments scrollable container */
+.comments-container {
+  @apply flex-1 overflow-y-auto pr-2;
+  height: auto;
+  max-height: 300px;
+}
+
+/* Make sure the comments don't push the layout */
+.comment-section-container {
+  @apply w-full;
+}
+
+/* Make sure containers have proper height on desktop */
+@media (min-width: 1280px) {
+  .post_details-card {
+    min-height: 600px;
+    max-height: 80vh;
+  }
+
+  .post-image-side {
+    height: 100%;
+  }
+
+  .post_details-img {
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .post_details-info {
+    height: 100%;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .comments-container {
+    max-height: calc(100% - 250px);
+  }
+}

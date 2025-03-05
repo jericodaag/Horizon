@@ -35,10 +35,6 @@ const PostDetails = () => {
       const currentUserId = user.id;
       const isCreator = currentUserId === creatorId;
 
-      console.log("Current user ID:", currentUserId);
-      console.log("Post creator ID:", creatorId);
-      console.log("Is creator:", isCreator);
-
       setIsPostCreator(isCreator);
     }
   }, [post, user]);
@@ -98,16 +94,18 @@ const PostDetails = () => {
         <Loader />
       ) : (
         <div className='post_details-card'>
-          {/* Post Image */}
-          {post.imageUrl && (
-            <img
-              src={post.imageUrl}
-              alt='post image'
-              className='post_details-img'
-            />
-          )}
+          {/* Left side - Post Image */}
+          <div className="post-image-side">
+            {post.imageUrl && (
+              <img
+                src={post.imageUrl}
+                alt='post image'
+                className='post_details-img'
+              />
+            )}
+          </div>
 
-
+          {/* Right side - Post Info and Comments */}
           <div className='post_details-info'>
             <div className='flex-between w-full'>
               <Link
@@ -171,12 +169,12 @@ const PostDetails = () => {
               </div>
             </div>
 
-            <hr className='border w-full border-dark-4/80' />
+            <hr className='border w-full border-dark-4/80 my-5' />
 
-            <div className='flex flex-col flex-1 w-full small-medium lg:base-regular'>
+            <div className='flex flex-col w-full small-medium lg:base-regular'>
               <p>{post?.caption}</p>
               <ul className='flex gap-1 mt-2'>
-                {post?.tags.map((tag: string, index: string) => (
+                {post?.tags.map((tag, index) => (
                   <li
                     key={`${tag}${index}`}
                     className='text-light-3 small-regular'
@@ -187,22 +185,26 @@ const PostDetails = () => {
               </ul>
             </div>
 
-            <div className='w-full'>
+            <div className='w-full my-5'>
               <PostStats post={post} userId={user.id} />
             </div>
 
-            {/* Comments Section using the new component */}
-            {post && id && (
-              <CommentSection postId={id} />
-            )}
+            <hr className='border w-full border-dark-4/80 mb-5' />
+
+            {/* Comments Section - Now inside a scrollable container */}
+            <div className="comments-container custom-scrollbar">
+              {post && id && (
+                <CommentSection postId={id} />
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      <div className='w-full max-w-5xl'>
-        <hr className='border w-full border-dark-4/80' />
+      <div className='w-full max-w-5xl mt-8'>
+        <hr className='border w-full border-dark-4/80 mb-8' />
 
-        <h3 className='body-bold md:h3-bold w-full my-10'>
+        <h3 className='body-bold md:h3-bold w-full mb-8'>
           More Related Posts
         </h3>
         {isUserPostLoading || !relatedPosts ? (
