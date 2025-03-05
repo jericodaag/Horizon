@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { IConversation } from '@/types';
 
@@ -15,52 +16,54 @@ interface ConversationItemProps {
     currentUserId: string;
 }
 
-const ConversationList = ({
+const ConversationList = memo(({
     conversations = [],
     selectedId,
     onSelectConversation,
     currentUserId
 }: ConversationListProps) => {
+    // Handle empty state
+    if (conversations.length === 0) {
+        return (
+            <div className="flex items-center justify-center w-full h-40 text-light-3">
+                <p>No conversations yet</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex flex-col h-full">
-            {conversations.length === 0 ? (
-                <div className="flex items-center justify-center w-full h-40 text-light-3">
-                    <p>No conversations yet</p>
-                </div>
-            ) : (
-                <div className="flex flex-col">
-                    {conversations.map((conversation, index) => {
-                        // Skip invalid conversation objects
-                        if (!conversation || !conversation.user) {
-                            return null;
-                        }
+        <div className="flex flex-col">
+            {conversations.map((conversation, index) => {
+                // Skip invalid conversation objects
+                if (!conversation || !conversation.user) {
+                    return null;
+                }
 
-                        // Attempt to get a stable key for the item
-                        const key = conversation.user.$id || conversation.user.id || `conversation-${index}`;
+                // Get a stable key for the item
+                const key = conversation.user.$id || conversation.user.id || `conversation-${index}`;
+                const userData = conversation.user;
 
-                        // Extra validation to ensure we have necessary user data
-                        const userData = conversation.user;
-                        if (!userData || (!userData.$id && !userData.id)) {
-                            return null;
-                        }
+                // Extra validation
+                if (!userData || (!userData.$id && !userData.id)) {
+                    return null;
+                }
 
-                        return (
-                            <ConversationItem
-                                key={key}
-                                conversation={conversation}
-                                isSelected={selectedId === (userData.$id || userData.id)}
-                                onClick={() => onSelectConversation(userData)}
-                                currentUserId={currentUserId}
-                            />
-                        );
-                    })}
-                </div>
-            )}
+                return (
+                    <ConversationItem
+                        key={key}
+                        conversation={conversation}
+                        isSelected={selectedId === (userData.$id || userData.id)}
+                        onClick={() => onSelectConversation(userData)}
+                        currentUserId={currentUserId}
+                    />
+                );
+            })}
         </div>
     );
-};
+});
 
-const ConversationItem = ({
+// Memoized conversation item component
+const ConversationItem = memo(({
     conversation,
     isSelected,
     onClick,
@@ -77,24 +80,30 @@ const ConversationItem = ({
     const userImage = user.imageUrl || '/assets/icons/profile-placeholder.svg';
     const messageContent = lastMessage?.content || 'No message';
 
-    // Format the message preview
-    const messagePreview = messageContent.length > 25
-        ? `${messageContent.substring(0, 25)}...`
-        : messageContent;
+    // Memoize formatted message preview
+    const messagePreview = useMemo(() => {
+        const preview = messageContent.length > 25
+            ? `${messageContent.substring(0, 25)}...`
+            : messageContent;
 
-    // Determine if current user is sender
-    const senderId = lastMessage?.sender?.$id || lastMessage?.sender;
-    const messagePrefix = senderId === currentUserId ? 'You: ' : '';
+        // Determine if current user is sender
+        const senderId = lastMessage?.sender?.$id || lastMessage?.sender;
+        const prefix = senderId === currentUserId ? 'You: ' : '';
 
-    // Format timestamp with error handling
-    let timeAgo = 'recently';
-    try {
-        if (lastMessage?.createdAt) {
-            timeAgo = formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: true });
+        return prefix + preview;
+    }, [messageContent, lastMessage?.sender, currentUserId]);
+
+    // Memoize formatted timestamp
+    const timeAgo = useMemo(() => {
+        try {
+            if (lastMessage?.createdAt) {
+                return formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: true });
+            }
+            return 'recently';
+        } catch (error) {
+            return 'recently';
         }
-    } catch (error) {
-        // Fallback to default if formatting fails
-    }
+    }, [lastMessage?.createdAt]);
 
     return (
         <div
@@ -108,7 +117,6 @@ const ConversationItem = ({
                     alt={userName}
                     className="w-12 h-12 rounded-full object-cover"
                     onError={(e) => {
-                        // Fallback if image fails to load
                         e.currentTarget.src = '/assets/icons/profile-placeholder.svg';
                     }}
                 />
@@ -130,11 +138,23 @@ const ConversationItem = ({
                 </div>
 
                 <p className={`text-sm truncate ${unreadCount > 0 ? 'text-light-1 font-medium' : 'text-light-3'}`}>
-                    {messagePrefix}{messagePreview}
+                    {messagePreview}
                 </p>
             </div>
         </div>
     );
-};
+}, (prevProps, nextProps) => {
+    // Custom comparison function to prevent unnecessary re-renders
+    // Only re-render if these properties change
+    return (
+        prevProps.isSelected === nextProps.isSelected &&
+        prevProps.conversation.unreadCount === nextProps.conversation.unreadCount &&
+        prevProps.conversation.lastMessage?.$id === nextProps.conversation.lastMessage?.$id
+    );
+});
+
+// Set display names for better debugging
+ConversationList.displayName = 'ConversationList';
+ConversationItem.displayName = 'ConversationItem';
 
 export default ConversationList;

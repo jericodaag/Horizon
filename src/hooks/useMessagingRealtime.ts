@@ -4,7 +4,6 @@ import { appwriteConfig } from '@/lib/appwrite/config';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 import { markMessagesAsRead } from '@/lib/appwrite/api';
-import { IConversation } from '@/types';
 
 /**
  * Unified hook for real-time messaging with Appwrite
@@ -18,9 +17,13 @@ export const useMessagingRealtime = (
   const subscriptionRef = useRef<(() => void) | null>(null);
   const isActive = useRef(true);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const BASE_RECONNECT_DELAY = 1000;
 
   useEffect(() => {
     isActive.current = true;
+    reconnectAttemptsRef.current = 0;
 
     const setupSubscription = () => {
       // Clear any existing subscription
@@ -41,6 +44,9 @@ export const useMessagingRealtime = (
           ],
           (response) => {
             if (!isActive.current) return;
+
+            // Reset reconnect attempts on successful events
+            reconnectAttemptsRef.current = 0;
 
             // Handle new message creation
             if (
@@ -63,7 +69,7 @@ export const useMessagingRealtime = (
                   // Update the conversation list with accurate unread count
                   queryClient.setQueryData(
                     [QUERY_KEYS.GET_USER_CONVERSATIONS, userId],
-                    (old: IConversation[] | undefined) => {
+                    (old: any[] | undefined) => {
                       if (!old) return old;
 
                       return old.map((conversation) => {
@@ -120,14 +126,14 @@ export const useMessagingRealtime = (
                       newMessage.receiver?.$id === userId &&
                       newMessage.sender?.$id === activeConversationId
                     ) {
-                      setTimeout(() => {
+                      requestAnimationFrame(() => {
                         if (isActive.current) {
                           markMessagesAsRead({
                             conversationPartnerId: activeConversationId,
                             userId: userId,
                           });
                         }
-                      }, 500);
+                      });
                     }
                   }
                 }
@@ -159,13 +165,26 @@ export const useMessagingRealtime = (
                       : updatedMessage.sender?.$id;
 
                   if (otherUserId === activeConversationId) {
-                    queryClient.invalidateQueries({
-                      queryKey: [
+                    queryClient.setQueryData(
+                      [
                         QUERY_KEYS.GET_CONVERSATION,
                         userId,
                         activeConversationId,
                       ],
-                    });
+                      (old: any) => {
+                        if (!old || !old.documents) return old;
+
+                        // Replace the updated message in the conversation
+                        return {
+                          ...old,
+                          documents: old.documents.map((msg: any) =>
+                            msg.$id === updatedMessage.$id
+                              ? updatedMessage
+                              : msg
+                          ),
+                        };
+                      }
+                    );
                   }
                 }
               }
@@ -175,12 +194,31 @@ export const useMessagingRealtime = (
       } catch (error) {
         console.error('Error setting up real-time subscription:', error);
 
-        // Handle reconnection with backoff
+        // Handle reconnection with exponential backoff
         if (isActive.current && !reconnectTimerRef.current) {
-          reconnectTimerRef.current = setTimeout(() => {
-            reconnectTimerRef.current = null;
-            if (isActive.current) setupSubscription();
-          }, 2000);
+          const attempt = reconnectAttemptsRef.current;
+
+          if (attempt < MAX_RECONNECT_ATTEMPTS) {
+            // Exponential backoff with jitter
+            const delay = Math.min(
+              BASE_RECONNECT_DELAY * Math.pow(2, attempt) +
+                Math.random() * 1000,
+              30000 // Max 30 seconds
+            );
+
+            reconnectTimerRef.current = setTimeout(() => {
+              reconnectTimerRef.current = null;
+              reconnectAttemptsRef.current++;
+              if (isActive.current) setupSubscription();
+            }, delay);
+          } else {
+            // After max attempts, try one final time after 60 seconds
+            reconnectTimerRef.current = setTimeout(() => {
+              reconnectTimerRef.current = null;
+              reconnectAttemptsRef.current = 0; // Reset counter
+              if (isActive.current) setupSubscription();
+            }, 60000);
+          }
         }
       }
     };

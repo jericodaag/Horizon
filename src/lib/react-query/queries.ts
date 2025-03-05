@@ -498,7 +498,7 @@ export const useSendMessage = () => {
 
           return {
             ...old,
-            documents: [optimisticMessage, ...old.documents],
+            documents: [...old.documents, optimisticMessage],
           };
         }
       );
@@ -523,9 +523,6 @@ export const useSendMessage = () => {
               lastMessage: optimisticMessage as any,
               unreadCount: 0, // Reset unread for sender's view
             };
-          } else {
-            // This is a new conversation, we might need user details here
-            // In a complete implementation, we'd need to get user info separately
           }
 
           // Sort by latest message
@@ -578,18 +575,9 @@ export const useSendMessage = () => {
         }
       );
 
-      // Also invalidate to ensure consistency
+      // Selectively invalidate queries to ensure data consistency
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.senderId],
-      });
-
-      // We still invalidate to ensure data consistency, but the UI will already be updated
-      queryClient.invalidateQueries({
-        queryKey: [
-          QUERY_KEYS.GET_CONVERSATION,
-          variables.senderId,
-          variables.receiverId,
-        ],
       });
     },
   });
@@ -603,10 +591,10 @@ export const useGetUserConversations = (userId?: string) => {
       return data || [];
     },
     enabled: !!userId,
-    refetchInterval: 15000, // Reduced from 30s to 15s for better fallback performance
-    staleTime: 5000, // Consider data stale after 5 seconds (reduced from 10s)
-    refetchOnWindowFocus: true, // Refresh when window regains focus
-    retry: 3, // Retry failed requests
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchInterval: 60000, // Only poll every minute as a fallback
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 };
 
@@ -615,18 +603,16 @@ export const useGetConversation = (userOneId?: string, userTwoId?: string) => {
     queryKey: [QUERY_KEYS.GET_CONVERSATION, userOneId, userTwoId],
     queryFn: () => getConversation(userOneId || '', userTwoId || ''),
     enabled: !!userOneId && !!userTwoId,
-    refetchInterval: 3000, // Reduce from 10000 to 3000 for more responsive updates
-    staleTime: 1000, // Reduce stale time
+    staleTime: 10000, // Data is fresh for 10 seconds
+    refetchInterval: 0, // Disable polling - rely on realtime updates
     refetchOnWindowFocus: true,
-    retry: 2, // Reduce retries for faster error recovery
   });
 };
 
 export const useMarkMessagesAsRead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: MarkMessagesAsReadParams) =>
-      markMessagesAsRead(params),
+    mutationFn: (params: any) => markMessagesAsRead(params),
 
     // Add optimistic update for read status
     onMutate: async (params) => {
@@ -724,18 +710,10 @@ export const useMarkMessagesAsRead = () => {
       }
     },
 
-    // On success, invalidate to ensure consistency
+    // On success, only invalidate if needed
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, variables.userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          QUERY_KEYS.GET_CONVERSATION,
-          variables.userId,
-          variables.conversationPartnerId,
-        ],
-      });
+      // We don't need to invalidate here for better performance
+      // since we've already optimistically updated the cache
     },
   });
 };

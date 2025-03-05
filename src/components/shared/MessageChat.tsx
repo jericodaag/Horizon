@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import {
     useGetConversation,
     useSendMessage,
@@ -11,6 +11,7 @@ import { Loader, ArrowLeft, Send, Image, X } from 'lucide-react';
 import { uploadFile, getFilePreview } from '@/lib/appwrite/api';
 import { formatDistanceToNow } from 'date-fns';
 import { IMessage, IUser, INewMessage } from '@/types';
+import { Models } from 'appwrite'; // Import Appwrite Models
 
 interface MessageChatProps {
     conversation: IUser;
@@ -26,15 +27,15 @@ interface MessageBubbleProps {
 const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) => {
     const [newMessage, setNewMessage] = useState('');
     const [attachment, setAttachment] = useState<File | null>(null);
-    const [localMessages, setLocalMessages] = useState<IMessage[]>([]);
     const conversationId = conversation.id;
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const wasEmptyRef = useRef<boolean>(true);
 
-    // Enable real-time updates specifically for this conversation
+    // Enable real-time updates via the dedicated hook
     useMessagingRealtime(currentUserId, conversationId);
 
-    // Fetch conversation messages
+    // Fetch conversation messages with optimized settings
     const {
         data: messages,
         isLoading: isLoadingMessages,
@@ -46,30 +47,54 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
     // Mark messages as read mutation
     const { mutate: markAsRead } = useMarkMessagesAsRead();
 
-    // Update local messages when server data changes
-    useEffect(() => {
-        if (messages?.documents) {
-            setLocalMessages(messages.documents as unknown as IMessage[]);
-        }
+    // Transform and memoize messages array to prevent unnecessary re-renders
+    const sortedMessages = useMemo(() => {
+        if (!messages?.documents) return [];
+
+        // Create a shallow copy and properly cast documents to IMessage
+        return [...messages.documents]
+            .map((doc: Models.Document) => {
+                // Cast the document to IMessage type
+                return {
+                    $id: doc.$id,
+                    sender: doc.sender,
+                    receiver: doc.receiver,
+                    content: doc.content,
+                    createdAt: doc.createdAt,
+                    isRead: doc.isRead,
+                    attachmentUrl: doc.attachmentUrl,
+                    attachmentType: doc.attachmentType,
+                    _isOptimistic: doc._isOptimistic,
+                    _isError: doc._isError
+                } as IMessage;
+            })
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }, [messages?.documents]);
 
     // Mark messages as read when conversation is opened
     useEffect(() => {
-        if (conversationId) {
+        if (conversationId && !isLoadingMessages) {
             markAsRead({ conversationPartnerId: conversationId, userId: currentUserId });
         }
-    }, [conversationId, currentUserId, markAsRead]);
+    }, [conversationId, currentUserId, markAsRead, isLoadingMessages]);
 
-    // Scroll to bottom when messages change
+    // Improved scroll to bottom effect
     useEffect(() => {
-        // This will run once when the component mounts or when messages first load
-        if (messagesEndRef.current && localMessages.length > 0) {
-            // Force scroll to bottom with a slight delay to ensure rendering is complete
-            setTimeout(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-            }, 300);
+        const hasMessages = sortedMessages.length > 0;
+
+        // Only scroll if:
+        // 1. We have messages AND
+        // 2. Either we're just loading in (wasEmpty) OR a new message was added
+        if (hasMessages && (wasEmptyRef.current || sortedMessages.length > (wasEmptyRef.current ? 0 : sortedMessages.length - 1))) {
+            // Use requestAnimationFrame for smoother scrolling
+            requestAnimationFrame(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: wasEmptyRef.current ? 'auto' : 'smooth' });
+            });
+
+            // Update our ref
+            wasEmptyRef.current = false;
         }
-    }, [conversationId]);
+    }, [sortedMessages.length]);
 
     // Handle file attachment
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,96 +112,47 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
     const handleSendMessage = async () => {
         if ((!newMessage.trim() && !attachment) || isSending) return;
 
-        // Create temporary message ID for optimistic updates
-        const tempId = 'temp-' + Date.now();
-
-        // Start with local message data
-        const messageContent = newMessage.trim() || (attachment ? 'Sent an attachment' : '');
-
         // Clear input immediately for better UX
+        const messageContent = newMessage.trim() || (attachment ? 'Sent an attachment' : '');
         setNewMessage('');
 
-        // Create optimistic message object
-        const optimisticMessage: IMessage = {
-            $id: tempId,
-            sender: { $id: currentUserId },
-            receiver: { $id: conversationId },
+        // Prepare message data
+        const messageData: INewMessage = {
+            senderId: currentUserId,
+            receiverId: conversationId,
             content: messageContent,
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            _isOptimistic: true
-        } as IMessage;
+            attachmentUrl: null,
+            attachmentType: null,
+        };
 
-        // Handle attachment upload and preview
+        // Handle attachment upload
         if (attachment) {
             try {
-                // Show optimistic message with "uploading" state first
-                setLocalMessages(prev => [...prev, optimisticMessage]);
-
                 // Upload file to Appwrite
                 const uploadedFile = await uploadFile(attachment);
                 if (uploadedFile) {
                     const fileUrl = getFilePreview(uploadedFile.$id);
                     if (fileUrl) {
-                        // Update optimistic message with attachment info
-                        optimisticMessage.attachmentUrl = fileUrl.toString();
-                        optimisticMessage.attachmentType = attachment.type.split('/')[0];
-
-                        // Update local messages with attachment info
-                        setLocalMessages(prev =>
-                            prev.map(msg =>
-                                msg.$id === tempId ? optimisticMessage : msg
-                            )
-                        );
+                        messageData.attachmentUrl = fileUrl.toString();
+                        messageData.attachmentType = attachment.type.split('/')[0];
                     }
                 }
 
                 // Clear attachment
                 setAttachment(null);
-
-                // Prepare final message data for sending to Appwrite
-                const messageData: INewMessage = {
-                    senderId: currentUserId,
-                    receiverId: conversationId,
-                    content: messageContent,
-                    attachmentUrl: optimisticMessage.attachmentUrl || null,
-                    attachmentType: optimisticMessage.attachmentType || null,
-                };
-
-                // Send message to Appwrite (optimistic UI is already showing)
-                sendMessage(messageData);
-
             } catch (error) {
                 console.error('Error uploading attachment:', error);
-                // Show error state in UI
-                setLocalMessages(prev =>
-                    prev.map(msg =>
-                        msg.$id === tempId ? { ...msg, content: 'Error sending message', _isError: true } : msg
-                    )
-                );
-                setAttachment(null);
+                // Continue sending message without attachment if upload fails
             }
-        } else {
-            // For text-only messages, update UI immediately
-            setLocalMessages(prev => [...prev, optimisticMessage]);
-
-            // Prepare message data
-            const messageData: INewMessage = {
-                senderId: currentUserId,
-                receiverId: conversationId,
-                content: messageContent,
-                attachmentUrl: null,
-                attachmentType: null,
-            };
-
-            // Send to Appwrite (optimistic UI is already showing)
-            sendMessage(messageData);
         }
 
+        // Send message (optimistic UI updates handled in the query hook)
+        sendMessage(messageData);
+
         // Scroll to bottom
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        });
     };
 
     return (
@@ -215,37 +191,34 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
                     minHeight: '250px'
                 }}
             >
-                {isLoadingMessages && localMessages.length === 0 ? (
+                {isLoadingMessages ? (
                     <div className="flex-center w-full h-full">
                         <Loader className="text-primary-500" />
                     </div>
-                ) : localMessages.length === 0 ? (
+                ) : sortedMessages.length === 0 ? (
                     <div className="flex-center w-full h-full text-light-3 flex-col gap-2">
                         <p>No messages yet. Say hello!</p>
                         <div className="w-16 h-1 bg-dark-4 rounded-full mt-2"></div>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {localMessages
-                            .slice() // Create a copy
-                            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort chronologically
-                            .map((message, index) => {
-                                // Skip invalid messages
-                                if (!message || !message.sender || !message.receiver) {
-                                    return null;
-                                }
+                        {sortedMessages.map((message) => {
+                            // Skip invalid messages
+                            if (!message || !message.sender || !message.receiver) {
+                                return null;
+                            }
 
-                                const messageId = message.$id || `msg-${index}`;
-                                const isOwnMessage = message.sender.$id === currentUserId;
+                            const messageId = message.$id;
+                            const isOwnMessage = message.sender.$id === currentUserId;
 
-                                return (
-                                    <MessageBubble
-                                        key={messageId}
-                                        message={message}
-                                        isOwnMessage={isOwnMessage}
-                                    />
-                                );
-                            })}
+                            return (
+                                <MessageBubble
+                                    key={messageId}
+                                    message={message}
+                                    isOwnMessage={isOwnMessage}
+                                />
+                            );
+                        })}
                         <div ref={messagesEndRef} />
                     </div>
                 )}
@@ -329,13 +302,14 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
 
 // Memoize MessageBubble to prevent unnecessary re-renders
 const MessageBubble = memo(({ message, isOwnMessage }: MessageBubbleProps) => {
-    // Format the timestamp with error handling
-    let timeAgo = 'just now';
-    try {
-        timeAgo = formatDistanceToNow(new Date(message.createdAt), { addSuffix: true });
-    } catch (error) {
-        // Use default if formatting fails
-    }
+    // Memoize time formatting to prevent recalculation on every render
+    const timeAgo = useMemo(() => {
+        try {
+            return formatDistanceToNow(new Date(message.createdAt), { addSuffix: true });
+        } catch (error) {
+            return 'just now';
+        }
+    }, [message.createdAt]);
 
     // Handle optimistic messages specially
     const isOptimistic = message._isOptimistic;
@@ -382,6 +356,15 @@ const MessageBubble = memo(({ message, isOwnMessage }: MessageBubbleProps) => {
                 </p>
             </div>
         </div>
+    );
+}, (prevProps, nextProps) => {
+    // Custom comparison to prevent unnecessary rerenders
+    return (
+        prevProps.message.$id === nextProps.message.$id &&
+        prevProps.isOwnMessage === nextProps.isOwnMessage &&
+        prevProps.message.isRead === nextProps.message.isRead &&
+        prevProps.message._isOptimistic === nextProps.message._isOptimistic &&
+        prevProps.message._isError === nextProps.message._isError
     );
 });
 
