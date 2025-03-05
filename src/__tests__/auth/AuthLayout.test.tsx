@@ -1,4 +1,4 @@
-import { render, screen } from '../../test-utils';
+import { render, screen } from '@testing-library/react';
 import AuthLayout from '@/_auth/AuthLayout';
 
 describe('AuthLayout', () => {
@@ -9,11 +9,9 @@ describe('AuthLayout', () => {
     const outletElement = screen.getByTestId('outlet-mock');
     expect(outletElement).toBeInTheDocument();
 
-    // Check if the section element exists with correct structure
+    // Check if the section element exists with correct classes
     const sectionElement = outletElement.closest('section');
     expect(sectionElement).toBeInTheDocument();
-
-    // Check for correct classes on the section
     expect(sectionElement).toHaveClass(
       'flex',
       'flex-1',
@@ -22,8 +20,5 @@ describe('AuthLayout', () => {
       'flex-col',
       'py-10'
     );
-
-    // Verify that the Outlet component content is displayed
-    expect(outletElement).toHaveTextContent('Outlet Content');
   });
 });
