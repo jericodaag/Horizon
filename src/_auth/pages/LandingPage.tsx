@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useGetRecentPosts } from '@/lib/react-query/queries';
+import { TypewriterEffect } from '@/components/ui/TypewriterEffect';
 
 interface CursorProps {
   position: { x: number; y: number };
@@ -21,6 +22,20 @@ const LandingPage: React.FC = () => {
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const progressRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  // Typewriter effect words
+  const words = [
+    {
+      text: "Share ",
+    },
+    {
+      text: "Your ",
+    },
+    {
+      text: "Story ",
+      className: "text-violet-500",
+    },
+  ];
 
   // Custom scrollbar styles
   useEffect(() => {
@@ -156,9 +171,11 @@ const LandingPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1 }}
             >
-              <h2 className='text-5xl sm:text-6xl font-inter font-bold mb-6 leading-tight tracking-tight'>
-                Share Your Story
-              </h2>
+              {/* Typewriter Effect for the heading */}
+              <div className="mb-6 flex justify-center">
+                <TypewriterEffect words={words} />
+              </div>
+
               <p className='text-gray-400 text-xl mb-12 font-inter leading-relaxed'>
                 Join millions of creators sharing their moments, connecting with
                 others, and building their digital legacy through the power of
