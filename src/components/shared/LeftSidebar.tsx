@@ -82,7 +82,7 @@ const LeftSidebar = () => {
       >
         {isSigningOut ? (
           <div className='flex gap-2 items-center'>
-            <Loader2 size='sm' />
+            <Loader2 className="animate-spin" size={16} />
             <p className='small-medium lg:base-medium'>Logging out...</p>
           </div>
         ) : (

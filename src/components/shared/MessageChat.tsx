@@ -193,7 +193,7 @@ const MessageChat = ({ conversation, currentUserId, onBack }: MessageChatProps) 
             >
                 {isLoadingMessages ? (
                     <div className="flex-center w-full h-full">
-                        <Loader className="text-primary-500" />
+                        <Loader className="animate-spin text-primary-500" />
                     </div>
                 ) : sortedMessages.length === 0 ? (
                     <div className="flex-center w-full h-full text-light-3 flex-col gap-2">

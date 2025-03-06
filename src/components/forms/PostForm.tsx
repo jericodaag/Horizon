@@ -69,7 +69,6 @@ const PostForm = ({ post, action }: PostFormProps) => {
                 title: "Success",
                 description: "Post updated successfully",
             });
-
             return navigate(`/posts/${post.$id}`);
         }
 
@@ -92,7 +91,6 @@ const PostForm = ({ post, action }: PostFormProps) => {
                 title: "Success",
                 description: "Post created successfully",
             });
-
             navigate("/");
         } catch (error) {
             console.log(error);
@@ -193,7 +191,7 @@ const PostForm = ({ post, action }: PostFormProps) => {
                         type="submit"
                         className="shad-button_primary whitespace-nowrap"
                         disabled={isLoadingCreate || isLoadingUpdate}>
-                        {(isLoadingCreate || isLoadingUpdate) && <Loader className="mr-2 h-4 w-4" />}
+                        {(isLoadingCreate || isLoadingUpdate) && <Loader className="animate-spin mr-2 h-4 w-4" />}
                         {action} Post
                     </Button>
                 </div>

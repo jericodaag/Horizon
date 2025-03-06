@@ -34,7 +34,7 @@ const EditPost = () => {
                 </div>
 
                 {/* Render post form with existing post data */}
-                {isLoading ? <Loader /> : <PostForm action="Update" post={post} />}
+                <PostForm action="Update" post={post} />
             </div>
         </div>
     );

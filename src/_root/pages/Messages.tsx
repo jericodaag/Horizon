@@ -134,7 +134,7 @@ const Messages = () => {
 
             {isLoadingConversations ? (
                 <div className="flex-center w-full h-full">
-                    <Loader />
+                    <Loader className="animate-spin text-primary-500" />
                 </div>
             ) : (
                 <div className="h-[calc(100vh-280px)] custom-scrollbar overflow-y-auto">
@@ -205,7 +205,7 @@ const Messages = () => {
                     <div className="max-h-72 overflow-y-auto custom-scrollbar pr-1">
                         {isLoadingUsers ? (
                             <div className="flex-center py-8">
-                                <Loader size={24} className="text-light-3" />
+                                <Loader size={24} className="animate-spin text-primary-500" />
                             </div>
                         ) : filteredUsers.length === 0 ? (
                             <p className="text-light-3 text-center py-8">No users found</p>
