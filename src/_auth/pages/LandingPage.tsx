@@ -39,27 +39,27 @@ const LandingPage: React.FC = () => {
   const testimonials = [
     {
       quote: "Horizon has completely transformed how I share my photography with the world.",
-      name: "Alex Morgan",
+      name: "John Pingul",
       title: "Professional Photographer",
     },
     {
       quote: "The connections I've made through this platform have been incredible. Best community ever!",
-      name: "Jamie Chen",
+      name: "Elmalia Diaz",
       title: "Content Creator",
     },
     {
       quote: "This platform has helped me grow my audience by 300% in just three months.",
-      name: "Taylor Wilson",
+      name: "Richard Darwin",
       title: "Influencer",
     },
     {
       quote: "I love the clean interface and how easy it is to share my daily experiences.",
-      name: "Sam Rodriguez",
+      name: "Paul Santos",
       title: "Travel Blogger",
     },
     {
       quote: "The engagement on my posts here is way higher than on any other platform I've used.",
-      name: "Jordan Lee",
+      name: "Ranielle Tuazon",
       title: "Digital Artist",
     },
   ];
