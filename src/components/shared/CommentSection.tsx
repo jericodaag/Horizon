@@ -313,11 +313,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
 
         {/* GIF Picker */}
         {showGiphyPicker && (
-          <div className="absolute z-50 mt-16 ml-11">
-            <GiphyPicker
-              onGifSelect={handleGifSelect}
-              onClose={() => setShowGiphyPicker(false)}
-            />
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-auto">
+            <div className="relative max-h-screen overflow-auto py-6">
+              <GiphyPicker
+                onGifSelect={handleGifSelect}
+                onClose={() => setShowGiphyPicker(false)}
+              />
+            </div>
           </div>
         )}
       </form>

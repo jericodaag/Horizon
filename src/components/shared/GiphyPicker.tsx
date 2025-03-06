@@ -54,7 +54,7 @@ const GiphyPicker: React.FC<GiphyPickerProps> = ({ onGifSelect, onClose }) => {
     };
 
     return (
-        <div className="giphy-picker bg-dark-2 rounded-lg p-4 w-[350px] md:w-[500px] shadow-xl border border-dark-4">
+        <div className="giphy-picker bg-dark-2 rounded-lg p-4 w-[350px] md:w-[500px] max-w-[90vw] shadow-xl border border-dark-4">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-light-1 font-bold">Select a GIF</h3>
                 <Button
@@ -90,8 +90,8 @@ const GiphyPicker: React.FC<GiphyPickerProps> = ({ onGifSelect, onClose }) => {
 
             <div className="h-[400px] overflow-y-auto custom-scrollbar">
                 <Grid
-                    width={350}
-                    columns={2}
+                    width={window.innerWidth > 500 ? 450 : 300}
+                    columns={window.innerWidth > 500 ? 2 : 1}
                     fetchGifs={fetchGifs}
                     key={searchQuery}
                     onGifClick={handleGifClick}
