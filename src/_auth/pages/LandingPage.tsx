@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useGetRecentPosts } from '@/lib/react-query/queries';
-import { TypewriterEffect } from '@/components/ui/TypewriterEffect';
+import { TypewriterEffect } from '@/components/ui/typewriter';
 
 interface CursorProps {
   position: { x: number; y: number };
