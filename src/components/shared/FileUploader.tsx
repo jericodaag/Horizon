@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { FileWithPath, useDropzone } from "react-dropzone";
-
 import { convertFileToUrl } from "@/lib/utils";
 import { Button } from "../ui/button";
 
@@ -19,7 +18,7 @@ const FileUploader = ({ fieldChange, mediaUrl }: FileUploaderProps) => {
             fieldChange(acceptedFiles);
             setFileUrl(convertFileToUrl(acceptedFiles[0]));
         },
-        [file]
+        [fieldChange]
     );
 
     const { getRootProps, getInputProps } = useDropzone({
@@ -36,14 +35,20 @@ const FileUploader = ({ fieldChange, mediaUrl }: FileUploaderProps) => {
             <input {...getInputProps()} className="cursor-pointer" />
 
             {fileUrl ? (
-                <>
-                    <div className="flex flex-1 justify-center w-full p-5 lg:p-10">
-                        <img src={fileUrl} alt="image" className="file_uploader-img" />
+                <div className="image-preview-container w-full">
+                    <div className="image-preview-wrapper aspect-square w-full max-w-2xl mx-auto overflow-hidden">
+                        <img
+                            src={fileUrl}
+                            alt="image"
+                            className="w-full h-full object-cover"
+                        />
                     </div>
-                    <p className="file_uploader-label">Click or drag photo to replace</p>
-                </>
+                    <p className="text-center text-light-4 small-regular py-3 border-t border-dark-4 mt-3">
+                        Click or drag photo to replace
+                    </p>
+                </div>
             ) : (
-                <div className="file_uploader-box ">
+                <div className="file_uploader-box">
                     <img
                         src="/assets/icons/file-upload.svg"
                         width={96}

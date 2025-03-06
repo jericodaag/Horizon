@@ -206,7 +206,38 @@
   }
 
   .file_uploader-box {
-    @apply flex-center flex-col p-7 h-80 lg:h-[612px];
+    @apply flex flex-col items-center justify-center p-7;
+    min-height: 400px;
+  }
+
+  /* Image preview container styles */
+  .image-preview-container {
+    @apply w-full flex flex-col items-center;
+  }
+
+  .image-preview-wrapper {
+    @apply bg-dark-4 rounded-2xl overflow-hidden;
+    max-height: 500px;
+    padding: 0;
+  }
+
+  /* Ensure proper aspect ratio for post details page */
+  .post-image-side {
+    @apply w-full xl:w-1/2 aspect-square overflow-hidden;
+  }
+
+  .post_details-img {
+    @apply w-full h-full object-cover rounded-t-[30px] xl:rounded-l-[24px] xl:rounded-tr-none;
+  }
+
+  /* Create post container */
+  .create-post-container {
+    @apply max-w-4xl mx-auto w-full;
+  }
+
+  /* Improve form layout */
+  .create-post-form {
+    @apply max-w-4xl mx-auto w-full;
   }
 
   /* Grid Post List */
