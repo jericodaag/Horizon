@@ -52,10 +52,51 @@ module.exports = {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: 0 },
         },
+        scroll: {
+          to: {
+            transform: 'translate(calc(-50% - 0.5rem))',
+          },
+        },
+        blink: {
+          '0%': { opacity: 1 },
+          '50%': { opacity: 0 },
+          '100%': { opacity: 1 },
+        },
+        spin: {
+          '100%': {
+            transform: 'rotate(360deg)',
+          },
+        },
+        ping: {
+          '75%, 100%': {
+            transform: 'scale(2)',
+            opacity: '0',
+          },
+        },
+        'subtle-float': {
+          '0%': {
+            transform: 'translateY(0) translateX(0)',
+            opacity: '0.3',
+          },
+          '50%': {
+            transform: 'translateY(-10px) translateX(10px)',
+            opacity: '0.4',
+          },
+          '100%': {
+            transform: 'translateY(0) translateX(0)',
+            opacity: '0.3',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        scroll:
+          'scroll var(--animation-duration) var(--animation-direction) linear infinite',
+        blink: 'blink 1s step-end infinite',
+        spin: 'spin 2s linear infinite',
+        ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'subtle-float': 'subtle-float 10s ease-in-out infinite',
       },
     },
   },

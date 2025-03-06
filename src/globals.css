@@ -17,7 +17,7 @@
 @layer utilities {
   /*  */
   .landing-page-cursor {
-    cursor: none;
+    cursor: default;
   }
 
   /* TYPOGRAPHY */

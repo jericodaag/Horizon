@@ -2,26 +2,21 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useGetRecentPosts } from '@/lib/react-query/queries';
 import { TypewriterEffect } from '@/components/ui/typewriter';
-
-interface CursorProps {
-  position: { x: number; y: number };
-}
-
-const CustomCursor: React.FC<CursorProps> = ({ position }) => (
-  <div
-    className='fixed top-0 left-0 w-4 h-4 border border-white rounded-full pointer-events-none z-[100] mix-blend-difference'
-    style={{
-      transform: `translate(${position.x - 8}px, ${position.y - 8}px)`,
-    }}
-  />
-);
+import { HeroParallax } from '@/components/ui/hero-parallax';
+import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
+import { SimplifiedBackground } from '@/components/ui/simplified-background';
+import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards';
 
 const LandingPage: React.FC = () => {
   const { data: posts } = useGetRecentPosts();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const progressRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  // Transform posts into products format for HeroParallax
+  const parallaxProducts = posts?.documents?.map(post => ({
+    title: post.caption || post.creator?.name || 'Horizon Post',
+    thumbnail: post.imageUrl
+  })) || [];
 
   // Typewriter effect words
   const words = [
@@ -34,6 +29,38 @@ const LandingPage: React.FC = () => {
     {
       text: "Story ",
       className: "text-violet-500",
+    },
+  ];
+
+  // Text for text generation effect
+  const generateText = "Join millions of creators sharing their moments, connecting with others, and building their digital legacy through the power of visual storytelling.";
+
+  // Testimonial cards for infinite moving cards
+  const testimonials = [
+    {
+      quote: "Horizon has completely transformed how I share my photography with the world.",
+      name: "Alex Morgan",
+      title: "Professional Photographer",
+    },
+    {
+      quote: "The connections I've made through this platform have been incredible. Best community ever!",
+      name: "Jamie Chen",
+      title: "Content Creator",
+    },
+    {
+      quote: "This platform has helped me grow my audience by 300% in just three months.",
+      name: "Taylor Wilson",
+      title: "Influencer",
+    },
+    {
+      quote: "I love the clean interface and how easy it is to share my daily experiences.",
+      name: "Sam Rodriguez",
+      title: "Travel Blogger",
+    },
+    {
+      quote: "The engagement on my posts here is way higher than on any other platform I've used.",
+      name: "Jordan Lee",
+      title: "Digital Artist",
     },
   ];
 
@@ -62,20 +89,6 @@ const LandingPage: React.FC = () => {
     };
   }, []);
 
-  // Handle cursor movement
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      // Direct position update without any smoothing
-      setCursorPos({
-        x: e.clientX,
-        y: e.clientY,
-      });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
   // Handle scroll effects
   useEffect(() => {
     const handleScroll = () => {
@@ -85,37 +98,8 @@ const LandingPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Update progress bar
-  useEffect(() => {
-    const updateProgress = () => {
-      if (progressRef.current) {
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        const scrolled = window.scrollY;
-        const progress = (scrolled / (documentHeight - windowHeight)) * 100;
-        progressRef.current.style.width = `${progress}%`;
-      }
-    };
-
-    window.addEventListener('scroll', updateProgress);
-    updateProgress();
-    return () => window.removeEventListener('scroll', updateProgress);
-  }, []);
-
   return (
-    <div className='w-full min-h-screen bg-black text-white font-inter overflow-x-hidden landing-page-cursor'>
-      {/* Custom Cursor */}
-      <CustomCursor position={cursorPos} />
-
-      {/* Progress bar */}
-      <div className='fixed top-0 left-0 w-full h-[2px] bg-white/20 z-50'>
-        <div
-          ref={progressRef}
-          className='h-full bg-white transition-all duration-150 ease-out'
-          style={{ width: '0%' }}
-        />
-      </div>
-
+    <div className='w-full min-h-screen bg-black text-white font-inter overflow-x-hidden'>
       {/* Header */}
       <header
         ref={headerRef}
@@ -147,94 +131,61 @@ const LandingPage: React.FC = () => {
         </nav>
       </header>
 
-      {/* Hero Video Section */}
-      <section className='h-screen w-full relative overflow-hidden'>
-        {/* Video Background */}
-        <div className='absolute inset-0'>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className='w-full h-full object-cover opacity-40'
-          >
-            <source src='/public/assets/images/bg-vid.mp4' type='video/mp4' />
-          </video>
-          <div className='absolute inset-0 backdrop-blur-[1px]' />
-        </div>
+      {/* Hero Section with Simplified Background */}
+      <SimplifiedBackground>
+        <div className="relative z-20 text-center px-4">
+          <div className="mb-6 flex items-center justify-center">
+            <h1 className="text-5xl md:text-7xl font-bold text-center text-white">
+              <TypewriterEffect words={words} />
+            </h1>
+          </div>
 
-        {/* Hero Content */}
-        <div className='relative h-full w-full flex items-center justify-center px-6'>
-          <div className='text-center max-w-3xl mx-auto'>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1 }}
-            >
-              {/* Typewriter Effect for the heading */}
-              <div className="mb-6 flex justify-center">
-                <TypewriterEffect words={words} />
-              </div>
-
-              <p className='text-gray-400 text-xl mb-12 font-inter leading-relaxed'>
-                Join millions of creators sharing their moments, connecting with
-                others, and building their digital legacy through the power of
-                visual storytelling.
-              </p>
+          <div className="mt-8 max-w-3xl mx-auto">
+            <TextGenerateEffect words={generateText} />
+            <div className="mt-10">
+              {/* Restored animated gradient button */}
               <button
                 onClick={() => (window.location.href = '/sign-up')}
-                className='relative px-8 py-4 rounded-full font-inter overflow-hidden bg-white group'
+                className="relative inline-flex h-12 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50"
               >
-                <span className='relative z-10 text-black group-hover:text-white transition-colors duration-300'>
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-slate-950 px-8 py-3 text-sm font-medium text-white backdrop-blur-3xl">
                   Get Started
                 </span>
-                <div className='absolute inset-0 bg-black transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-300' />
               </button>
-            </motion.div>
+            </div>
           </div>
         </div>
-      </section>
+      </SimplifiedBackground>
 
-      {/* Content Sections with Black Background */}
+      {/* Hero Parallax Section - integrate with content sections */}
+      {parallaxProducts.length > 0 && (
+        <HeroParallax products={parallaxProducts} />
+      )}
+
+      {/* Testimonials - Infinite Moving Cards */}
+      <div className="relative flex flex-col items-center justify-center bg-black overflow-hidden py-20">
+        <h2 className="text-3xl md:text-5xl font-bold text-center text-white mb-8">
+          What Our Users Say
+        </h2>
+        <div className="relative w-full max-w-[1400px] mx-auto">
+          <InfiniteMovingCards
+            items={testimonials}
+            direction="right"
+            speed="slow"
+          />
+        </div>
+      </div>
+
+      {/* Content Sections - positioned to flow right after parallax effect */}
       <div className='bg-black'>
-        {/* Grid Section */}
-        <section className='w-full px-6 py-20 relative z-10'>
-          <div className='max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {posts?.documents.map((post, index) => (
-              <motion.div
-                key={post.$id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className={`relative group ${index % 5 === 0 ? 'md:col-span-2 md:row-span-2' : ''
-                  }`}
-              >
-                <img
-                  src={post.imageUrl}
-                  alt={post.caption}
-                  className='w-full h-full object-cover aspect-square'
-                />
-                <div className='absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center'>
-                  <div className='text-center p-6'>
-                    <h3 className='text-xl font-bold mb-2'>
-                      {post.creator.name}
-                    </h3>
-                    <p className='text-gray-200'>{post.caption}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
         {/* Features Section */}
         <section className='w-full px-6 py-20 relative z-10 bg-black/30 backdrop-blur-sm'>
           <div className='max-w-[1400px] mx-auto'>
             <motion.h2
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "-100px" }}
               className='text-5xl font-bold text-center mb-20 font-inter tracking-tight'
             >
               Express Yourself
@@ -263,8 +214,23 @@ const LandingPage: React.FC = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.2 }}
                   viewport={{ once: true }}
-                  className='text-center p-8 rounded-2xl transition-all duration-500'
+                  className='text-center p-8 rounded-2xl transition-all duration-500 group hover:bg-white/5'
                 >
+                  <div className="relative mx-auto mb-4 w-12 h-12 flex items-center justify-center rounded-full bg-violet-500/20 text-violet-500 group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
+                    {index === 0 ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    ) : index === 1 ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                    )}
+                  </div>
                   <h3 className='text-2xl font-bold mb-4 font-inter'>
                     {feature.title}
                   </h3>
