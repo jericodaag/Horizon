@@ -984,7 +984,10 @@ export interface MarkMessagesAsReadParams {
   conversationPartnerId: string;
   userId: string;
 }
-// Create a new message
+
+/**
+ * Send a new message
+ */
 export async function sendMessage(messageData: INewMessage) {
   try {
     const message = await databases.createDocument(
@@ -1009,21 +1012,23 @@ export async function sendMessage(messageData: INewMessage) {
   }
 }
 
-// Get conversation messages between two users
+/**
+ * Get conversation between two users
+ * Optimized query to fetch messages in single request
+ */
 export async function getConversation(userOneId: string, userTwoId: string) {
   try {
-    // Since orQueries and andQueries aren't in the type definition,
-    // we'll use the Query.equal with multiple conditions
+    // Find messages where either:
+    // 1. userOne is sender AND userTwo is receiver OR
+    // 2. userTwo is sender AND userOne is receiver
     const messages = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.messagesCollectionId,
       [
-        // This will find messages where either:
-        // 1. userOne is sender AND userTwo is receiver OR
-        // 2. userTwo is sender AND userOne is receiver
         Query.equal('sender', [userOneId, userTwoId]),
         Query.equal('receiver', [userTwoId, userOneId]),
         Query.orderDesc('createdAt'),
+        Query.limit(50), // Limit to recent messages for performance
       ]
     );
 
@@ -1034,24 +1039,46 @@ export async function getConversation(userOneId: string, userTwoId: string) {
   }
 }
 
-// Get all conversations for a user
+/**
+ * Get all conversations for a user with optimized query
+ */
 export async function getUserConversations(userId: string) {
   try {
-    // Get sent messages
+    // Get most recent sent messages
     const sentMessages = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.messagesCollectionId,
-      [Query.equal('sender', userId), Query.orderDesc('createdAt')]
+      [
+        Query.equal('sender', userId),
+        Query.orderDesc('createdAt'),
+        Query.limit(50), // Limit for better performance
+      ]
     );
 
-    // Get received messages
+    // Get most recent received messages
     const receivedMessages = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.messagesCollectionId,
-      [Query.equal('receiver', userId), Query.orderDesc('createdAt')]
+      [
+        Query.equal('receiver', userId),
+        Query.orderDesc('createdAt'),
+        Query.limit(50), // Limit for better performance
+      ]
     );
 
-    // Combine all messages
+    // Extract unique conversation partners with latest message
+    const conversations = new Map();
+    const unreadCounts = new Map();
+
+    // First, count unread messages for each conversation partner
+    for (const message of receivedMessages.documents) {
+      if (!message.isRead) {
+        const senderId = message.sender.$id;
+        unreadCounts.set(senderId, (unreadCounts.get(senderId) || 0) + 1);
+      }
+    }
+
+    // Process all messages to find latest for each conversation
     const allMessages = [
       ...sentMessages.documents,
       ...receivedMessages.documents,
@@ -1063,62 +1090,45 @@ export async function getUserConversations(userId: string) {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    // Extract unique conversation partners
-    const conversations = new Map();
-
+    // Build conversation list
     for (const message of allMessages) {
-      // Determine who is the conversation partner
+      // Determine conversation partner
       const partnerId =
         message.sender.$id === userId
           ? message.receiver.$id
           : message.sender.$id;
 
-      // Skip if this is a message to self
+      // Skip messages to self
       if (partnerId === userId) continue;
 
-      if (!conversations.has(partnerId)) {
-        try {
-          // Get user details for the partner
-          const partner = await getUserById(partnerId);
+      // Skip if we already have a more recent message for this partner
+      if (conversations.has(partnerId)) continue;
 
-          if (!partner) continue;
+      // Get partner details
+      const partner =
+        message.sender.$id === userId ? message.receiver : message.sender;
 
-          conversations.set(partnerId, {
-            user: partner,
-            lastMessage: message,
-            unreadCount:
-              message.receiver.$id === userId && !message.isRead ? 1 : 0,
-          });
-        } catch (err) {
-          // Skip this partner if there's an error
-        }
-      } else if (
-        new Date(message.createdAt) >
-        new Date(conversations.get(partnerId).lastMessage.createdAt)
-      ) {
-        // Update last message if this one is newer
-        const convo = conversations.get(partnerId);
-        convo.lastMessage = message;
-        conversations.set(partnerId, convo);
-      }
-
-      // Count unread messages
-      if (message.receiver.$id === userId && !message.isRead) {
-        const convo = conversations.get(partnerId);
-        convo.unreadCount = (convo.unreadCount || 0) + 1;
-        conversations.set(partnerId, convo);
-      }
+      // Add to conversations map
+      conversations.set(partnerId, {
+        user: partner,
+        lastMessage: message,
+        unreadCount: unreadCounts.get(partnerId) || 0,
+      });
     }
 
     return Array.from(conversations.values());
   } catch (error) {
-    return []; // Return empty array instead of throwing
+    console.error('Error fetching conversations:', error);
+    return []; // Return empty array on error
   }
 }
 
-// Mark messages as read
+/**
+ * Mark messages as read with optimized batch update
+ */
 export async function markMessagesAsRead(params: MarkMessagesAsReadParams) {
   try {
+    // Find unread messages
     const unreadMessages = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.messagesCollectionId,
@@ -1126,9 +1136,16 @@ export async function markMessagesAsRead(params: MarkMessagesAsReadParams) {
         Query.equal('sender', params.conversationPartnerId),
         Query.equal('receiver', params.userId),
         Query.equal('isRead', false),
+        Query.limit(100), // Reasonable limit for batch update
       ]
     );
 
+    // If no unread messages, return early
+    if (unreadMessages.documents.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // Create update promises for all messages
     const updatePromises = unreadMessages.documents.map((message) =>
       databases.updateDocument(
         appwriteConfig.databaseId,
@@ -1138,9 +1155,13 @@ export async function markMessagesAsRead(params: MarkMessagesAsReadParams) {
       )
     );
 
+    // Execute all updates in parallel
     await Promise.all(updatePromises);
 
-    return { success: true };
+    return {
+      success: true,
+      count: unreadMessages.documents.length,
+    };
   } catch (error) {
     console.error('Error marking messages as read:', error);
     throw error;

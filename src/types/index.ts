@@ -158,3 +158,15 @@ export type IConversation = {
   lastMessage: IMessage;
   unreadCount: number;
 };
+
+// Socket.io related types
+export interface IUserStatus {
+  userId: string;
+  status: 'online' | 'offline';
+  timestamp: string;
+}
+
+export interface IOnlineUsers {
+  users: string[];
+  timestamp: string;
+}
