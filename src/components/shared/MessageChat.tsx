@@ -167,7 +167,7 @@ const MessageChat = ({
       }
     });
 
-    if (sortedMessages.length > lastMessageLengthRef.current) {
+    if (sortedMessages.length > lastMessageLengthRef.current || lastMessageLengthRef.current === 0) {
       setShouldScrollToBottom(true);
       lastMessageLengthRef.current = sortedMessages.length;
     }
@@ -184,6 +184,7 @@ const MessageChat = ({
     }
   }, [conversationId, currentUserId, markAsRead, isLoadingMessages]);
 
+  // Scroll to bottom when messages load or when new messages arrive
   useEffect(() => {
     if (shouldScrollToBottom || isTyping) {
       scrollToBottom();
@@ -191,9 +192,22 @@ const MessageChat = ({
     }
   }, [combinedMessages.length, shouldScrollToBottom, isTyping]);
 
+  // Always scroll to bottom when conversation is first loaded
+  useEffect(() => {
+    if (!isLoadingMessages && combinedMessages.length > 0) {
+      // Short delay to ensure the DOM has updated
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [isLoadingMessages, conversationId]);
+
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else if (messagesContainerRef.current) {
+      // Fallback if the end ref is not yet available
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   };
 
@@ -337,10 +351,11 @@ const MessageChat = ({
         ref={messagesContainerRef}
         className='flex-1 p-4 overflow-y-auto bg-dark-2 custom-scrollbar'
         style={{ height: 'calc(100vh - 340px)', minHeight: '250px' }}
+        onLoad={() => scrollToBottom()}
       >
         {isLoadingMessages ? (
           <div className='flex-center w-full h-full'>
-            <Loader className='text-primary-500' />
+            <Loader className='text-primary-500 animate-spin' />
           </div>
         ) : combinedMessages.length === 0 ? (
           <div className='flex-center w-full h-full text-light-3 flex-col gap-2'>
