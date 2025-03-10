@@ -20,30 +20,31 @@ const ProfileUploader = ({ fieldChange, mediaUrl }: ProfileUploaderProps) => {
     [fieldChange]
   );
 
-  const { getRootProps, getInputProps } = useDropzone({
+  const { getRootProps, getInputProps, open } = useDropzone({
     onDrop,
     accept: {
       'image/*': ['.png', '.jpeg', '.jpg'],
     },
+    noClick: true, // Disable click to open file dialog
+    noKeyboard: false, // Allow keyboard navigation
   });
 
   return (
-    <div {...getRootProps()}>
-      <input {...getInputProps()} className='cursor-pointer' />
-
-      <div className='cursor-pointer flex-center gap-4'>
+    <div {...getRootProps()} className='w-full flex justify-center'>
+      <input {...getInputProps()} />
+      <div className='flex flex-col items-center'>
         {fileUrl ? (
           <>
-            <div className='flex flex-col gap-4'>
-              <img
-                src={fileUrl}
-                alt='profile'
-                className='h-24 w-24 rounded-full object-cover object-center'
-              />
-              <p className='text-primary-500 small-regular md:base-semibold text-center'>
-                Click or drag photo to replace
-              </p>
-            </div>
+            {/* Only the image is clickable */}
+            <img
+              src={fileUrl}
+              alt='profile'
+              className='h-24 w-24 rounded-full object-cover object-center cursor-pointer'
+              onClick={open}
+            />
+            <p className='text-primary-500 small-regular md:base-semibold text-center mt-4'>
+              Click or drag photo to replace
+            </p>
           </>
         ) : (
           <div className='file_uploader-box'>
@@ -52,13 +53,23 @@ const ProfileUploader = ({ fieldChange, mediaUrl }: ProfileUploaderProps) => {
               width={96}
               height={96}
               alt='file upload'
+              className='cursor-pointer'
+              onClick={open}
             />
             <h3 className='base-medium text-light-2 mb-2 mt-6'>
               Drag photo here
             </h3>
             <p className='text-light-4 small-regular mb-6'>SVG, PNG, JPG</p>
 
-            <Button className='shad-button_dark_4'>Select from computer</Button>
+            <Button
+              className='shad-button_dark_4'
+              onClick={(e) => {
+                e.stopPropagation();
+                open();
+              }}
+            >
+              Select from computer
+            </Button>
           </div>
         )}
       </div>

@@ -26,17 +26,35 @@ const Profile = () => {
 
   // State for followers/following modal
   const [showFollowModal, setShowFollowModal] = useState(false);
-  const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
+  const [followModalType, setFollowModalType] = useState<
+    'followers' | 'following'
+  >('followers');
 
   // Animation state
   const [hasScrolled, setHasScrolled] = useState(false);
 
   // Fetch profile data using React Query hooks
-  const { data: currentUser, isLoading: isUserLoading } = useGetUserById(id || '');
+  const { data: currentUser, isLoading: isUserLoading } = useGetUserById(
+    id || ''
+  );
   const { data: userPosts, isLoading: isPostLoading } = useGetUserPosts(id);
   const { data: followers } = useGetFollowers(id || '');
   const { data: following } = useGetFollowing(id || '');
-  const { data: savedPosts, isLoading: isSavedLoading } = useGetSavedPosts(user.id);
+  const { data: savedPosts, isLoading: isSavedLoading } = useGetSavedPosts(
+    user.id
+  );
+
+  // Function to parse cover position
+  const getCoverPosition = () => {
+    if (!currentUser?.coverPosition) return { x: 0, y: 0 };
+
+    try {
+      return JSON.parse(currentUser.coverPosition);
+    } catch (error) {
+      console.error('Error parsing cover position:', error);
+      return { x: 0, y: 0 };
+    }
+  };
 
   // Handler to open followers/following modal
   const handleShowFollowModal = (type: 'followers' | 'following') => {
@@ -60,7 +78,10 @@ const Profile = () => {
 
     try {
       const date = new Date(currentUser.$createdAt);
-      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
     } catch (error) {
       console.error('Error formatting date:', error);
       return '';
@@ -92,13 +113,29 @@ const Profile = () => {
       <div className='common-container'>
         <div className='flex flex-col items-center max-w-5xl w-full mx-auto'>
           {/* Profile Cover/Banner Image */}
-          <div className='w-full h-48 md:h-64 bg-gradient-to-r from-primary-600 to-purple-600 rounded-b-xl relative'>
-            {currentUser.coverImage && (
+          <div className='w-full h-64 bg-dark-3 overflow-hidden rounded-b-xl relative'>
+            {currentUser.coverImageUrl ? (
               <img
-                src={currentUser.coverImage}
-                alt="cover"
-                className="w-full h-full object-cover rounded-b-xl"
+                src={currentUser.coverImageUrl}
+                alt='cover'
+                className='w-full h-full object-cover'
+                style={{
+                  objectPosition: `center ${getCoverPosition().y}%`,
+                }}
               />
+            ) : (
+              // Fallback gradient if no cover image
+              <div className='w-full h-full bg-gradient-to-r from-primary-600 to-purple-600 rounded-b-xl' />
+            )}
+
+            {/* Edit cover button - only shows on user's own profile */}
+            {isOwnProfile && (
+              <Link
+                to={`/update-profile/${currentUser.$id}`}
+                className='absolute bottom-4 right-4 bg-dark-4 bg-opacity-70 hover:bg-opacity-100 text-white rounded-lg px-3 py-1.5 text-sm flex items-center transition-colors'
+              >
+                <Edit3 size={16} className='mr-1.5' /> Edit Cover
+              </Link>
             )}
           </div>
 
@@ -113,7 +150,10 @@ const Profile = () => {
               >
                 <div className='flex items-center gap-3'>
                   <img
-                    src={currentUser.imageUrl || '/assets/icons/profile-placeholder.svg'}
+                    src={
+                      currentUser.imageUrl ||
+                      '/assets/icons/profile-placeholder.svg'
+                    }
                     alt='profile'
                     className='w-10 h-10 rounded-full object-cover border-2 border-primary-500'
                   />
@@ -122,15 +162,26 @@ const Profile = () => {
 
                 {isOwnProfile ? (
                   <Link to={`/update-profile/${currentUser.$id}`}>
-                    <Button variant='ghost' size="sm" className='shad-button_ghost'>
-                      <Edit3 size={16} className="mr-1" /> Edit
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='shad-button_ghost'
+                    >
+                      <Edit3 size={16} className='mr-1' /> Edit
                     </Button>
                   </Link>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className='flex gap-2'>
                     <FollowButton userId={currentUser.$id} compact={true} />
-                    <Link to={`/messages`} state={{ initialConversation: currentUser }}>
-                      <Button variant='secondary' size="sm" className='flex items-center gap-1'>
+                    <Link
+                      to={`/messages`}
+                      state={{ initialConversation: currentUser }}
+                    >
+                      <Button
+                        variant='secondary'
+                        size='sm'
+                        className='flex items-center gap-1'
+                      >
                         <MessageCircle size={16} />
                       </Button>
                     </Link>
@@ -182,18 +233,21 @@ const Profile = () => {
               // Show Edit Profile button for own profile
               <Link to={`/update-profile/${currentUser.$id}`}>
                 <Button variant='outline' className='rounded-full px-6'>
-                  <Edit3 size={16} className="mr-2" /> Edit Profile
+                  <Edit3 size={16} className='mr-2' /> Edit Profile
                 </Button>
               </Link>
             ) : (
               // For other users' profiles, show Follow/Unfollow and Message buttons
-              <div className="flex gap-4">
+              <div className='flex gap-4'>
                 <FollowButton userId={currentUser.$id} />
 
                 {/* Message button */}
-                <Link to={`/messages`} state={{ initialConversation: currentUser }}>
+                <Link
+                  to={`/messages`}
+                  state={{ initialConversation: currentUser }}
+                >
                   <Button variant='secondary' className='rounded-full'>
-                    <MessageCircle size={18} className="mr-2" />
+                    <MessageCircle size={18} className='mr-2' />
                     Message
                   </Button>
                 </Link>
@@ -291,7 +345,7 @@ const Profile = () => {
                   ) : (
                     <>
                       {userPosts?.documents &&
-                        userPosts.documents.length > 0 ? (
+                      userPosts.documents.length > 0 ? (
                         // Display posts in grid layout if available
                         <div>
                           <GridPostList
@@ -303,19 +357,16 @@ const Profile = () => {
                         // Show empty state message if no posts
                         <div className='flex-center flex-col gap-4 py-10'>
                           <img
-                            src="/assets/icons/gallery-add.svg"
-                            alt="No posts"
-                            className="w-16 h-16 opacity-30"
+                            src='/assets/icons/gallery-add.svg'
+                            alt='No posts'
+                            className='w-16 h-16 opacity-30'
                           />
                           <p className='text-light-4 text-center'>
                             No posts yet
                           </p>
                           {isOwnProfile && (
-                            <Link to="/create-post">
-                              <Button
-                                variant="secondary"
-                                className="mt-2"
-                              >
+                            <Link to='/create-post'>
+                              <Button variant='secondary' className='mt-2'>
                                 Create your first post
                               </Button>
                             </Link>
@@ -348,18 +399,15 @@ const Profile = () => {
                           // Show empty state message if no saved posts
                           <div className='flex-center flex-col gap-4 py-10'>
                             <img
-                              src="/assets/icons/save.svg"
-                              alt="No saved posts"
-                              className="w-16 h-16 opacity-30"
+                              src='/assets/icons/save.svg'
+                              alt='No saved posts'
+                              className='w-16 h-16 opacity-30'
                             />
                             <p className='text-light-4 text-center'>
                               No saved posts yet
                             </p>
-                            <Link to="/explore">
-                              <Button
-                                variant="secondary"
-                                className="mt-2"
-                              >
+                            <Link to='/explore'>
+                              <Button variant='secondary' className='mt-2'>
                                 Explore posts
                               </Button>
                             </Link>

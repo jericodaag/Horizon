@@ -548,12 +548,20 @@ export async function getUserById(userId: string) {
 // ============================== UPDATE USER
 export async function updateUser(user: IUpdateUser) {
   try {
+    // Handle profile image
     let image = {
       imageUrl: user.imageUrl,
       imageId: user.imageId,
     };
 
-    if (user.file.length > 0) {
+    // Handle cover image with defaults
+    let coverImage = {
+      coverImageUrl: user.coverImageUrl || '',
+      coverImageId: user.coverImageId || '',
+    };
+
+    // Upload profile image if provided
+    if (user.file && user.file.length > 0) {
       // Upload new file
       const uploadedFile = await uploadFile(user.file[0]);
       if (!uploadedFile) throw Error;
@@ -568,31 +576,85 @@ export async function updateUser(user: IUpdateUser) {
       image = { ...image, imageUrl: fileUrl, imageId: uploadedFile.$id };
     }
 
-    // Update user document
+    // Upload cover image if provided
+    if (user.coverFile && user.coverFile.length > 0) {
+      // Upload new cover file
+      const uploadedCoverFile = await uploadFile(user.coverFile[0]);
+      if (!uploadedCoverFile) throw Error;
+
+      // Get cover file URL
+      const coverFileUrl = getFilePreview(uploadedCoverFile.$id);
+      if (!coverFileUrl) {
+        await deleteFile(uploadedCoverFile.$id);
+        throw Error;
+      }
+
+      coverImage = {
+        coverImageUrl: coverFileUrl,
+        coverImageId: uploadedCoverFile.$id,
+      };
+    }
+
+    // Prepare update data object with all fields
+    const updateData: any = {
+      name: user.name,
+      bio: user.bio || '', // Provide empty string if undefined
+      imageUrl: image.imageUrl,
+      imageId: image.imageId,
+    };
+
+    // Only add cover image data if it exists
+    if (coverImage.coverImageUrl) {
+      updateData.coverImageUrl = coverImage.coverImageUrl;
+    }
+
+    if (coverImage.coverImageId) {
+      updateData.coverImageId = coverImage.coverImageId;
+    }
+
+    // Add cover position if provided
+    if (user.coverPosition) {
+      updateData.coverPosition = user.coverPosition;
+    }
+
+    // Update user document with all data
     const updatedUser = await databases.updateDocument(
       appwriteConfig.databaseId,
       appwriteConfig.userCollectionId,
       user.userId,
-      {
-        name: user.name,
-        bio: user.bio || '', // Provide empty string if undefined
-        imageUrl: image.imageUrl,
-        imageId: image.imageId,
-      }
+      updateData
     );
 
     // Failed to update
     if (!updatedUser) {
-      // Delete new file that was recently uploaded
-      if (user.file.length > 0) {
+      // Delete new files that were recently uploaded
+      if (user.file && user.file.length > 0) {
         await deleteFile(image.imageId);
+      }
+      if (user.coverFile && user.coverFile.length > 0) {
+        await deleteFile(coverImage.coverImageId);
       }
       throw Error;
     }
 
-    // Delete old file if it exists and was replaced
-    if (user.imageId && user.file.length > 0) {
+    // Delete old profile image if it was replaced
+    if (
+      user.imageId &&
+      user.file &&
+      user.file.length > 0 &&
+      user.imageId !== image.imageId
+    ) {
       await deleteFile(user.imageId);
+    }
+
+    // Delete old cover image if it was replaced
+    if (
+      user.coverImageId &&
+      user.coverFile &&
+      user.coverFile.length > 0 &&
+      user.coverImageId !== coverImage.coverImageId
+    ) {
+      await deleteFile(user.coverImageId);
     }
 
     return updatedUser;

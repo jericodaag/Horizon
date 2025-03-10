@@ -47,6 +47,10 @@ export type IUpdateUser = {
   imageId: string;
   imageUrl: URL | string;
   file: File[];
+  coverFile?: File[];
+  coverImageId?: string;
+  coverImageUrl?: string | URL;
+  coverPosition?: string;
 };
 
 export type INewPost = {
@@ -80,6 +84,9 @@ export type IUser = {
   email: string;
   imageUrl: string;
   bio: string;
+  // New cover photo properties
+  coverImageUrl?: string;
+  coverPosition?: string;
 };
 
 export type INewUser = {
@@ -98,6 +105,9 @@ export interface ICreatorWithFollowers {
   imageUrl: string;
   bio: string;
   followerCount: number;
+  // New cover photo properties
+  coverImageUrl?: string;
+  coverPosition?: string;
 }
 
 export interface IPost extends Omit<INewPost, 'tags'> {
@@ -154,6 +164,9 @@ export type IConversation = {
     imageUrl?: string;
     bio?: string;
     email?: string;
+    // New cover photo properties
+    coverImageUrl?: string;
+    coverPosition?: string;
   };
   lastMessage: IMessage;
   unreadCount: number;
