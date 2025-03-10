@@ -23,6 +23,7 @@ interface MessageChatProps {
 interface MessageBubbleProps {
   message: IMessage;
   isOwnMessage: boolean;
+  isRead: boolean;
 }
 
 const MessageChat = ({
@@ -34,82 +35,83 @@ const MessageChat = ({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [socketMessages, setSocketMessages] = useState<IMessage[]>([]);
-  const [processingMessageIds] = useState(new Set<string>()); // Track messages being processed
+  const [processingMessageIds] = useState(new Set<string>());
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
   const conversationId = conversation.id;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const lastMessageLengthRef = useRef(0);
 
-  // Get socket context
-  const { socket, isConnected, onlineUsers, clearNotifications } = useSocket();
+  const {
+    socket,
+    isConnected,
+    onlineUsers,
+    clearNotifications,
+    trackSentMessage,
+    typingUsers,
+    setTyping,
+    readReceipts,
+    markMessageAsRead
+  } = useSocket();
+
   const isOnline = onlineUsers.includes(conversationId);
+  const isTyping = typingUsers[`${conversationId}-${currentUserId}`] || false;
 
-  // Enable real-time updates via Appwrite
   useMessagingRealtime(currentUserId, conversationId);
 
-  // Fetch conversation messages from Appwrite
   const { data: messages, isLoading: isLoadingMessages } = useGetConversation(
     currentUserId,
     conversationId
   );
 
-  // Send message mutation for Appwrite
-  const { mutate: sendAppwriteMessage, isPending: isSending } =
-    useSendMessage();
+  const { mutate: sendAppwriteMessage, isPending: isSending } = useSendMessage();
 
-  // Mark messages as read mutation
   const { mutate: markAsRead } = useMarkMessagesAsRead();
 
-  // Clear notifications when viewing this conversation
   useEffect(() => {
     clearNotifications(conversationId);
   }, [conversationId, clearNotifications]);
 
-  // Listen for Socket.io messages
   useEffect(() => {
     if (!socket) return;
 
-    // Listen for real-time messages
     const handleNewMessage = (receivedMessage: any) => {
-      console.log('Received message via socket:', receivedMessage);
-
-      // Check if this is a message we're currently processing
       if (processingMessageIds.has(receivedMessage.id)) {
-        console.log('Ignoring already processed message:', receivedMessage.id);
         return;
       }
 
-      // Create a properly formatted message object
       const formattedMessage: IMessage = {
         $id: receivedMessage.id || `temp-${Date.now()}`,
         sender: { $id: receivedMessage.senderId },
         receiver: { $id: receivedMessage.receiverId },
         content: receivedMessage.content,
         createdAt: receivedMessage.timestamp || new Date().toISOString(),
-        isRead: false,
+        isRead: false
       };
 
-      // Only add the message if it's relevant to this conversation
       if (
-        (formattedMessage.sender.$id === currentUserId &&
-          formattedMessage.receiver.$id === conversationId) ||
-        (formattedMessage.sender.$id === conversationId &&
-          formattedMessage.receiver.$id === currentUserId)
+        (formattedMessage.sender.$id === currentUserId && formattedMessage.receiver.$id === conversationId) ||
+        (formattedMessage.sender.$id === conversationId && formattedMessage.receiver.$id === currentUserId)
       ) {
-        // Add to socket messages
-        setSocketMessages((prev) => {
-          // Check if this message already exists
-          const exists = prev.some(
-            (msg) =>
-              msg.$id === formattedMessage.$id ||
-              (msg.content === formattedMessage.content &&
-                msg.sender.$id === formattedMessage.sender.$id &&
-                Math.abs(
-                  new Date(msg.createdAt).getTime() -
-                    new Date(formattedMessage.createdAt).getTime()
-                ) < 5000)
+        setSocketMessages(prev => {
+          const exists = prev.some(msg =>
+            msg.$id === formattedMessage.$id ||
+            (msg.content === formattedMessage.content &&
+              msg.sender.$id === formattedMessage.sender.$id &&
+              Math.abs(new Date(msg.createdAt).getTime() - new Date(formattedMessage.createdAt).getTime()) < 5000)
           );
 
           if (exists) return prev;
+
+          setShouldScrollToBottom(true);
+
+          if (formattedMessage.sender.$id === conversationId && formattedMessage.receiver.$id === currentUserId) {
+            setTimeout(() => {
+              markMessageAsRead(formattedMessage.$id, formattedMessage.sender.$id, currentUserId);
+            }, 1000);
+          }
+
           return [...prev, formattedMessage];
         });
       }
@@ -120,17 +122,14 @@ const MessageChat = ({
     return () => {
       socket.off('receive_message', handleNewMessage);
     };
-  }, [socket, currentUserId, conversationId, processingMessageIds]);
+  }, [socket, currentUserId, conversationId, processingMessageIds, markMessageAsRead]);
 
-  // Combine Appwrite messages with Socket.io messages
   const combinedMessages = useMemo(() => {
     if (!messages?.documents) return [...socketMessages];
 
-    // Create a Map to store messages by content+timestamp to catch duplicates
     const messageMap = new Map();
 
-    // Process Appwrite messages first (they have priority)
-    messages.documents.forEach((doc) => {
+    messages.documents.forEach(doc => {
       const key = `${doc.sender.$id}-${doc.content}-${doc.createdAt.substring(0, 16)}`;
       messageMap.set(key, {
         $id: doc.$id,
@@ -138,7 +137,7 @@ const MessageChat = ({
         receiver: doc.receiver,
         content: doc.content,
         createdAt: doc.createdAt,
-        isRead: doc.isRead,
+        isRead: doc.isRead || readReceipts[doc.$id],
         attachmentUrl: doc.attachmentUrl,
         attachmentType: doc.attachmentType,
         _isOptimistic: doc._isOptimistic,
@@ -146,27 +145,36 @@ const MessageChat = ({
       });
     });
 
-    // Add socket messages only if they don't exist in Appwrite messages
-    socketMessages.forEach((msg) => {
+    socketMessages.forEach(msg => {
       if (!msg.createdAt) return;
 
-      // Create a matching key - truncate timestamp to reduce precision for comparison
       const key = `${msg.sender.$id}-${msg.content}-${msg.createdAt.substring(0, 16)}`;
 
-      // Only add if not already in the map
       if (!messageMap.has(key)) {
-        messageMap.set(key, msg);
+        messageMap.set(key, {
+          ...msg,
+          isRead: readReceipts[msg.$id] || msg.isRead
+        });
       }
     });
 
-    // Convert map values to array and sort
-    return Array.from(messageMap.values()).sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-  }, [messages?.documents, socketMessages]);
+    const sortedMessages = Array.from(messageMap.values())
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-  // Mark messages as read when conversation is opened
+    sortedMessages.forEach(msg => {
+      if (msg.sender.$id === conversationId && msg.receiver.$id === currentUserId && !msg.isRead) {
+        markMessageAsRead(msg.$id, msg.sender.$id, currentUserId);
+      }
+    });
+
+    if (sortedMessages.length > lastMessageLengthRef.current) {
+      setShouldScrollToBottom(true);
+      lastMessageLengthRef.current = sortedMessages.length;
+    }
+
+    return sortedMessages;
+  }, [messages?.documents, socketMessages, readReceipts, conversationId, currentUserId, markMessageAsRead]);
+
   useEffect(() => {
     if (conversationId && !isLoadingMessages) {
       markAsRead({
@@ -176,14 +184,19 @@ const MessageChat = ({
     }
   }, [conversationId, currentUserId, markAsRead, isLoadingMessages]);
 
-  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    if (combinedMessages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (shouldScrollToBottom || isTyping) {
+      scrollToBottom();
+      setShouldScrollToBottom(false);
     }
-  }, [combinedMessages.length]);
+  }, [combinedMessages.length, shouldScrollToBottom, isTyping]);
 
-  // Handle file selection
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -191,52 +204,35 @@ const MessageChat = ({
     }
   };
 
-  // Remove selected attachment
   const removeAttachment = () => {
     setAttachment(null);
   };
 
-  // Send a message with fix for duplicate messages
   const handleSendMessage = async () => {
     if ((!newMessage.trim() && !attachment) || isSending || isUploading) return;
 
-    // Clear input immediately for better UX
-    const messageContent =
-      newMessage.trim() || (attachment ? 'Sent an attachment' : '');
+    const messageContent = newMessage.trim() || (attachment ? 'Sent an attachment' : '');
     setNewMessage('');
 
-    // Create a unique ID for this message
     const tempId = `temp-${Date.now()}`;
-
-    // Add to processing set to prevent duplicates
     processingMessageIds.add(tempId);
 
-    // Option 1: Socket.io-first approach
-    // With this approach, we use Socket.io for immediate display,
-    // and Appwrite only for persistence
     const socketMessageData = {
       id: tempId,
       senderId: currentUserId,
       receiverId: conversationId,
       content: messageContent,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
-    // Send via Socket.io for immediate delivery
     if (socket && isConnected) {
       socket.emit('send_message', socketMessageData);
+      trackSentMessage(currentUserId, conversationId, messageContent);
 
-      // We'll handle file attachments only in Appwrite for simplicity
+      setShouldScrollToBottom(true);
+
       if (!attachment) {
-        // If no attachment and socket is working, we don't need to send
-        // the message through Appwrite immediately - just return
-        requestAnimationFrame(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        });
-
-        // But we do need to persist it to Appwrite eventually
         setTimeout(() => {
-          // Send to Appwrite after a delay to ensure Socket.io has processed it
           sendAppwriteMessage({
             senderId: currentUserId,
             receiverId: conversationId,
@@ -250,12 +246,6 @@ const MessageChat = ({
       }
     }
 
-    // If we reach here, either:
-    // 1. Socket.io failed to send
-    // 2. There's an attachment to upload
-    // So we send through Appwrite
-
-    // Prepare message data for Appwrite
     const messageData: INewMessage = {
       senderId: currentUserId,
       receiverId: conversationId,
@@ -264,11 +254,9 @@ const MessageChat = ({
       attachmentType: null,
     };
 
-    // Handle attachment upload
     if (attachment) {
       setIsUploading(true);
       try {
-        // Upload file to Appwrite
         const uploadedFile = await uploadFile(attachment);
         if (uploadedFile) {
           const fileUrl = getFilePreview(uploadedFile.$id);
@@ -285,16 +273,19 @@ const MessageChat = ({
       }
     }
 
-    // Send message to Appwrite
     sendAppwriteMessage(messageData);
-
-    // Scroll to bottom
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    });
+    setShouldScrollToBottom(true);
   };
 
-  // Handle Enter key press to send message
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewMessage(value);
+
+    if (socket && isConnected) {
+      setTyping(currentUserId, conversationId, value.length > 0);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -304,7 +295,6 @@ const MessageChat = ({
 
   return (
     <div className='flex flex-col h-full'>
-      {/* Header with online status */}
       <div className='flex items-center p-4 border-b border-dark-4 bg-dark-2'>
         <button
           className='md:hidden mr-3 p-1 hover:bg-dark-3 rounded-full transition-colors'
@@ -314,11 +304,9 @@ const MessageChat = ({
           <ArrowLeft size={20} className='text-light-2' />
         </button>
 
-        <div className='relative'>
+        <div className="relative">
           <img
-            src={
-              conversation.imageUrl || '/assets/icons/profile-placeholder.svg'
-            }
+            src={conversation.imageUrl || '/assets/icons/profile-placeholder.svg'}
             alt={conversation.name}
             className='w-10 h-10 rounded-full object-cover border border-dark-4'
             onError={(e) => {
@@ -326,8 +314,7 @@ const MessageChat = ({
             }}
           />
 
-          {/* Online status indicator */}
-          <div className='absolute bottom-0 right-0 border-2 border-dark-2 rounded-full'>
+          <div className="absolute bottom-0 right-0 border-2 border-dark-2 rounded-full">
             <OnlineStatusIndicator userId={conversationId} />
           </div>
         </div>
@@ -336,22 +323,16 @@ const MessageChat = ({
           <h4 className='body-bold text-light-1 truncate'>
             {conversation.name}
           </h4>
-          <div className='flex items-center'>
-            <p className='text-xs text-light-3 mr-2'>
-              @{conversation.username}
-            </p>
+          <div className="flex items-center">
+            <p className='text-xs text-light-3 mr-2'>@{conversation.username}</p>
 
-            {/* Online/Offline text status */}
-            <span
-              className={`text-xs ${isOnline ? 'text-green-500' : 'text-light-3'}`}
-            >
-              {isOnline ? 'Online' : 'Offline'}
+            <span className={`text-xs ${isOnline ? 'text-green-500' : 'text-light-3'}`}>
+              {isTyping ? "Typing..." : (isOnline ? 'Online' : 'Offline')}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Messages area */}
       <div
         ref={messagesContainerRef}
         className='flex-1 p-4 overflow-y-auto bg-dark-2 custom-scrollbar'
@@ -372,23 +353,37 @@ const MessageChat = ({
               if (!message || !message.sender || !message.receiver) return null;
 
               const isOwnMessage = message.sender.$id === currentUserId;
+              const isRead = isOwnMessage && (message.isRead || !!readReceipts[message.$id]);
 
               return (
                 <MessageBubble
                   key={message.$id}
                   message={message}
                   isOwnMessage={isOwnMessage}
+                  isRead={isRead}
                 />
               );
             })}
+
+            <div className="h-2"></div>
             <div ref={messagesEndRef} />
+
+            {isTyping && (
+              <div className="flex justify-start mb-1">
+                <div className="bg-dark-3 text-light-1 rounded-2xl rounded-tl-none px-4 py-2">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Message input */}
       <div className='p-4 border-t border-dark-4 bg-dark-2'>
-        {/* Attachment preview */}
         {attachment && (
           <div className='mb-3 relative inline-block'>
             <div className='relative rounded-lg overflow-hidden border border-dark-4'>
@@ -417,7 +412,6 @@ const MessageChat = ({
         )}
 
         <div className='flex items-center gap-3'>
-          {/* Attachment button */}
           <label className='cursor-pointer p-2 hover:bg-dark-3 rounded-full transition-colors'>
             <input
               type='file'
@@ -429,26 +423,24 @@ const MessageChat = ({
             <Image size={20} className='text-light-3 hover:text-light-1' />
           </label>
 
-          {/* Message input */}
           <Input
+            ref={inputRef}
             type='text'
             placeholder='Type a message...'
             className='bg-dark-3 border-none focus-visible:ring-1 focus-visible:ring-primary-500 py-6 text-light-1'
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={isSending || isUploading}
           />
 
-          {/* Send button */}
           <Button
             variant='ghost'
             size='icon'
-            className={`p-2 rounded-full ${
-              isSending || isUploading || (!newMessage.trim() && !attachment)
-                ? 'text-light-3'
-                : 'text-primary-500 hover:text-primary-600 hover:bg-dark-3'
-            }`}
+            className={`p-2 rounded-full ${isSending || isUploading || (!newMessage.trim() && !attachment)
+              ? 'text-light-3'
+              : 'text-primary-500 hover:text-primary-600 hover:bg-dark-3'
+              }`}
             onClick={handleSendMessage}
             disabled={
               isSending || isUploading || (!newMessage.trim() && !attachment)
@@ -466,10 +458,8 @@ const MessageChat = ({
   );
 };
 
-// Memoized MessageBubble component
 const MessageBubble = memo(
-  ({ message, isOwnMessage }: MessageBubbleProps) => {
-    // Format time once to prevent recalculations
+  ({ message, isOwnMessage, isRead }: MessageBubbleProps) => {
     const timeAgo = useMemo(() => {
       try {
         return formatDistanceToNow(new Date(message.createdAt), {
@@ -480,7 +470,6 @@ const MessageBubble = memo(
       }
     }, [message.createdAt]);
 
-    // Handle optimistic and error states
     const isOptimistic = message._isOptimistic;
     const hasError = message._isError;
 
@@ -489,15 +478,13 @@ const MessageBubble = memo(
         className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-1 message-bubble`}
       >
         <div
-          className={`max-w-[75%] rounded-2xl px-4 py-3 ${
-            isOwnMessage
-              ? hasError
-                ? 'bg-red-800 text-light-1 rounded-tr-none'
-                : 'bg-primary-500 text-light-1 rounded-tr-none'
-              : 'bg-dark-3 text-light-1 rounded-tl-none'
-          }`}
+          className={`max-w-[75%] rounded-2xl px-4 py-3 ${isOwnMessage
+            ? hasError
+              ? 'bg-red-800 text-light-1 rounded-tr-none'
+              : 'bg-primary-500 text-light-1 rounded-tr-none'
+            : 'bg-dark-3 text-light-1 rounded-tl-none'
+            }`}
         >
-          {/* Attachment if present */}
           {message.attachmentUrl && message.attachmentType === 'image' && (
             <div className='mb-2 rounded-lg overflow-hidden'>
               <img
@@ -512,7 +499,6 @@ const MessageBubble = memo(
             </div>
           )}
 
-          {/* Message text */}
           {message.content && (
             <p className='text-sm whitespace-pre-wrap break-words'>
               {message.content}
@@ -525,10 +511,7 @@ const MessageBubble = memo(
             </p>
           )}
 
-          {/* Timestamp */}
-          <p
-            className={`text-xs mt-1 ${isOwnMessage ? 'text-light-2 opacity-80' : 'text-light-3'}`}
-          >
+          <p className={`text-xs mt-1 ${isOwnMessage ? 'text-light-2 opacity-80' : 'text-light-3'}`}>
             {timeAgo}
           </p>
         </div>
@@ -536,7 +519,6 @@ const MessageBubble = memo(
     );
   },
   (prevProps, nextProps) => {
-    // Prevent unnecessary rerenders
     return (
       prevProps.message.$id === nextProps.message.$id &&
       prevProps.isOwnMessage === nextProps.isOwnMessage &&

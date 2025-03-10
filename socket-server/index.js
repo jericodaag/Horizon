@@ -8,7 +8,6 @@ const app = express();
 app.use(cors());
 
 const server = http.createServer(app);
-// Configure Socket.io with CORS to allow client connections
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -17,10 +16,9 @@ const io = new Server(server, {
   },
 });
 
-// Track online users - userId to socketId mapping for direct messaging
 const onlineUsers = new Map();
+const typingUsers = new Map();
 
-// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Socket.io server is running');
 });
@@ -28,14 +26,12 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Associate user ID with socket for online status tracking
   socket.on('identify', (userId) => {
     if (!userId) return;
 
     onlineUsers.set(userId, socket.id);
     socket.userId = userId;
 
-    // Notify all clients about this user's online status
     io.emit('user_status', {
       userId,
       status: 'online',
@@ -45,26 +41,76 @@ io.on('connection', (socket) => {
     console.log('User identified:', userId);
     console.log('Online users:', Array.from(onlineUsers.keys()));
 
-    // Send the current online users list to this newly connected user
     socket.emit('online_users', {
       users: Array.from(onlineUsers.keys()),
       timestamp: new Date().toISOString(),
     });
   });
 
-  // Real-time message relay
   socket.on('send_message', (data) => {
     console.log('Message received:', data);
-    // Broadcast to all clients - in production, target only specific recipients
     io.emit('receive_message', data);
+
+    // Clear typing indicator when a message is sent
+    if (typingUsers.has(`${data.senderId}-${data.receiverId}`)) {
+      typingUsers.delete(`${data.senderId}-${data.receiverId}`);
+      io.emit('typing_update', {
+        senderId: data.senderId,
+        receiverId: data.receiverId,
+        isTyping: false,
+      });
+    }
   });
 
-  // Handle disconnection and update online status
+  socket.on('message_read', (data) => {
+    console.log('Message read:', data);
+    io.emit('read_receipt', data);
+  });
+
+  socket.on('typing', (data) => {
+    const typingKey = `${data.senderId}-${data.receiverId}`;
+
+    if (data.isTyping) {
+      typingUsers.set(typingKey, Date.now());
+    } else {
+      typingUsers.delete(typingKey);
+    }
+
+    io.emit('typing_update', data);
+
+    // Auto-clear typing indicator after inactivity
+    if (data.isTyping) {
+      setTimeout(() => {
+        const lastTyped = typingUsers.get(typingKey);
+        if (lastTyped && Date.now() - lastTyped > 3000) {
+          typingUsers.delete(typingKey);
+          io.emit('typing_update', {
+            senderId: data.senderId,
+            receiverId: data.receiverId,
+            isTyping: false,
+          });
+        }
+      }, 3500);
+    }
+  });
+
   socket.on('disconnect', () => {
     if (socket.userId) {
       onlineUsers.delete(socket.userId);
 
-      // Notify all clients about this user going offline
+      // Clear typing indicators for this user
+      for (const [key, _] of typingUsers) {
+        if (key.startsWith(`${socket.userId}-`)) {
+          typingUsers.delete(key);
+          const [senderId, receiverId] = key.split('-');
+          io.emit('typing_update', {
+            senderId,
+            receiverId,
+            isTyping: false,
+          });
+        }
+      }
+
       io.emit('user_status', {
         userId: socket.userId,
         status: 'offline',
