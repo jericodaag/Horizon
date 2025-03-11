@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { FileWithPath, useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { ArrowUp, ArrowDown, Check, X } from 'lucide-react';
@@ -29,6 +29,7 @@ const CoverPhotoUploader = ({
   });
 
   const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const onDrop = useCallback(
     (acceptedFiles: FileWithPath[]) => {
@@ -48,7 +49,13 @@ const CoverPhotoUploader = ({
     noClick: isEditing, // Disable clicks when in edit mode
   });
 
-  const handlePositionChange = (direction: 'up' | 'down') => {
+  const handlePositionChange = (direction: 'up' | 'down', e?: React.MouseEvent) => {
+    // Stop event propagation if event is provided
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
     setPosition((prev) => {
       // Simple percentage-based positioning (0-100)
       // Up = show more of top of image (lower percentage)
@@ -60,23 +67,33 @@ const CoverPhotoUploader = ({
 
       const newPosition = { y: newY };
 
-      if (positionChange) {
-        positionChange(JSON.stringify(newPosition));
-      }
-
       return newPosition;
     });
   };
 
-  const handleSavePosition = () => {
+  const handleSavePosition = (e?: React.MouseEvent) => {
+    // Stop event propagation if event is provided
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
     setIsEditing(false);
+
     if (positionChange) {
       positionChange(JSON.stringify(position));
     }
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (e?: React.MouseEvent) => {
+    // Stop event propagation if event is provided
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
     setIsEditing(false);
+
     if (!file.length && mediaUrl) {
       // Revert to original position if no new file was uploaded
       try {
@@ -88,8 +105,26 @@ const CoverPhotoUploader = ({
     }
   };
 
+  // Prevent form submission when interacting with controls
+  useEffect(() => {
+    if (isEditing) {
+      const handleFormSubmit = (e: Event) => {
+        const target = e.target as HTMLElement;
+        if (containerRef.current && containerRef.current.contains(target)) {
+          e.stopPropagation();
+        }
+      };
+
+      document.addEventListener('submit', handleFormSubmit, true);
+
+      return () => {
+        document.removeEventListener('submit', handleFormSubmit, true);
+      };
+    }
+  }, [isEditing]);
+
   return (
-    <div className='w-full relative'>
+    <div className='w-full relative' ref={containerRef}>
       <div
         {...getRootProps()}
         className={`cursor-pointer relative overflow-hidden ${isEditing ? 'cursor-default' : 'cursor-pointer'}`}
@@ -126,38 +161,42 @@ const CoverPhotoUploader = ({
 
       {/* Position adjustment controls - only show when editing */}
       {isEditing && fileUrl && (
-        <div className='absolute bottom-4 right-4 bg-dark-2 rounded-lg p-2 shadow-lg flex gap-2'>
+        <div className='absolute bottom-4 right-4 bg-dark-2 rounded-lg p-2 shadow-lg flex gap-2 z-10'>
           <Button
+            type="button"
             size='sm'
             variant='ghost'
             className='p-2 rounded-full hover:bg-dark-4'
-            onClick={() => handlePositionChange('up')}
+            onClick={(e) => handlePositionChange('up', e)}
             title='Show more of the top'
           >
             <ArrowUp size={18} />
           </Button>
           <Button
+            type="button"
             size='sm'
             variant='ghost'
             className='p-2 rounded-full hover:bg-dark-4'
-            onClick={() => handlePositionChange('down')}
+            onClick={(e) => handlePositionChange('down', e)}
             title='Show more of the bottom'
           >
             <ArrowDown size={18} />
           </Button>
           <Button
+            type="button"
             size='sm'
             variant='ghost'
             className='p-2 rounded-full hover:bg-dark-4 text-green-500'
-            onClick={handleSavePosition}
+            onClick={(e) => handleSavePosition(e)}
           >
             <Check size={18} />
           </Button>
           <Button
+            type="button"
             size='sm'
             variant='ghost'
             className='p-2 rounded-full hover:bg-dark-4 text-red-500'
-            onClick={handleCancelEdit}
+            onClick={(e) => handleCancelEdit(e)}
           >
             <X size={18} />
           </Button>
@@ -167,9 +206,10 @@ const CoverPhotoUploader = ({
       {/* Edit button when not in edit mode */}
       {!isEditing && fileUrl && (
         <Button
+          type="button"
           variant='secondary'
           size='sm'
-          className='absolute bottom-4 right-4 bg-dark-3 rounded-lg shadow-lg opacity-80 hover:opacity-100'
+          className='absolute bottom-4 right-4 bg-dark-3 rounded-lg shadow-lg opacity-80 hover:opacity-100 z-10'
           onClick={(e) => {
             e.stopPropagation();
             setIsEditing(true);
