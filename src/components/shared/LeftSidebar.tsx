@@ -5,7 +5,6 @@ import { useSignOutAccount } from '@/lib/react-query/queries';
 import { useUserContext } from '@/context/AuthContext';
 import { sidebarLinks } from '@/constants';
 import { INavLink } from '@/types';
-import { LogOut } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 const LeftSidebar = () => {
@@ -87,7 +86,11 @@ const LeftSidebar = () => {
           </div>
         ) : (
           <>
-            <LogOut className='w-5 h-5 mr-2' />
+            <img
+              src="/assets/icons/logout.svg"
+              alt="logout"
+              className="w-6 h-6"
+            />
             <p className='small-medium lg:base-medium'>Logout</p>
           </>
         )}
