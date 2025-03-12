@@ -20,6 +20,7 @@ const PostDetails = () => {
   const { user } = useUserContext();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPostCreator, setIsPostCreator] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const { data: post, isLoading } = useGetPostById(id);
   const { data: userPosts, isLoading: isUserPostLoading } = useGetUserPosts(
@@ -30,7 +31,6 @@ const PostDetails = () => {
   // Check if current user is the post creator
   useEffect(() => {
     if (post && user) {
-      // Explicit comparison and console log for debugging
       const creatorId = post.creator.$id;
       const currentUserId = user.id;
       const isCreator = currentUserId === creatorId;
@@ -39,13 +39,22 @@ const PostDetails = () => {
     }
   }, [post, user]);
 
+  // Listen for window resize to determine mobile or desktop view
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Get related posts
   const relatedPosts = userPosts?.documents.filter(
     (userPost) => userPost.$id !== id
   );
 
   const handleDeleteConfirm = () => {
-    // This function is called when user confirms deletion in the modal
     if (!isPostCreator) {
       console.error("You don't have permission to delete this post");
       return;
@@ -56,13 +65,19 @@ const PostDetails = () => {
   };
 
   const openDeleteModal = () => {
-    // This function is called when delete button is clicked
     if (!isPostCreator) {
       console.error("You don't have permission to delete this post");
       return;
     }
 
     setIsDeleteModalOpen(true);
+  };
+
+  // Explicit back navigation handler for improved reliability
+  const handleBackClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(-1);
   };
 
   return (
@@ -74,11 +89,13 @@ const PostDetails = () => {
         onConfirm={handleDeleteConfirm}
       />
 
+      {/* Back button - visible on desktop */}
       <div className='hidden md:flex max-w-5xl w-full'>
         <Button
-          onClick={() => navigate(-1)}
+          onClick={handleBackClick}
           variant='ghost'
           className='shad-button_ghost'
+          type="button"
         >
           <img
             src={'/assets/icons/back.svg'}
@@ -90,118 +107,257 @@ const PostDetails = () => {
         </Button>
       </div>
 
+      {/* Mobile back button */}
+      <div className='flex md:hidden w-full mb-2'>
+        <Button
+          onClick={handleBackClick}
+          variant='ghost'
+          className='shad-button_ghost'
+          type="button"
+        >
+          <img
+            src={'/assets/icons/back.svg'}
+            alt='back'
+            width={20}
+            height={20}
+          />
+          <p className='small-medium'>Back</p>
+        </Button>
+      </div>
+
       {isLoading || !post ? (
-        <Loader />
+        <div className="flex-center w-full h-60">
+          <Loader className="h-10 w-10 animate-spin" />
+        </div>
       ) : (
-        <div className='post_details-card'>
-          {/* Left side - Post Image */}
-          <div className="post-image-side">
-            {post.imageUrl && (
-              <img
-                src={post.imageUrl}
-                alt='post image'
-                className='post_details-img'
-              />
-            )}
-          </div>
-
-          {/* Right side - Post Info and Comments */}
-          <div className='post_details-info'>
-            <div className='flex-between w-full'>
-              <Link
-                to={`/profile/${post?.creator.$id}`}
-                className='flex items-center gap-3'
-              >
-                <img
-                  src={
-                    post?.creator.imageUrl ||
-                    '/assets/icons/profile-placeholder.svg'
-                  }
-                  alt='creator'
-                  className='w-8 h-8 lg:w-12 lg:h-12 rounded-full'
-                />
-                <div className='flex gap-1 flex-col'>
-                  <p className='base-medium lg:body-bold text-light-1'>
-                    {post?.creator.name}
-                  </p>
-                  <div className='flex-center gap-2 text-light-3'>
-                    <p className='subtle-semibold lg:small-regular'>
-                      {multiFormatDateString(post?.$createdAt)}
-                    </p>
-                    -
-                    <p className='subtle-semibold lg:small-regular'>
-                      {post?.location}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-
-              <div className='flex-center gap-4'>
-                {/* Edit button - Only render if post creator */}
-                {isPostCreator && (
-                  <Link
-                    to={`/update-post/${post?.$id}`}
-                  >
-                    <img
-                      src={'/assets/icons/edit.svg'}
-                      alt='edit'
-                      width={24}
-                      height={24}
-                    />
-                  </Link>
+        <>
+          {/* Mobile View */}
+          {isMobile && (
+            <div className='mobile-post-card'>
+              {/* Post Image - Full-width square on mobile */}
+              <div className="mobile-post-image">
+                {post.imageUrl && (
+                  <img
+                    src={post.imageUrl}
+                    alt='post image'
+                    className='mobile-img'
+                  />
                 )}
+              </div>
 
-                {/* Delete button - Only render if post creator */}
-                {isPostCreator && (
-                  <Button
-                    onClick={openDeleteModal}
-                    variant='ghost'
-                    className="post_details-delete_btn"
-                  >
-                    <img
-                      src={'/assets/icons/delete.svg'}
-                      alt='delete'
-                      width={24}
-                      height={24}
-                    />
-                  </Button>
+              {/* Post Creator Info */}
+              <div className='post-creator-info'>
+                <Link
+                  to={`/profile/${post?.creator.$id}`}
+                  className='flex items-center gap-3'
+                >
+                  <img
+                    src={
+                      post?.creator.imageUrl ||
+                      '/assets/icons/profile-placeholder.svg'
+                    }
+                    alt='creator'
+                    className='w-8 h-8 rounded-full'
+                  />
+                  <div className='flex gap-1 flex-col'>
+                    <p className='base-medium text-light-1'>
+                      {post?.creator.name}
+                    </p>
+                    <div className='flex-center gap-2 text-light-3'>
+                      <p className='subtle-semibold'>
+                        {multiFormatDateString(post?.$createdAt)}
+                      </p>
+                      {post?.location && (
+                        <>
+                          <span>-</span>
+                          <p className='subtle-semibold'>
+                            {post?.location}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+
+                <div className='flex items-center gap-4'>
+                  {/* Edit/Delete buttons - Only render if post creator */}
+                  {isPostCreator && (
+                    <>
+                      <Link to={`/update-post/${post?.$id}`}>
+                        <img
+                          src={'/assets/icons/edit.svg'}
+                          alt='edit'
+                          width={20}
+                          height={20}
+                        />
+                      </Link>
+                      <Button
+                        onClick={openDeleteModal}
+                        variant='ghost'
+                        className="p-0"
+                        type="button"
+                      >
+                        <img
+                          src={'/assets/icons/delete.svg'}
+                          alt='delete'
+                          width={20}
+                          height={20}
+                        />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Post Caption and Tags */}
+              <div className='post-content'>
+                <p className='text-light-1'>{post?.caption}</p>
+                <ul className='flex flex-wrap gap-1 mt-2'>
+                  {post?.tags.map((tag, index) => (
+                    <li
+                      key={`${tag}${index}`}
+                      className='text-light-3 small-regular'
+                    >
+                      #{tag}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Post Stats */}
+              <div className='w-full px-3 mt-2 mb-2 post-stats'>
+                <PostStats post={post} userId={user.id} />
+              </div>
+
+              <hr className='border-t border-dark-4/60 w-full' />
+
+              {/* Comments Section - Optimized size */}
+              <div className="mobile-comments-container custom-scrollbar">
+                {post && id && (
+                  <CommentSection postId={id} />
                 )}
               </div>
             </div>
+          )}
 
-            <hr className='border w-full border-dark-4/80 my-5' />
+          {/* Desktop View */}
+          {!isMobile && (
+            <div className='post_details-card'>
+              {/* Left side - Post Image */}
+              <div className="post-image-side">
+                {post.imageUrl && (
+                  <img
+                    src={post.imageUrl}
+                    alt='post image'
+                    className='post_details-img'
+                  />
+                )}
+              </div>
 
-            <div className='flex flex-col w-full small-medium lg:base-regular'>
-              <p>{post?.caption}</p>
-              <ul className='flex gap-1 mt-2'>
-                {post?.tags.map((tag, index) => (
-                  <li
-                    key={`${tag}${index}`}
-                    className='text-light-3 small-regular'
+              {/* Right side - Post Info and Comments */}
+              <div className='post_details-info'>
+                <div className='flex-between w-full'>
+                  <Link
+                    to={`/profile/${post?.creator.$id}`}
+                    className='flex items-center gap-3'
                   >
-                    #{tag}
-                  </li>
-                ))}
-              </ul>
-            </div>
+                    <img
+                      src={
+                        post?.creator.imageUrl ||
+                        '/assets/icons/profile-placeholder.svg'
+                      }
+                      alt='creator'
+                      className='w-8 h-8 lg:w-10 lg:h-10 rounded-full'
+                    />
+                    <div className='flex gap-1 flex-col'>
+                      <p className='base-medium lg:body-bold text-light-1'>
+                        {post?.creator.name}
+                      </p>
+                      <div className='flex-center gap-2 text-light-3'>
+                        <p className='subtle-semibold lg:small-regular'>
+                          {multiFormatDateString(post?.$createdAt)}
+                        </p>
+                        {post?.location && (
+                          <>
+                            <span>-</span>
+                            <p className='subtle-semibold lg:small-regular'>
+                              {post?.location}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
 
-            <div className='w-full my-5'>
-              <PostStats post={post} userId={user.id} />
-            </div>
+                  <div className='flex-center gap-4'>
+                    {/* Edit/Delete buttons - Only render if post creator */}
+                    {isPostCreator && (
+                      <>
+                        <Link to={`/update-post/${post?.$id}`}>
+                          <img
+                            src={'/assets/icons/edit.svg'}
+                            alt='edit'
+                            width={24}
+                            height={24}
+                          />
+                        </Link>
+                        <Button
+                          onClick={openDeleteModal}
+                          variant='ghost'
+                          className="post_details-delete_btn"
+                          type="button"
+                        >
+                          <img
+                            src={'/assets/icons/delete.svg'}
+                            alt='delete'
+                            width={24}
+                            height={24}
+                          />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-            <hr className='border w-full border-dark-4/80 mb-5' />
+                <hr className='border w-full border-dark-4/80 my-3' />
 
-            {/* Comments Section - Now inside a scrollable container */}
-            <div className="comments-container custom-scrollbar">
-              {post && id && (
-                <CommentSection postId={id} />
-              )}
+                {/* Post Caption and Tags - Less vertical space */}
+                <div className='flex flex-col w-full small-medium lg:base-regular'>
+                  <p>{post?.caption}</p>
+                  <ul className='flex flex-wrap gap-1 mt-2'>
+                    {post?.tags.map((tag, index) => (
+                      <li
+                        key={`${tag}${index}`}
+                        className='text-light-3 small-regular'
+                      >
+                        #{tag}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Post Stats - More compact spacing */}
+                <div className='w-full my-2'>
+                  <PostStats post={post} userId={user.id} />
+                </div>
+
+                {/* Thinner divider with less spacing */}
+                <hr className='border w-full border-dark-4/50 mb-2' />
+
+                {/* Comments Section - Optimized size */}
+                <div className="comments-container custom-scrollbar">
+                  {post && id && (
+                    <CommentSection postId={id} />
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      <div className='w-full max-w-5xl mt-8'>
+      {/* Related Posts Section - Only on desktop */}
+      <div className='related-posts-section w-full max-w-5xl mt-8'>
         <hr className='border w-full border-dark-4/80 mb-8' />
 
         <h3 className='body-bold md:h3-bold w-full mb-8'>

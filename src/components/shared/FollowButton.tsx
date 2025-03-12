@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { UserPlus, UserCheck, Loader2 } from 'lucide-react';
+import { UserPlus, UserCheck } from 'lucide-react';
 import { useUserContext } from '@/context/AuthContext';
 import {
   useFollowUser,

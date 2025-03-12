@@ -24,11 +24,6 @@ interface UserData {
   imageUrl: string;
 }
 
-// Interface for the user map
-interface UserMap {
-  [key: string]: UserData;
-}
-
 const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const { user } = useUserContext();
   const [commentText, setCommentText] = useState<string>('');
@@ -41,19 +36,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const [showGiphyPicker, setShowGiphyPicker] = useState(false);
   const [selectedGif, setSelectedGif] = useState({ url: '', id: '' });
 
-  // Extract user ID safely from potentially object or string
+  // Extract user ID safely
   const getUserId = (userIdData: any): string => {
     if (!userIdData) return '';
 
-    // Handle if it's an object with $id
     if (typeof userIdData === 'object' && userIdData !== null) {
       if (userIdData.$id) return String(userIdData.$id);
       if (userIdData.id) return String(userIdData.id);
-      // Try to stringify it if nothing else works
       return String(userIdData);
     }
 
-    // If it's already a string, return it
     return String(userIdData);
   };
 
@@ -84,14 +76,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
         return;
       }
 
-      // Process comments - handle both object and string user IDs
+      // Process comments
       const processedComments = await Promise.all(
         commentsData.documents.map(async (document: Models.Document) => {
           try {
-            // Extract the proper user ID from the userId field - handle it as any type
             const actualUserId = getUserId(document.userId);
 
-            // Only try to fetch user if we have a valid ID
             if (actualUserId && actualUserId.length > 0) {
               try {
                 const userData = await databases.getDocument(
@@ -117,7 +107,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                   }
                 } as IComment;
               } catch (err) {
-                console.error(`Failed to get user for ID ${actualUserId}:`, err);
                 // Fallback to placeholder if user fetch fails
                 return {
                   $id: document.$id,
@@ -156,7 +145,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
               } as IComment;
             }
           } catch (error) {
-            console.error(`Error processing comment ${document.$id}:`, error);
             return null;
           }
         })
@@ -182,6 +170,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   // Submit a new comment
   const handleSubmitComment = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    e.stopPropagation();
 
     // Need either text or GIF to submit a comment
     if (!commentText.trim() && !selectedGif.url) return;
@@ -246,42 +235,35 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   };
 
   return (
-    <div className="w-full space-y-4 mt-6">
+    <div className="comment-section-wrapper w-full mt-2">
       {/* Comment Form */}
-      <form onSubmit={handleSubmitComment} className="flex flex-col gap-3">
-        <div className="flex gap-3">
-          <Link to={`/profile/${user.id}`}>
-            <img
-              src={user.imageUrl || '/assets/icons/profile-placeholder.svg'}
-              alt="user profile"
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          </Link>
-          <div className="flex-1 flex gap-2">
+      <form onSubmit={handleSubmitComment} className="flex flex-col gap-2 mb-3">
+        <div className="flex gap-1">
+          <div className="flex-1 flex gap-1">
             <input
               type="text"
               placeholder="Write a comment..."
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              className="flex-1 bg-dark-3 text-light-1 rounded-lg px-4 py-2.5 
-                      focus:outline-none text-sm"
+              className="flex-1 bg-dark-3 text-light-1 rounded-lg px-3 py-2 
+                      focus:outline-none text-sm h-9"
             />
             <Button
               type="button"
               onClick={() => setShowGiphyPicker(!showGiphyPicker)}
-              className="bg-dark-3 p-2 rounded-lg hover:bg-dark-4"
+              className="bg-dark-3 rounded-lg hover:bg-dark-4 px-2 h-9"
               title="Add a GIF"
             >
-              <SmilePlus className="h-5 w-5 text-primary-500" />
+              <SmilePlus className="h-4 w-4 text-primary-500" />
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || (!commentText.trim() && !selectedGif.url)}
-              className="bg-primary-500 px-5 py-1.5 rounded-lg text-light-1 
-                      hover:bg-primary-600 disabled:opacity-50"
+              className="bg-primary-500 rounded-lg text-light-1 
+                      hover:bg-primary-600 disabled:opacity-50 px-3 h-9"
             >
               {isSubmitting ? (
-                <Loader className="w-4 h-4 animate-spin" />
+                <Loader className="w-3 h-3 animate-spin" />
               ) : (
                 'Post'
               )}
@@ -291,21 +273,21 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
 
         {/* GIF preview if selected */}
         {selectedGif.url && (
-          <div className="relative ml-11">
-            <div className="bg-dark-3 p-2 rounded-lg">
+          <div className="relative">
+            <div className="bg-dark-3 p-1.5 rounded-lg">
               <img
                 src={selectedGif.url}
                 alt="Selected GIF"
-                className="max-h-60 rounded-lg object-contain"
+                className="max-h-32 rounded-lg object-contain"
               />
               <Button
                 type="button"
                 variant="destructive"
                 size="icon"
-                className="absolute top-4 right-4 h-8 w-8 rounded-full bg-dark-4"
+                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-dark-4"
                 onClick={() => setSelectedGif({ url: '', id: '' })}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </Button>
             </div>
           </div>
@@ -325,69 +307,70 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
       </form>
 
       {/* Comments List */}
-      <div className="mt-6 space-y-4">
+      <div className="comment-list space-y-2">
         {isLoading ? (
-          <div className="flex-center w-full">
-            <Loader className="h-5 w-5 animate-spin" />
+          <div className="flex-center w-full py-2">
+            <Loader className="h-4 w-4 animate-spin" />
           </div>
         ) : comments.length > 0 ? (
           comments.map((comment) => (
-            <div key={comment.$id} className="flex gap-3 items-start">
-              <Link to={`/profile/${comment.userId}`}>
+            <div key={comment.$id} className="comment-item flex gap-1.5 items-start mb-3">
+              <Link to={`/profile/${comment.userId}`} className="flex-shrink-0">
                 <img
                   src={comment.user?.imageUrl || '/assets/icons/profile-placeholder.svg'}
                   alt="user avatar"
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-6 h-6 rounded-full object-cover"
                 />
               </Link>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div>
+              <div className="flex-1 overflow-hidden">
+                <div className="flex items-start justify-between flex-wrap">
+                  <div className="flex items-center gap-1 mb-0.5 pr-1">
                     <Link
                       to={`/profile/${comment.userId}`}
-                      className="font-semibold text-light-1 hover:underline"
+                      className="font-semibold text-white hover:underline text-sm truncate max-w-[120px]"
                     >
                       {comment.user?.name || 'User'}
                     </Link>
                     {comment.user?.username && (
-                      <span className="text-light-3 text-sm ml-2">
+                      <span className="text-light-3 text-xs truncate">
                         @{comment.user.username}
                       </span>
                     )}
                   </div>
-                  <span className="text-light-3 text-sm">
+                  <span className="text-light-3 text-xs">
                     {multiFormatDateString(comment.createdAt)}
                   </span>
                 </div>
 
                 {/* Comment text content */}
                 {comment.content && (
-                  <p className="text-light-2 mt-1">{comment.content}</p>
+                  <p className="text-light-2 text-sm break-words">{comment.content}</p>
                 )}
 
                 {/* Display GIF if present */}
                 {comment.gifUrl && (
-                  <div className="mt-2 max-w-xs overflow-hidden rounded-md">
+                  <div className="mt-1 overflow-hidden rounded-md">
                     <img
                       src={comment.gifUrl}
                       alt="Comment GIF"
                       className="w-full h-auto object-contain rounded-md"
+                      style={{ maxHeight: '120px' }}
                     />
                   </div>
                 )}
 
-                <div className="flex gap-4 mt-2">
-                  <button type="button" className="text-light-3 hover:text-light-1 text-sm">
+                <div className="flex gap-3 mt-1">
+                  <button type="button" className="text-light-3 hover:text-light-1 text-xs">
                     Like
                   </button>
-                  <button type="button" className="text-light-3 hover:text-light-1 text-sm">
+                  <button type="button" className="text-light-3 hover:text-light-1 text-xs">
                     Reply
                   </button>
                   {user.id === comment.userId && (
                     <button
                       type="button"
                       onClick={() => handleDeleteComment(comment.$id)}
-                      className="text-light-3 hover:text-red-500 text-sm"
+                      className="text-light-3 hover:text-red-500 text-xs"
                     >
                       Delete
                     </button>
@@ -397,7 +380,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
             </div>
           ))
         ) : (
-          <p className="text-light-3 text-center py-6">
+          <p className="text-light-3 text-center py-3 text-sm">
             No comments yet. Be the first to comment!
           </p>
         )}
