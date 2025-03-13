@@ -39,7 +39,6 @@ import {
   getConversation,
   getUserConversations,
   markMessagesAsRead,
-  MarkMessagesAsReadParams,
 } from '@/lib/appwrite/api';
 import {
   INewPost,
@@ -50,9 +49,8 @@ import {
   INewMessage,
   IConversation,
 } from '@/types';
-import { ID, Models } from 'appwrite';
-import { appwriteConfig, client, databases } from '../appwrite/config';
-import { useEffect } from 'react';
+import { Models } from 'appwrite';
+import { appwriteConfig, databases } from '../appwrite/config';
 
 // ============================================================
 // AUTH QUERIES
@@ -501,7 +499,7 @@ export const useSendMessage = () => {
     },
 
     // On error, roll back to previous state
-    onError: (err, newMessage, context) => {
+    onError: (_err, newMessage, context) => {
       if (context) {
         queryClient.setQueryData(
           [

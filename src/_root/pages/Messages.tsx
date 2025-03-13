@@ -10,7 +10,7 @@ import MessageChat from '@/components/shared/MessageChat';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 import { useLocation } from 'react-router-dom';
-import { IUser, IConversation } from '@/types';
+import { IUser } from '@/types';
 import { getConversation } from '@/lib/appwrite/api';
 
 // Dialog components

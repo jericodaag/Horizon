@@ -705,7 +705,7 @@ export async function unfollowUser(followerId: string, followingId: string) {
     if (!follows || follows.documents.length === 0) throw Error;
 
     // Delete the follow relationship
-    const status = await databases.deleteDocument(
+    await databases.deleteDocument(
       appwriteConfig.databaseId,
       appwriteConfig.followsCollectionId,
       follows.documents[0].$id
