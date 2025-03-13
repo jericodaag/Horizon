@@ -1,14 +1,18 @@
-import React from 'react';
-import { render, RenderOptions } from '@testing-library/react';
-
-// Custom render function
+import { ReactElement } from 'react';
+import {
+  render,
+  RenderOptions,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
+import '@testing-library/jest-dom';
+// Custom render function if we need to wrap components with providers
 const customRender = (
-  ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
-) => render(ui, options);
-
-// Export everything from testing-library
-export * from '@testing-library/react';
-
-// Export custom render
-export { customRender as render };
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>
+) => {
+  return render(ui, { ...options });
+};
+// Export everything
+export { customRender as render, screen, fireEvent, waitFor };
