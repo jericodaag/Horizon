@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   useGetUserById,
@@ -14,7 +14,6 @@ import { useUserContext } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FollowButton from '@/components/shared/FollowButton';
 import FollowModal from '@/components/shared/FollowModal';
-import { AnimatePresence, motion } from 'framer-motion';
 import { MessageCircle, Edit3, Calendar } from 'lucide-react';
 
 const Profile = () => {
@@ -29,9 +28,6 @@ const Profile = () => {
   const [followModalType, setFollowModalType] = useState<
     'followers' | 'following'
   >('followers');
-
-  // Animation state
-  const [hasScrolled, setHasScrolled] = useState(false);
 
   // Fetch profile data using React Query hooks
   const { data: currentUser, isLoading: isUserLoading } = useGetUserById(
@@ -61,16 +57,6 @@ const Profile = () => {
     setFollowModalType(type);
     setShowFollowModal(true);
   };
-
-  // Listen for scroll to create sticky header effect
-  useEffect(() => {
-    const handleScroll = () => {
-      setHasScrolled(window.scrollY > 150);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Format join date
   const formatJoinDate = () => {
@@ -138,58 +124,6 @@ const Profile = () => {
               </Link>
             )}
           </div>
-
-          {/* Sticky Header that appears on scroll */}
-          <AnimatePresence>
-            {hasScrolled && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className='sticky top-0 z-10 w-full py-3 px-4 bg-dark-2 backdrop-blur-md bg-opacity-80 flex items-center justify-between border-b border-dark-4'
-              >
-                <div className='flex items-center gap-3'>
-                  <img
-                    src={
-                      currentUser.imageUrl ||
-                      '/assets/icons/profile-placeholder.svg'
-                    }
-                    alt='profile'
-                    className='w-10 h-10 rounded-full object-cover border-2 border-primary-500'
-                  />
-                  <h3 className='base-bold'>{currentUser.name}</h3>
-                </div>
-
-                {isOwnProfile ? (
-                  <Link to={`/update-profile/${currentUser.$id}`}>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      className='shad-button_ghost'
-                    >
-                      <Edit3 size={16} className='mr-1' /> Edit
-                    </Button>
-                  </Link>
-                ) : (
-                  <div className='flex gap-2'>
-                    <FollowButton userId={currentUser.$id} compact={true} />
-                    <Link
-                      to={`/messages`}
-                      state={{ initialConversation: currentUser }}
-                    >
-                      <Button
-                        variant='secondary'
-                        size='sm'
-                        className='flex items-center gap-1'
-                      >
-                        <MessageCircle size={16} />
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Profile Header Section */}
           <div className='flex flex-col items-center -mt-16 gap-6 w-full'>
