@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { IComment } from '@/types';
 import { appwriteConfig, databases } from '@/lib/appwrite/config';
 import { Query } from 'appwrite';
+import TranslateButton from './TranslateButton';
 
 type PostCardProps = {
   post: Models.Document;
@@ -58,7 +59,7 @@ const PostCard = ({ post }: PostCardProps) => {
           [
             Query.equal('postId', [post.$id]),
             Query.orderDesc('$createdAt'),
-            Query.limit(1)  // Changed from 3 to 1
+            Query.limit(1), // Changed from 3 to 1
           ]
         );
 
@@ -70,27 +71,33 @@ const PostCard = ({ post }: PostCardProps) => {
         }
 
         // Get unique userIds - handle object/string IDs
-        const userIds = [...new Set(commentsData.documents.map(comment => {
-          return getUserId(comment.userId);
-        }))].filter(id => id !== ''); // Filter out any empty IDs
+        const userIds = [
+          ...new Set(
+            commentsData.documents.map((comment) => {
+              return getUserId(comment.userId);
+            })
+          ),
+        ].filter((id) => id !== ''); // Filter out any empty IDs
 
         // Fetch user data in bulk
         const usersData = await Promise.all(
-          userIds.map(userId =>
-            databases.getDocument(
-              appwriteConfig.databaseId,
-              appwriteConfig.userCollectionId,
-              userId
-            ).catch(err => {
-              console.error(`Error fetching user ${userId}:`, err);
-              return null;
-            })
+          userIds.map((userId) =>
+            databases
+              .getDocument(
+                appwriteConfig.databaseId,
+                appwriteConfig.userCollectionId,
+                userId
+              )
+              .catch((err) => {
+                console.error(`Error fetching user ${userId}:`, err);
+                return null;
+              })
           )
         );
 
         // Create a map of userId to user data for quick lookup
         const userMap: UserMap = {};
-        usersData.forEach(userData => {
+        usersData.forEach((userData) => {
           if (userData) {
             userMap[userData.$id] = {
               $id: userData.$id,
@@ -102,7 +109,7 @@ const PostCard = ({ post }: PostCardProps) => {
         });
 
         // Combine comment data with user data
-        const enhancedComments = commentsData.documents.map(comment => {
+        const enhancedComments = commentsData.documents.map((comment) => {
           const actualUserId = getUserId(comment.userId);
           const userData = userMap[actualUserId] || {
             $id: actualUserId || 'unknown',
@@ -116,11 +123,11 @@ const PostCard = ({ post }: PostCardProps) => {
             userId: actualUserId,
             postId: comment.postId as string,
             content: comment.content as string,
-            createdAt: comment.createdAt as string || comment.$createdAt,
-            likes: comment.likes as string[] || [],
-            gifUrl: comment.gifUrl as string || null,
-            gifId: comment.gifId as string || null,
-            user: userData
+            createdAt: (comment.createdAt as string) || comment.$createdAt,
+            likes: (comment.likes as string[]) || [],
+            gifUrl: (comment.gifUrl as string) || null,
+            gifId: (comment.gifId as string) || null,
+            user: userData,
           } as IComment;
         });
 
@@ -208,7 +215,7 @@ const PostCard = ({ post }: PostCardProps) => {
       <div className='mt-3 space-y-2'>
         <div className='flex gap-2'>
           <p className='text-light-1 font-medium'>{post.creator.name}</p>
-          <p className='text-light-2'>{post.caption}</p>
+          <TranslateButton text={post.caption} />
         </div>
 
         {/* Comment Preview - Show only 1 comment */}
@@ -249,7 +256,7 @@ const PostCard = ({ post }: PostCardProps) => {
                           <div className='h-8 w-8 rounded overflow-hidden bg-dark-3'>
                             <img
                               src={comment.gifUrl}
-                              alt="GIF comment"
+                              alt='GIF comment'
                               className='h-full w-full object-cover'
                             />
                           </div>

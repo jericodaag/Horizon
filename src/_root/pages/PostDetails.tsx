@@ -13,6 +13,7 @@ import GridPostList from '@/components/shared/GridPostList';
 import CommentSection from '@/components/shared/CommentSection';
 import { useState, useEffect } from 'react';
 import DeleteConfirmationModal from '@/components/shared/DeleteConfirmationModal';
+import TranslateButton from '@/components/shared/TranslateButton';
 
 const PostDetails = () => {
   const navigate = useNavigate();
@@ -95,7 +96,7 @@ const PostDetails = () => {
           onClick={handleBackClick}
           variant='ghost'
           className='shad-button_ghost'
-          type="button"
+          type='button'
         >
           <img
             src={'/assets/icons/back.svg'}
@@ -113,7 +114,7 @@ const PostDetails = () => {
           onClick={handleBackClick}
           variant='ghost'
           className='shad-button_ghost'
-          type="button"
+          type='button'
         >
           <img
             src={'/assets/icons/back.svg'}
@@ -126,8 +127,8 @@ const PostDetails = () => {
       </div>
 
       {isLoading || !post ? (
-        <div className="flex-center w-full h-60">
-          <Loader className="h-10 w-10 animate-spin" />
+        <div className='flex-center w-full h-60'>
+          <Loader className='h-10 w-10 animate-spin' />
         </div>
       ) : (
         <>
@@ -135,7 +136,7 @@ const PostDetails = () => {
           {isMobile && (
             <div className='mobile-post-card'>
               {/* Post Image - Full-width square on mobile */}
-              <div className="mobile-post-image">
+              <div className='mobile-post-image'>
                 {post.imageUrl && (
                   <img
                     src={post.imageUrl}
@@ -170,9 +171,7 @@ const PostDetails = () => {
                       {post?.location && (
                         <>
                           <span>-</span>
-                          <p className='subtle-semibold'>
-                            {post?.location}
-                          </p>
+                          <p className='subtle-semibold'>{post?.location}</p>
                         </>
                       )}
                     </div>
@@ -194,8 +193,8 @@ const PostDetails = () => {
                       <Button
                         onClick={openDeleteModal}
                         variant='ghost'
-                        className="p-0"
-                        type="button"
+                        className='p-0'
+                        type='button'
                       >
                         <img
                           src={'/assets/icons/delete.svg'}
@@ -211,7 +210,7 @@ const PostDetails = () => {
 
               {/* Post Caption and Tags */}
               <div className='post-content'>
-                <p className='text-light-1'>{post?.caption}</p>
+                <TranslateButton text={post?.caption} showAlways={false} />
                 <ul className='flex flex-wrap gap-1 mt-2'>
                   {post?.tags.map((tag, index) => (
                     <li
@@ -232,10 +231,8 @@ const PostDetails = () => {
               <hr className='border-t border-dark-4/60 w-full' />
 
               {/* Comments Section - Optimized size */}
-              <div className="mobile-comments-container custom-scrollbar">
-                {post && id && (
-                  <CommentSection postId={id} />
-                )}
+              <div className='mobile-comments-container custom-scrollbar'>
+                {post && id && <CommentSection postId={id} />}
               </div>
             </div>
           )}
@@ -244,7 +241,7 @@ const PostDetails = () => {
           {!isMobile && (
             <div className='post_details-card'>
               {/* Left side - Post Image */}
-              <div className="post-image-side">
+              <div className='post-image-side'>
                 {post.imageUrl && (
                   <img
                     src={post.imageUrl}
@@ -304,8 +301,8 @@ const PostDetails = () => {
                         <Button
                           onClick={openDeleteModal}
                           variant='ghost'
-                          className="post_details-delete_btn"
-                          type="button"
+                          className='post_details-delete_btn'
+                          type='button'
                         >
                           <img
                             src={'/assets/icons/delete.svg'}
@@ -323,7 +320,7 @@ const PostDetails = () => {
 
                 {/* Post Caption and Tags - Less vertical space */}
                 <div className='flex flex-col w-full small-medium lg:base-regular'>
-                  <p>{post?.caption}</p>
+                  <TranslateButton text={post?.caption} showAlways={false} />
                   <ul className='flex flex-wrap gap-1 mt-2'>
                     {post?.tags.map((tag, index) => (
                       <li
@@ -345,10 +342,8 @@ const PostDetails = () => {
                 <hr className='border w-full border-dark-4/50 mb-2' />
 
                 {/* Comments Section - Optimized size */}
-                <div className="comments-container custom-scrollbar">
-                  {post && id && (
-                    <CommentSection postId={id} />
-                  )}
+                <div className='comments-container custom-scrollbar'>
+                  {post && id && <CommentSection postId={id} />}
                 </div>
               </div>
             </div>
@@ -360,9 +355,7 @@ const PostDetails = () => {
       <div className='related-posts-section w-full max-w-5xl mt-8'>
         <hr className='border w-full border-dark-4/80 mb-8' />
 
-        <h3 className='body-bold md:h3-bold w-full mb-8'>
-          More Related Posts
-        </h3>
+        <h3 className='body-bold md:h3-bold w-full mb-8'>More Related Posts</h3>
         {isUserPostLoading || !relatedPosts ? (
           <Loader />
         ) : (
