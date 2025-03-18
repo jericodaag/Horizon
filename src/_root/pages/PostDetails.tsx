@@ -232,7 +232,10 @@ const PostDetails = () => {
 
               {/* Comments Section - Optimized size */}
               <div className='mobile-comments-container custom-scrollbar'>
-                {post && id && <CommentSection postId={id} />}
+                {post && id && <CommentSection
+                  postId={id || ''}
+                  postCreatorId={post?.creator.$id || ''}
+                />}
               </div>
             </div>
           )}
@@ -343,7 +346,10 @@ const PostDetails = () => {
 
                 {/* Comments Section - Optimized size */}
                 <div className='comments-container custom-scrollbar'>
-                  {post && id && <CommentSection postId={id} />}
+                  {post && id && <CommentSection
+                    postId={id || ''}
+                    postCreatorId={post?.creator.$id || ''}
+                  />}
                 </div>
               </div>
             </div>

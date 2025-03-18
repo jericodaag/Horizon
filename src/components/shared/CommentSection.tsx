@@ -12,12 +12,14 @@ import { IComment } from '@/types';
 import { ID, Query } from 'appwrite';
 import GiphyPicker from './GiphyPicker';
 import TranslateComment from './TranslateComment';
+import DeleteConfirmationModal from '@/components/shared/DeleteConfirmationModal';
 
 type CommentSectionProps = {
   postId: string;
+  postCreatorId: string;
 };
 
-const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }) => {
   const { user } = useUserContext();
   const [commentText, setCommentText] = useState<string>('');
   const [comments, setComments] = useState<IComment[]>([]);
@@ -25,10 +27,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
+  // Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+
   // GIF states
   const [showGiphyPicker, setShowGiphyPicker] = useState(false);
   const [selectedGif, setSelectedGif] = useState({ url: '', id: '' });
 
+  // Check if user can delete a comment (post owner or comment author)
+  const canDeleteComment = (comment: IComment) => {
+    return user.id === comment.userId || user.id === postCreatorId;
+  };
   // Extract user ID safely
   const getUserId = (userIdData: any): string => {
     if (!userIdData) return '';
@@ -229,6 +239,75 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
     }
   };
 
+  // Open delete confirmation modal
+  const openDeleteModal = (commentId: string) => {
+    setCommentToDelete(commentId);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Handle confirm delete
+  const handleConfirmDelete = () => {
+    if (commentToDelete) {
+      handleDeleteComment(commentToDelete);
+      setCommentToDelete(null);
+    }
+  };
+
+  // Like/Unlike a comment
+  const handleLikeComment = async (comment: IComment) => {
+    try {
+      const likesArray = [...comment.likes];
+      const userLikedComment = likesArray.includes(user.id);
+
+      if (userLikedComment) {
+        // Unlike: Remove user ID from likes array
+        const filteredLikes = likesArray.filter(id => id !== user.id);
+
+        await databases.updateDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.commentsCollectionId,
+          comment.$id,
+          { likes: filteredLikes }
+        );
+
+        // Update local state
+        setComments(prevComments =>
+          prevComments.map(c =>
+            c.$id === comment.$id
+              ? { ...c, likes: filteredLikes }
+              : c
+          )
+        );
+      } else {
+        // Like: Add user ID to likes array
+        likesArray.push(user.id);
+
+        await databases.updateDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.commentsCollectionId,
+          comment.$id,
+          { likes: likesArray }
+        );
+
+        // Update local state
+        setComments(prevComments =>
+          prevComments.map(c =>
+            c.$id === comment.$id
+              ? { ...c, likes: likesArray }
+              : c
+          )
+        );
+      }
+
+      // Invalidate queries
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
+      });
+    } catch (error) {
+      console.error('Error liking/unliking comment:', error);
+    }
+  };
+
   return (
     <div className='comment-section-wrapper w-full mt-2'>
       {/* Comment Form */}
@@ -361,27 +440,32 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                 )}
 
                 <div className='flex gap-3 mt-1'>
+                  {/* Text-based Like button */}
                   <button
                     type='button'
-                    className='text-light-3 hover:text-light-1 text-xs'
+                    onClick={() => handleLikeComment(comment)}
+                    className={`text-xs ${comment.likes.includes(user.id)
+                      ? 'text-primary-500 font-medium'
+                      : 'text-light-3 hover:text-light-1'
+                      }`}
                   >
-                    Like
+                    {comment.likes.includes(user.id) ? 'Liked' : 'Like'}
+                    {comment.likes.length > 0 && (
+                      <span className='ml-1'>({comment.likes.length})</span>
+                    )}
                   </button>
-                  <button
-                    type='button'
-                    className='text-light-3 hover:text-light-1 text-xs'
-                  >
-                    Reply
-                  </button>
-                  {user.id === comment.userId && (
+
+                  {/* Delete button - only visible to post owner or comment author */}
+                  {canDeleteComment(comment) && (
                     <button
                       type='button'
-                      onClick={() => handleDeleteComment(comment.$id)}
+                      onClick={() => openDeleteModal(comment.$id)}
                       className='text-light-3 hover:text-red-500 text-xs'
                     >
                       Delete
                     </button>
                   )}
+
                 </div>
               </div>
             </div>
@@ -392,6 +476,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
           </p>
         )}
       </div>
+
+      {/* Delete Comment Confirmation Modal using your existing component */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Comment"
+        description="Are you sure you want to delete this comment? This action cannot be undone."
+      />
     </div>
   );
 };
