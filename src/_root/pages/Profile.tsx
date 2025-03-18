@@ -6,6 +6,7 @@ import {
   useGetFollowers,
   useGetFollowing,
   useGetSavedPosts,
+  useGetLikedPosts,
 } from '@/lib/react-query/queries';
 import GridPostList from '@/components/shared/GridPostList';
 import Loader from '@/components/shared/Loader';
@@ -39,11 +40,13 @@ const Profile = () => {
   const { data: savedPosts, isLoading: isSavedLoading } = useGetSavedPosts(
     user.id
   );
+  const { data: likedPosts, isLoading: isLikedLoading } = useGetLikedPosts(
+    user.id
+  );
 
   // Function to parse cover position
   const getCoverPosition = () => {
     if (!currentUser?.coverPosition) return { x: 0, y: 0 };
-
     try {
       return JSON.parse(currentUser.coverPosition);
     } catch (error) {
@@ -61,7 +64,6 @@ const Profile = () => {
   // Format join date
   const formatJoinDate = () => {
     if (!currentUser?.$createdAt) return '';
-
     try {
       const date = new Date(currentUser.$createdAt);
       return date.toLocaleDateString('en-US', {
@@ -228,14 +230,15 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Posts and Saved Posts Tabs */}
+          {/* Posts, Liked Posts, and Saved Posts Tabs */}
           <div className='w-full mt-10'>
             <Tabs defaultValue='posts' className='w-full'>
+              {/* Tab Navigation */}
               {/* Tab Navigation */}
               <TabsList className='w-full flex gap-4 bg-dark-3 p-1 rounded-full mb-8'>
                 <TabsTrigger
                   value='posts'
-                  className='w-full py-3 rounded-full data-[state=active]:bg-primary-500 transition-all'
+                  className='group w-full py-3 rounded-full data-[state=active]:bg-primary-500 transition-all'
                 >
                   <div className='flex-center gap-2'>
                     <img
@@ -243,16 +246,36 @@ const Profile = () => {
                       alt='posts'
                       width={20}
                       height={20}
+                      className='group-data-[state=active]:invert-white'
                     />
-                    <p>Posts</p>
+                    <p className='group-data-[state=active]:text-white'>Posts</p>
                   </div>
                 </TabsTrigger>
+
+                {/* Show Liked posts tab on user's own profile */}
+                {isOwnProfile && (
+                  <TabsTrigger
+                    value='liked'
+                    className='group w-full py-3 rounded-full data-[state=active]:bg-primary-500 transition-all'
+                  >
+                    <div className='flex-center gap-2'>
+                      <img
+                        src='/assets/icons/like.svg'
+                        alt='liked'
+                        width={20}
+                        height={20}
+                        className='group-data-[state=active]:invert-white'
+                      />
+                      <p className='group-data-[state=active]:text-white'>Liked</p>
+                    </div>
+                  </TabsTrigger>
+                )}
 
                 {/* Show Saved tab on user's own profile */}
                 {isOwnProfile && (
                   <TabsTrigger
                     value='saved'
-                    className='w-full py-3 rounded-full data-[state=active]:bg-primary-500 transition-all'
+                    className='group w-full py-3 rounded-full data-[state=active]:bg-primary-500 transition-all'
                   >
                     <div className='flex-center gap-2'>
                       <img
@@ -260,8 +283,9 @@ const Profile = () => {
                         alt='saved'
                         width={20}
                         height={20}
+                        className='group-data-[state=active]:invert-white'
                       />
-                      <p>Saved</p>
+                      <p className='group-data-[state=active]:text-white'>Saved</p>
                     </div>
                   </TabsTrigger>
                 )}
@@ -279,7 +303,7 @@ const Profile = () => {
                   ) : (
                     <>
                       {userPosts?.documents &&
-                      userPosts.documents.length > 0 ? (
+                        userPosts.documents.length > 0 ? (
                         // Display posts in grid layout if available
                         <div>
                           <GridPostList
@@ -310,6 +334,47 @@ const Profile = () => {
                     </>
                   )}
                 </TabsContent>
+
+                {/* Liked Posts Tab (only visible on own profile) */}
+                {isOwnProfile && (
+                  <TabsContent value='liked'>
+                    {isLikedLoading ? (
+                      <div className='flex-center w-full h-40'>
+                        <Loader />
+                      </div>
+                    ) : (
+                      <>
+                        {likedPosts && likedPosts.length > 0 ? (
+                          // Display liked posts in grid layout if available
+                          <div>
+                            <GridPostList
+                              posts={likedPosts}
+                              showStats={true}
+                              showUser={true}
+                            />
+                          </div>
+                        ) : (
+                          // Show empty state message if no liked posts
+                          <div className='flex-center flex-col gap-4 py-10'>
+                            <img
+                              src='/assets/icons/like.svg'
+                              alt='No liked posts'
+                              className='w-16 h-16 opacity-30'
+                            />
+                            <p className='text-light-4 text-center'>
+                              No liked posts yet
+                            </p>
+                            <Link to='/explore'>
+                              <Button variant='secondary' className='mt-2'>
+                                Explore posts
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </TabsContent>
+                )}
 
                 {/* Saved Posts Tab (only visible on own profile) */}
                 {isOwnProfile && (

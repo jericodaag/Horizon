@@ -396,6 +396,39 @@ export async function likePost(postId: string, likesArray: string[]) {
   }
 }
 
+// ============================== GET LIKED POSTS
+export async function getLikedPosts(userId?: string) {
+  if (!userId) return [];
+
+  try {
+    // Get the user document first
+    const user = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      userId
+    );
+
+    // If the user has no liked posts yet, return empty array
+    if (!user.liked || !user.liked.length) return [];
+
+    // Fetch all the posts that the user has liked using their liked array
+    const likedPosts = await Promise.all(
+      user.liked.map(async (postId) => {
+        return await databases.getDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.postCollectionId,
+          postId.$id || postId
+        );
+      })
+    );
+
+    return likedPosts.filter((post) => post); // Filter out any null values
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
+
 // ============================== SAVE POST
 export async function savePost(userId: string, postId: string) {
   try {

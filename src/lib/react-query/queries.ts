@@ -39,6 +39,7 @@ import {
   getConversation,
   getUserConversations,
   markMessagesAsRead,
+  getLikedPosts,
 } from '@/lib/appwrite/api';
 import {
   INewPost,
@@ -187,7 +188,18 @@ export const useLikePost = () => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_LIKED_POSTS],
+      });
     },
+  });
+};
+
+export const useGetLikedPosts = (userId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_LIKED_POSTS, userId],
+    queryFn: () => getLikedPosts(userId),
+    enabled: !!userId,
   });
 };
 
