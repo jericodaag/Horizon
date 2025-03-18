@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useGetRecentPosts } from '@/lib/react-query/queries';
-import { TypewriterEffect } from '@/components/ui/typewriter';
 import { HeroParallax } from '@/components/ui/hero-parallax';
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
 import { SimplifiedBackground } from '@/components/ui/simplified-background';
@@ -12,6 +11,7 @@ import { SimpleCalendar } from '@/components/ui/simple-calendar';
 import { IconCloud } from '@/components/ui/icon-cloud';
 import { TextReveal } from '@/components/ui/text-reveal';
 import { FeatureCard } from '@/components/ui/feature-card';
+import { TypewriterEffect } from '@/components/ui/typewriter';
 import { cn } from '@/lib/utils';
 
 // Icons
@@ -21,19 +21,174 @@ import {
   Compass,
   Heart,
   User,
-  Share2,
   Bookmark,
-  TrendingUp,
-  Users,
-  Bell,
   Search,
   Award,
   Globe,
 } from 'lucide-react';
 
-const LandingPage: React.FC = () => {
+// Custom MorphingText component with proper TypeScript types
+interface MorphingTextProps {
+  texts: string[];
+  className?: string;
+  fontSize?: string;
+  mobileSize?: string;
+  tabletSize?: string;
+}
+
+const useMorphingText = (texts: string[]) => {
+  const textIndexRef = useRef<number>(0);
+  const morphRef = useRef<number>(0);
+  const cooldownRef = useRef<number>(0);
+  const timeRef = useRef<Date>(new Date());
+  const text1Ref = useRef<HTMLSpanElement | null>(null);
+  const text2Ref = useRef<HTMLSpanElement | null>(null);
+  const morphTime = 1.5;
+  const cooldownTime = 0.5;
+
+  const setStyles = useCallback(
+    (fraction: number) => {
+      const current1 = text1Ref.current;
+      const current2 = text2Ref.current;
+
+      if (!current1 || !current2) return;
+
+      current2.style.filter = `blur(${Math.min(8 / fraction - 8, 100)}px)`;
+      current2.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
+
+      const invertedFraction = 1 - fraction;
+      current1.style.filter = `blur(${Math.min(8 / invertedFraction - 8, 100)}px)`;
+      current1.style.opacity = `${Math.pow(invertedFraction, 0.4) * 100}%`;
+
+      current1.textContent = texts[textIndexRef.current % texts.length];
+      current2.textContent = texts[(textIndexRef.current + 1) % texts.length];
+    },
+    [texts]
+  );
+
+  const doMorph = useCallback(() => {
+    morphRef.current -= cooldownRef.current;
+    cooldownRef.current = 0;
+    let fraction = morphRef.current / morphTime;
+    if (fraction > 1) {
+      cooldownRef.current = cooldownTime;
+      fraction = 1;
+    }
+    setStyles(fraction);
+    if (fraction === 1) {
+      textIndexRef.current++;
+    }
+  }, [setStyles]);
+
+  const doCooldown = useCallback(() => {
+    morphRef.current = 0;
+    const current1 = text1Ref.current;
+    const current2 = text2Ref.current;
+
+    if (current1 && current2) {
+      current2.style.filter = 'none';
+      current2.style.opacity = '100%';
+      current1.style.filter = 'none';
+      current1.style.opacity = '0%';
+    }
+  }, []);
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      const newTime = new Date();
+      const dt = (newTime.getTime() - timeRef.current.getTime()) / 1000;
+      timeRef.current = newTime;
+      cooldownRef.current -= dt;
+      if (cooldownRef.current <= 0) doMorph();
+      else doCooldown();
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [doMorph, doCooldown]);
+
+  return { text1Ref, text2Ref };
+};
+
+const MorphingText: React.FC<MorphingTextProps> = ({
+  texts,
+  className,
+  fontSize = 'text-4xl',
+  mobileSize = 'text-3xl',
+  tabletSize = 'text-5xl',
+}) => {
+  const { text1Ref, text2Ref } = useMorphingText(texts);
+
+  return (
+    <div
+      className={cn(
+        `relative mx-auto h-12 w-full max-w-screen-md text-center font-sans ${mobileSize} ${tabletSize} md:${fontSize} font-bold leading-none [filter:url(#threshold)_blur(0.6px)]`,
+        className
+      )}
+    >
+      <span
+        className='absolute inset-x-0 top-0 m-auto inline-block w-full'
+        ref={text1Ref}
+      />
+      <span
+        className='absolute inset-x-0 top-0 m-auto inline-block w-full'
+        ref={text2Ref}
+      />
+      <svg
+        id='filters'
+        className='fixed h-0 w-0'
+        preserveAspectRatio='xMidYMid slice'
+      >
+        <defs>
+          <filter id='threshold'>
+            <feColorMatrix
+              in='SourceGraphic'
+              type='matrix'
+              values='1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      0 0 0 255 -140'
+            />
+          </filter>
+        </defs>
+      </svg>
+    </div>
+  );
+};
+
+// Types for features
+interface Feature {
+  Icon: React.FC<{ className?: string }>;
+  name: string;
+  description: string;
+  href?: string;
+  cta?: string;
+  className?: string;
+  background?: React.ReactNode;
+}
+
+// Type for testimonials
+interface Testimonial {
+  quote: string;
+  name: string;
+  title: string;
+}
+
+// Type for trending topics
+interface TrendingTopic {
+  name: string;
+  body: string;
+}
+
+const LandingPage = () => {
   const { data: posts } = useGetRecentPosts();
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const aboutSectionRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -67,8 +222,16 @@ const LandingPage: React.FC = () => {
     },
   ];
 
+  // Morphing text phrases for Express Yourself section
+  const expressYourselfPhrases = [
+    'Express Yourself',
+    'Be Authentic',
+    'Tell Your Story',
+    'Share Your Vision',
+  ];
+
   // Testimonial cards for infinite moving cards
-  const testimonials = [
+  const testimonials: Testimonial[] = [
     {
       quote:
         'Horizon has completely transformed how I share my photography with the world.',
@@ -102,7 +265,7 @@ const LandingPage: React.FC = () => {
   ];
 
   // Sample content for Marquee component
-  const trendingTopics = [
+  const trendingTopics: TrendingTopic[] = [
     {
       name: '#photography',
       body: 'Stunning landscapes and portraits from creators around the world',
@@ -126,12 +289,12 @@ const LandingPage: React.FC = () => {
   ];
 
   // Features for Bento grid
-  const features = [
+  const features: Feature[] = [
     {
       Icon: Camera,
-      name: 'Share Moments',
+      name: 'Create Posts',
       description:
-        'Post photos and create stories that disappear after 24 hours.',
+        'Share your photos and moments with creators around the world.',
       href: '/sign-in',
       cta: 'Try it out',
       className: 'col-span-3 lg:col-span-1',
@@ -221,7 +384,7 @@ const LandingPage: React.FC = () => {
   ];
 
   // Features for second Bento grid
-  const advancedFeatures = [
+  const advancedFeatures: Feature[] = [
     {
       Icon: User,
       name: 'Profile Customization',
@@ -236,23 +399,37 @@ const LandingPage: React.FC = () => {
       ),
     },
     {
-      Icon: TrendingUp,
-      name: 'Analytics',
-      description: 'Track your growth and engagement with detailed insights.',
+      Icon: () => (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-5 h-5"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"></path>
+          <path d="M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10"></path>
+          <path d="M2 12h20"></path>
+        </svg>
+      ),
+      name: 'Multilingual Support',
+      description: 'Translate content into over 100 languages powered by Google Cloud.',
       href: '/sign-in',
-      cta: 'View stats',
+      cta: 'Try translations',
       className: 'col-span-3 lg:col-span-1',
       background: (
-        <div className='absolute right-5 top-10'>
-          <div className='flex space-x-1'>
-            {[30, 50, 70, 90, 60, 80, 40].map((height, idx) => (
-              <div
-                key={idx}
-                className='w-3 rounded-t-sm bg-gradient-to-t from-green-500/30 to-emerald-500/50'
-                style={{ height: `${height}px` }}
-              />
-            ))}
-          </div>
+        <div className='absolute inset-0 overflow-hidden'>
+          <div className='absolute top-6 left-3 text-xs opacity-10 text-blue-300 font-bold'>こんにちは</div>
+          <div className='absolute top-12 left-10 text-xs opacity-10 text-indigo-300 font-bold'>Bonjour</div>
+          <div className='absolute top-4 right-5 text-xs opacity-10 text-purple-300 font-bold'>안녕하세요</div>
+          <div className='absolute bottom-12 left-6 text-xs opacity-10 text-sky-300 font-bold'>Hola</div>
+          <div className='absolute bottom-6 right-12 text-xs opacity-10 text-violet-300 font-bold'>Guten Tag</div>
+          <div className='absolute bottom-16 right-3 text-xs opacity-10 text-blue-300 font-bold'>Привет</div>
+          <div className='absolute top-18 left-18 text-xs opacity-10 text-indigo-300 font-bold'>مرحبا</div>
         </div>
       ),
     },
@@ -275,16 +452,35 @@ const LandingPage: React.FC = () => {
       ),
     },
     {
-      Icon: Share2,
-      name: 'Cross-Platform Sharing',
-      description: 'Share your content across multiple social platforms.',
+      Icon: () => (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-5 h-5"
+        >
+          <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+          <path d="M9.9 8.7h-2a.7.7 0 0 0-.7.7v5.2a.7.7 0 0 0 .7.7h2a.7.7 0 0 0 .7-.7V9.4a.7.7 0 0 0-.7-.7Z"></path>
+          <path d="M16.7 8.7h-2a.7.7 0 0 0-.7.7v5.2a.7.7 0 0 0 .7.7h2a.7.7 0 0 0 .7-.7V9.4a.7.7 0 0 0-.7-.7Z"></path>
+        </svg>
+      ),
+      name: 'GIF Support',
+      description: 'Express yourself with GIFs in comments powered by GIPHY integration.',
       href: '/sign-in',
-      cta: 'Connect platforms',
+      cta: 'Try GIFs',
       className: 'col-span-3 lg:col-span-2',
       background: (
-        <div className='absolute right-10 top-10'>
-          <div className='w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/30 to-cyan-500/30 flex items-center justify-center'>
-            <Share2 className='w-8 h-8 text-white/70' />
+        <div className='absolute inset-0 overflow-hidden'>
+          <div className='absolute inset-0 opacity-20'>
+            <div className='absolute top-4 right-8 w-16 h-16 rounded-lg bg-pink-400/30 animate-bounce' style={{ animationDuration: '3s' }}></div>
+            <div className='absolute bottom-8 right-20 w-12 h-12 rounded-lg bg-blue-400/30 animate-bounce' style={{ animationDuration: '2.5s' }}></div>
+            <div className='absolute top-16 left-8 w-10 h-10 rounded-lg bg-purple-400/30 animate-bounce' style={{ animationDuration: '4s' }}></div>
+            <div className='absolute bottom-12 left-12 w-14 h-14 rounded-lg bg-indigo-400/30 animate-bounce' style={{ animationDuration: '3.5s' }}></div>
+            <div className='absolute top-24 right-16 w-8 h-8 rounded-lg bg-green-400/30 animate-bounce' style={{ animationDuration: '2.8s' }}></div>
           </div>
         </div>
       ),
@@ -344,18 +540,19 @@ const LandingPage: React.FC = () => {
           <div className='flex gap-6 items-center'>
             <button
               onClick={() => (window.location.href = '/sign-in')}
-              className='text-white hover:text-gray-300 transition-colors font-inter relative group'
+              className='text-white hover:text-gray-300 transition-colors font-inter relative group text-sm'
             >
               <span>Sign In</span>
               <span className='absolute bottom-0 left-0 w-0 h-px bg-white group-hover:w-full transition-all duration-300' />
             </button>
             <motion.button
               onClick={() => (window.location.href = '/sign-up')}
-              className='relative px-6 py-2 rounded-full overflow-hidden bg-violet-600'
+              className='relative px-5 py-1.5 rounded-full overflow-hidden'
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <span className='relative z-10 text-white font-medium'>
+              <span className='absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600'></span>
+              <span className='relative z-10 text-white font-medium text-sm'>
                 Join Now
               </span>
             </motion.button>
@@ -406,12 +603,12 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Tech Stack Section */}
-      <section className='relative py-24 overflow-hidden bg-black'>
+      <section className='relative py-20 overflow-hidden bg-black'>
         <div className='max-w-7xl mx-auto px-6 text-center'>
-          <TextReveal className='text-4xl md:text-5xl font-bold mb-4 px-4'>
+          <TextReveal className='text-3xl md:text-4xl font-bold mb-4 px-4'>
             Built With Modern Technologies
           </TextReveal>
-          <p className='text-gray-400 max-w-2xl mx-auto mb-16 px-4 text-sm sm:text-base'>
+          <p className='text-gray-400 max-w-2xl mx-auto mb-16 px-4 text-xs sm:text-sm'>
             Horizon leverages the latest web technologies to provide a seamless,
             fast, and engaging social media experience
           </p>
@@ -465,10 +662,10 @@ const LandingPage: React.FC = () => {
             viewport={{ once: true, margin: '-100px' }}
             className='text-center mb-16'
           >
-            <h2 className='text-4xl md:text-5xl font-bold mb-4 px-4'>
+            <h2 className='text-3xl md:text-4xl font-bold mb-4 px-4'>
               Discover What Horizon Offers
             </h2>
-            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-sm sm:text-base'>
+            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-xs sm:text-sm'>
               A modern social platform with all the features you need to
               connect, share, and grow your online presence
             </p>
@@ -486,7 +683,7 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: '-100px' }}
-            className='text-4xl font-bold text-center my-16 font-inter tracking-tight px-4'
+            className='text-3xl font-bold text-center my-16 font-inter tracking-tight px-4'
           >
             Elevate Your Social Experience
           </motion.h2>
@@ -507,8 +704,8 @@ const LandingPage: React.FC = () => {
       )}
 
       {/* Testimonials - Infinite Moving Cards */}
-      <div className='relative flex flex-col items-center justify-center bg-black overflow-hidden py-20'>
-        <h2 className='text-3xl md:text-5xl font-bold text-center text-white mb-8 px-4'>
+      <div className='relative flex flex-col items-center justify-center bg-black overflow-hidden py-14 mb-0'>
+        <h2 className='text-2xl md:text-3xl font-bold text-center text-white mb-8 px-4'>
           What Our Users Say
         </h2>
         <div className='relative w-full max-w-[1400px] mx-auto'>
@@ -523,14 +720,14 @@ const LandingPage: React.FC = () => {
       {/* Features Grid */}
       <section
         ref={aboutSectionRef}
-        className='w-full px-6 py-24 bg-black relative overflow-hidden'
+        className='w-full px-6 pt-4 pb-14 bg-black relative overflow-hidden'
       >
         <div className='max-w-7xl mx-auto'>
           <motion.div style={{ opacity, y }} className='text-center mb-16'>
-            <TextReveal className='text-4xl md:text-5xl font-bold mb-6 px-4'>
+            <TextReveal className='text-3xl md:text-4xl font-bold mb-6 px-4'>
               Experience the Difference
             </TextReveal>
-            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-sm sm:text-base'>
+            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-xs sm:text-sm'>
               More than just a social network - a complete platform for
               creators, influencers, and everyone with a story to tell
             </p>
@@ -559,7 +756,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Express Yourself Section with Improved Visuals */}
+      {/* Express Yourself Section with Morphing Text */}
       <section className='w-full px-6 py-20 relative z-10 bg-black'>
         <div className='max-w-[1400px] mx-auto'>
           <motion.div
@@ -568,10 +765,15 @@ const LandingPage: React.FC = () => {
             viewport={{ once: true, margin: '-100px' }}
             className='text-center mb-16'
           >
-            <h2 className='text-5xl font-bold mb-4 font-inter tracking-tight px-4'>
-              Express Yourself
-            </h2>
-            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-sm sm:text-base'>
+            {/* Smaller MorphingText component */}
+            <MorphingText
+              texts={expressYourselfPhrases}
+              className='mb-4 font-inter tracking-tight'
+              fontSize='text-4xl'
+              mobileSize='text-2xl'
+              tabletSize='text-3xl'
+            />
+            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-xs sm:text-sm'>
               Horizon gives you the tools to share your authentic self with the
               world
             </p>
@@ -580,22 +782,23 @@ const LandingPage: React.FC = () => {
           <div className='grid grid-cols-1 md:grid-cols-3 gap-12 px-2 sm:px-0'>
             {[
               {
-                title: 'Share Stories',
-                description:
-                  'Share your daily moments through photos and stories',
-                icon: <Users className='w-6 h-6' />,
-              },
-              {
                 title: 'Connect',
                 description:
                   'Build meaningful connections with creators worldwide',
-                icon: <Bell className='w-6 h-6' />,
+                icon: <MessageCircle className='w-6 h-6' />,
               },
               {
                 title: 'Grow',
                 description:
                   'Develop your personal brand and reach new audiences',
                 icon: <Award className='w-6 h-6' />,
+              },
+
+              {
+                title: ' Share Stories',
+                description:
+                  'Share your daily moments through photos and stories',
+                icon: <Camera className='w-6 h-6' />,
               },
             ].map((feature, index) => (
               <motion.div
@@ -609,10 +812,10 @@ const LandingPage: React.FC = () => {
                 <div className='relative mx-auto mb-4 w-14 h-14 flex items-center justify-center rounded-full bg-gradient-to-br from-violet-600/20 to-indigo-600/20 text-violet-500 group-hover:text-white transition-all duration-300'>
                   {feature.icon}
                 </div>
-                <h3 className='text-2xl font-bold mb-4 font-inter'>
+                <h3 className='text-xl font-bold mb-4 font-inter'>
                   {feature.title}
                 </h3>
-                <p className='text-gray-400 font-inter leading-relaxed'>
+                <p className='text-gray-400 font-inter leading-relaxed text-sm'>
                   {feature.description}
                 </p>
               </motion.div>
@@ -622,31 +825,32 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className='w-full px-6 py-24 bg-black relative overflow-hidden'>
+      <section className='w-full px-6 py-16 bg-black relative overflow-hidden'>
         <div className='max-w-[800px] mx-auto text-center relative z-10 px-4'>
-          <TextReveal className='text-3xl sm:text-4xl md:text-6xl font-bold mb-6 px-4'>
+          <h2 className='text-2xl sm:text-3xl md:text-4xl font-bold mb-4 px-4 text-violet-500'>
             Ready to Join Horizon?
-          </TextReveal>
-          <p className='text-base sm:text-lg md:text-xl text-gray-300 mb-10 max-w-xl mx-auto px-4'>
+          </h2>
+          <p className='text-sm sm:text-base text-gray-300 mb-8 max-w-xl mx-auto px-4'>
             Start sharing your story with the world today and connect with
             like-minded creators.
           </p>
 
           <motion.button
             onClick={() => (window.location.href = '/sign-up')}
-            className='relative px-8 py-4 bg-violet-600 rounded-full'
+            className='relative px-6 py-2.5 rounded-full overflow-hidden'
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <span className='text-white font-medium text-lg'>
+            <span className='absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600'></span>
+            <span className='relative z-10 text-white font-medium text-sm'>
               Create Your Account
             </span>
           </motion.button>
 
-          <p className='text-gray-400 mt-8 px-4'>
+          <p className='text-gray-400 mt-6 px-4 text-xs'>
             Join thousands of creators already on the platform
           </p>
         </div>
@@ -657,14 +861,14 @@ const LandingPage: React.FC = () => {
         <div className='max-w-[1400px] mx-auto'>
           <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-10'>
             <div>
-              <h3 className='text-xl font-bold mb-4'>Horizon</h3>
-              <p className='text-gray-400'>
+              <h3 className='text-lg font-bold mb-4'>Horizon</h3>
+              <p className='text-gray-400 text-sm'>
                 A modern social platform for creators and storytellers
               </p>
             </div>
             <div>
               <h4 className='text-md font-semibold mb-4'>Features</h4>
-              <ul className='space-y-2 text-gray-400'>
+              <ul className='space-y-2 text-gray-400 text-sm'>
                 <li>Photo Sharing</li>
                 <li>Stories</li>
                 <li>Messaging</li>
@@ -673,7 +877,7 @@ const LandingPage: React.FC = () => {
             </div>
             <div>
               <h4 className='text-md font-semibold mb-4'>Company</h4>
-              <ul className='space-y-2 text-gray-400'>
+              <ul className='space-y-2 text-gray-400 text-sm'>
                 <li>About Us</li>
                 <li>Careers</li>
                 <li>Press</li>
@@ -682,7 +886,7 @@ const LandingPage: React.FC = () => {
             </div>
             <div>
               <h4 className='text-md font-semibold mb-4'>Legal</h4>
-              <ul className='space-y-2 text-gray-400'>
+              <ul className='space-y-2 text-gray-400 text-sm'>
                 <li>Terms of Service</li>
                 <li>Privacy Policy</li>
                 <li>Cookie Policy</li>
@@ -692,7 +896,7 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className='pt-8 border-t border-white/10 flex justify-center text-center'>
-            <p className='text-gray-400 font-inter text-sm sm:text-base'>
+            <p className='text-gray-400 font-inter text-xs sm:text-sm'>
               © {new Date().getFullYear()} Horizon. All rights reserved.
             </p>
           </div>
