@@ -51,9 +51,9 @@ export const TypewriterEffect: React.FC<TypewriterEffectProps> = ({
     }, [currentWordIndex, currentCharacterIndex, wordsArray]);
 
     return (
-        <div className={`${className} flex flex-row items-center`}>
+        <div className={`${className} flex flex-wrap justify-center items-center`}>
             {wordsArray.map((word, wordIndex) => (
-                <div key={wordIndex} className="mr-2 flex items-center">
+                <div key={wordIndex} className="mr-1 sm:mr-2 flex items-center">
                     {word.characters.map((character, characterIndex) => {
                         const isCurrentWord = wordIndex === currentWordIndex;
                         const isTyped =
@@ -63,7 +63,7 @@ export const TypewriterEffect: React.FC<TypewriterEffectProps> = ({
                         return (
                             <motion.span
                                 key={characterIndex}
-                                className={`${word.className} text-5xl sm:text-6xl font-bold font-inter leading-tight tracking-tight`}
+                                className={`${word.className} text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight`}
                                 initial={{ opacity: 0 }}
                                 animate={{
                                     opacity: isTyped ? 1 : 0,
@@ -85,7 +85,7 @@ export const TypewriterEffect: React.FC<TypewriterEffectProps> = ({
                         repeat: Infinity,
                         repeatType: "loop",
                     }}
-                    className={`${cursorClassName} text-5xl sm:text-6xl font-bold font-inter`}
+                    className={`${cursorClassName} text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold`}
                 >
                     |
                 </motion.span>

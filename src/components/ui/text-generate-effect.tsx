@@ -30,11 +30,11 @@ export const TextGenerateEffect = ({
 
     return (
         <div
-            className={`text-lg md:text-xl text-gray-300 font-inter leading-relaxed ${className}`}
+            className={`text-sm sm:text-lg md:text-xl text-gray-300 font-inter leading-relaxed px-2 sm:px-0 ${className}`}
         >
             {displayedContent}
             {isGenerating && (
-                <span className="inline-block w-1 h-4 bg-violet-500 ml-1 animate-blink" />
+                <span className="inline-block w-1 h-3 sm:h-4 bg-violet-500 ml-0.5 sm:ml-1 animate-blink" />
             )}
         </div>
     );

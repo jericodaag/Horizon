@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { cn } from "@/lib/utils";
-
 export const SimplifiedBackground = ({
     children,
     className,
@@ -26,9 +25,8 @@ export const SimplifiedBackground = ({
                         "radial-gradient(circle at 25% 30%, rgba(108, 0, 162, 0.5) 0%, transparent 50%), " +
                         "radial-gradient(circle at 80% 20%, rgba(0, 17, 82, 0.5) 0%, transparent 50%)",
                     backgroundSize: "cover",
-                }}
-            ></div>
-
+                }}>
+            </div>
             {/* Subtle moving gradient overlay with CSS animation only */}
             <div
                 className="absolute inset-0 opacity-30 animate-subtle-float"
@@ -38,7 +36,6 @@ export const SimplifiedBackground = ({
                     filter: "blur(40px)",
                 }}
             ></div>
-
             {/* Optional noise texture for added depth */}
             <div
                 className="absolute inset-0 z-10 h-full w-full bg-black opacity-70"
@@ -48,6 +45,13 @@ export const SimplifiedBackground = ({
                 }}
             ></div>
 
+            {/* Explicit black gradient at the bottom */}
+            <div
+                className="absolute bottom-0 left-0 right-0 z-20 h-1/3 w-full"
+                style={{
+                    background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)",
+                }}
+            ></div>
             {/* Content container */}
             <div
                 className={cn(

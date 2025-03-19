@@ -1,18 +1,15 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { motion } from 'framer-motion';
 import { useGetRecentPosts } from '@/lib/react-query/queries';
-import { HeroParallax } from '@/components/ui/hero-parallax';
+
+// Import regular components
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
 import { SimplifiedBackground } from '@/components/ui/simplified-background';
-import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards';
-import { BentoGrid, BentoCard } from '@/components/ui/bento-grid';
-import { Marquee } from '@/components/ui/marquee';
-import { SimpleCalendar } from '@/components/ui/simple-calendar';
-import { IconCloud } from '@/components/ui/icon-cloud';
-import { TextReveal } from '@/components/ui/text-reveal';
-import { FeatureCard } from '@/components/ui/feature-card';
 import { TypewriterEffect } from '@/components/ui/typewriter';
-import { cn } from '@/lib/utils';
+import MorphingText from '@/components/ui/morphing-text';
+import LoadingFallback from '@/components/ui/loading-fallback';
+import GlassCard from '@/components/ui/glass-card';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 
 // Icons
 import {
@@ -20,151 +17,23 @@ import {
   Camera,
   Compass,
   Heart,
-  User,
   Bookmark,
-  Search,
   Award,
   Globe,
 } from 'lucide-react';
+import { TechStackOrbit } from '@/components/ui/tech-stack-orbit';
 
-// Custom MorphingText component with proper TypeScript types
-interface MorphingTextProps {
-  texts: string[];
-  className?: string;
-  fontSize?: string;
-  mobileSize?: string;
-  tabletSize?: string;
-}
+// Lazy load heavy components
+const HeroParallax = lazy(() => import('@/components/ui/hero-parallax').then(module => ({ default: module.HeroParallax })));
+const InfiniteMovingCards = lazy(() => import('@/components/ui/infinite-moving-cards').then(module => ({ default: module.InfiniteMovingCards })));
+const BentoGrid = lazy(() => import('@/components/ui/bento-grid').then(module => ({ default: module.BentoGrid })));
+const BentoCard = lazy(() => import('@/components/ui/bento-grid').then(module => ({ default: module.BentoCard })));
+const TextReveal = lazy(() => import('@/components/ui/text-reveal').then(module => ({ default: module.TextReveal })));
+const AppleCardsCarousel = lazy(() => import('@/components/ui/apple-card-carousel').then(module => ({ default: module.AppleCardsCarousel })));
 
-const useMorphingText = (texts: string[]) => {
-  const textIndexRef = useRef<number>(0);
-  const morphRef = useRef<number>(0);
-  const cooldownRef = useRef<number>(0);
-  const timeRef = useRef<Date>(new Date());
-  const text1Ref = useRef<HTMLSpanElement | null>(null);
-  const text2Ref = useRef<HTMLSpanElement | null>(null);
-  const morphTime = 1.5;
-  const cooldownTime = 0.5;
-
-  const setStyles = useCallback(
-    (fraction: number) => {
-      const current1 = text1Ref.current;
-      const current2 = text2Ref.current;
-
-      if (!current1 || !current2) return;
-
-      current2.style.filter = `blur(${Math.min(8 / fraction - 8, 100)}px)`;
-      current2.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
-
-      const invertedFraction = 1 - fraction;
-      current1.style.filter = `blur(${Math.min(8 / invertedFraction - 8, 100)}px)`;
-      current1.style.opacity = `${Math.pow(invertedFraction, 0.4) * 100}%`;
-
-      current1.textContent = texts[textIndexRef.current % texts.length];
-      current2.textContent = texts[(textIndexRef.current + 1) % texts.length];
-    },
-    [texts]
-  );
-
-  const doMorph = useCallback(() => {
-    morphRef.current -= cooldownRef.current;
-    cooldownRef.current = 0;
-    let fraction = morphRef.current / morphTime;
-    if (fraction > 1) {
-      cooldownRef.current = cooldownTime;
-      fraction = 1;
-    }
-    setStyles(fraction);
-    if (fraction === 1) {
-      textIndexRef.current++;
-    }
-  }, [setStyles]);
-
-  const doCooldown = useCallback(() => {
-    morphRef.current = 0;
-    const current1 = text1Ref.current;
-    const current2 = text2Ref.current;
-
-    if (current1 && current2) {
-      current2.style.filter = 'none';
-      current2.style.opacity = '100%';
-      current1.style.filter = 'none';
-      current1.style.opacity = '0%';
-    }
-  }, []);
-
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      const newTime = new Date();
-      const dt = (newTime.getTime() - timeRef.current.getTime()) / 1000;
-      timeRef.current = newTime;
-      cooldownRef.current -= dt;
-      if (cooldownRef.current <= 0) doMorph();
-      else doCooldown();
-    };
-
-    animate();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [doMorph, doCooldown]);
-
-  return { text1Ref, text2Ref };
-};
-
-const MorphingText: React.FC<MorphingTextProps> = ({
-  texts,
-  className,
-  fontSize = 'text-4xl',
-  mobileSize = 'text-3xl',
-  tabletSize = 'text-5xl',
-}) => {
-  const { text1Ref, text2Ref } = useMorphingText(texts);
-
-  return (
-    <div
-      className={cn(
-        `relative mx-auto h-12 w-full max-w-screen-md text-center font-sans ${mobileSize} ${tabletSize} md:${fontSize} font-bold leading-none [filter:url(#threshold)_blur(0.6px)]`,
-        className
-      )}
-    >
-      <span
-        className='absolute inset-x-0 top-0 m-auto inline-block w-full'
-        ref={text1Ref}
-      />
-      <span
-        className='absolute inset-x-0 top-0 m-auto inline-block w-full'
-        ref={text2Ref}
-      />
-      <svg
-        id='filters'
-        className='fixed h-0 w-0'
-        preserveAspectRatio='xMidYMid slice'
-      >
-        <defs>
-          <filter id='threshold'>
-            <feColorMatrix
-              in='SourceGraphic'
-              type='matrix'
-              values='1 0 0 0 0
-                      0 1 0 0 0
-                      0 0 1 0 0
-                      0 0 0 255 -140'
-            />
-          </filter>
-        </defs>
-      </svg>
-    </div>
-  );
-};
-
-// Types for features
+// Define interfaces for remaining non-component types
 interface Feature {
-  Icon: React.FC<{ className?: string }>;
+  Icon: React.FC<{ className?: string }> | (() => JSX.Element);
   name: string;
   description: string;
   href?: string;
@@ -173,360 +42,326 @@ interface Feature {
   background?: React.ReactNode;
 }
 
-// Type for testimonials
 interface Testimonial {
   quote: string;
   name: string;
   title: string;
 }
 
-// Type for trending topics
-interface TrendingTopic {
-  name: string;
-  body: string;
+interface CarouselItem {
+  category: string;
+  title: string;
+  description: string;
+  image: string;
 }
 
-const LandingPage = () => {
-  const { data: posts } = useGetRecentPosts();
-  const [isScrolled, setIsScrolled] = useState<boolean>(false);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const aboutSectionRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: aboutSectionRef,
-    offset: ['start end', 'end start'],
-  });
+interface GlassFeature {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
 
-  const topSectionRef = useRef<HTMLElement>(null);
+// Optimized style injection
+const injectStyles = (): (() => void) => {
+  // Custom scrollbar styles
+  const style = document.createElement('style');
+  style.textContent = `
+    ::-webkit-scrollbar {
+      width: 8px;
+      background: #000000;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
 
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
-  const y = useTransform(scrollYProgress, [0, 0.5], [100, 0]);
+    /* Optimized animations */
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-  // Transform posts into products format for HeroParallax
-  const parallaxProducts =
-    posts?.documents?.map((post) => ({
-      title: post.caption || post.creator?.name || 'Horizon Post',
-      thumbnail: post.imageUrl,
-    })) || [];
+    .animate-fade-up {
+      animation: fadeUp 0.5s ease-out forwards;
+    }
 
-  // Typewriter effect words
-  const words = [
-    {
-      text: 'Share ',
-    },
-    {
-      text: 'Your ',
-    },
-    {
-      text: 'Story ',
-      className: 'text-violet-500',
-    },
-  ];
+    /* Simplified 3D effect */
+    .card-3d {
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
 
-  // Morphing text phrases for Express Yourself section
-  const expressYourselfPhrases = [
-    'Express Yourself',
-    'Be Authentic',
-    'Tell Your Story',
-    'Share Your Vision',
-  ];
+    .card-3d-content {
+      transition: transform 0.2s ease-out;
+      will-change: transform;
+    }
 
-  // Testimonial cards for infinite moving cards
-  const testimonials: Testimonial[] = [
-    {
-      quote:
-        'Horizon has completely transformed how I share my photography with the world.',
-      name: 'John Pingul',
-      title: 'Professional Photographer',
-    },
-    {
-      quote:
-        "The connections I've made through this platform have been incredible. Best community ever!",
-      name: 'Elmalia Diaz',
-      title: 'Content Creator',
-    },
-    {
-      quote:
-        'This platform has helped me grow my audience by 300% in just three months.',
-      name: 'Richard Darwin',
-      title: 'Influencer',
-    },
-    {
-      quote:
-        'I love the clean interface and how easy it is to share my daily experiences.',
-      name: 'Paul Santos',
-      title: 'Travel Blogger',
-    },
-    {
-      quote:
-        "The engagement on my posts here is way higher than on any other platform I've used.",
-      name: 'Ranielle Tuazon',
-      title: 'Digital Artist',
-    },
-  ];
+    .card-3d:hover .card-3d-content {
+      transform: translateZ(20px);
+    }
 
-  // Sample content for Marquee component
-  const trendingTopics: TrendingTopic[] = [
-    {
-      name: '#photography',
-      body: 'Stunning landscapes and portraits from creators around the world',
-    },
-    {
-      name: '#foodie',
-      body: 'Delicious culinary creations and recipes to try at home',
-    },
-    {
-      name: '#travel',
-      body: 'Explore breathtaking destinations and travel tips from globe-trotters',
-    },
-    {
-      name: '#fitness',
-      body: 'Workout routines, nutrition advice, and fitness journeys',
-    },
-    {
-      name: '#fashion',
-      body: 'Latest trends, outfit inspirations, and style guides',
-    },
-  ];
+    /* Improved hover effects with hardware acceleration */
+    .hover-glow:hover {
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+      transition: box-shadow 0.3s ease;
+      will-change: box-shadow;
+    }
+  `;
+  document.head.appendChild(style);
+  return () => {
+    document.head.removeChild(style);
+  };
+};
 
-  // Features for Bento grid
-  const features: Feature[] = [
-    {
-      Icon: Camera,
-      name: 'Create Posts',
-      description:
-        'Share your photos and moments with creators around the world.',
-      href: '/sign-in',
-      cta: 'Try it out',
-      className: 'col-span-3 lg:col-span-1',
-      background: (
-        <Marquee
-          pauseOnHover
-          className='absolute top-10 [mask-image:linear-gradient(to_top,transparent_40%,#000_100%)]'
-        >
-          {trendingTopics.map((topic, idx) => (
-            <figure
-              key={idx}
-              className={cn(
-                'relative w-32 cursor-pointer overflow-hidden rounded-xl border p-4',
-                'border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]',
-                'dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]',
-                'transform-gpu blur-[1px] transition-all duration-300 ease-out hover:blur-none'
-              )}
-            >
-              <div className='flex flex-row items-center gap-2'>
-                <div className='flex flex-col'>
-                  <figcaption className='text-sm font-medium dark:text-white'>
-                    {topic.name}
-                  </figcaption>
-                </div>
-              </div>
-              <blockquote className='mt-2 text-xs'>{topic.body}</blockquote>
-            </figure>
-          ))}
-        </Marquee>
-      ),
-    },
-    {
-      Icon: Heart,
-      name: 'Engage With Content',
-      description:
-        'Like, comment and save your favorite posts for later viewing.',
-      href: '/sign-in',
-      cta: 'Learn more',
-      className: 'col-span-3 lg:col-span-2',
-      background: (
-        <div className='absolute right-5 top-10 [mask-image:linear-gradient(to_top,transparent_10%,#000_100%)]'>
-          <div className='grid grid-cols-2 gap-4'>
-            {[...Array(4)].map((_, idx) => (
-              <div
-                key={idx}
-                className='w-24 h-24 rounded-lg bg-gradient-to-br from-purple-500/30 to-blue-500/30 flex items-center justify-center'
-              >
-                <Heart className='w-8 h-8 text-white/70' />
-              </div>
-            ))}
-          </div>
+// Define static data outside component to prevent recreation on each render
+const words = [
+  { text: 'Share ' },
+  { text: 'Your ' },
+  { text: 'Story ', className: 'text-violet-500' },
+];
+
+const expressYourselfPhrases = [
+  'Express Yourself',
+  'Be Authentic',
+  'Tell Your Story',
+  'Share Your Vision',
+];
+
+const testimonials: Testimonial[] = [
+  {
+    quote: 'Horizon has completely transformed how I share my photography with the world.',
+    name: 'John Pingul',
+    title: 'Professional Photographer',
+  },
+  {
+    quote: "The connections I've made through this platform have been incredible. Best community ever!",
+    name: 'Elmalia Diaz',
+    title: 'Content Creator',
+  },
+  {
+    quote: 'This platform has helped me grow my audience by 300% in just three months.',
+    name: 'Richard Darwin',
+    title: 'Influencer',
+  },
+  {
+    quote: 'I love the clean interface and how easy it is to share my daily experiences.',
+    name: 'Paul Santos',
+    title: 'Travel Blogger',
+  },
+  {
+    quote: "The engagement on my posts here is way higher than on any other platform I've used.",
+    name: 'Ranielle Tuazon',
+    title: 'Digital Artist',
+  },
+];
+
+const carouselItems: CarouselItem[] = [
+  {
+    category: "Social",
+    title: 'Connect With Friends',
+    description: 'Build meaningful relationships with creators worldwide',
+    image: '/assets/images/image1.jpg',
+  },
+  {
+    category: "Create",
+    title: 'Share Your Story',
+    description: 'Express yourself through photos, videos, and stories',
+    image: '/assets/images/image2.jpg',
+  },
+  {
+    category: "Explore",
+    title: 'Discover Content',
+    description: 'Find new creators aligned with your interests',
+    image: '/assets/images/image3.jpg',
+  },
+  {
+    category: "Growth",
+    title: 'Grow Your Community',
+    description: 'Expand your reach and build your personal brand',
+    image: '/assets/images/image4.jpg',
+  },
+  {
+    category: "Engage",
+    title: 'Real-time Interactions',
+    description: 'Engage with your audience through live features',
+    image: '/assets/images/image6.jpg',
+  },
+];
+
+const features: Feature[] = [
+  {
+    Icon: Camera,
+    name: 'Create Posts',
+    description: 'Share your photos and moments with creators around the world.',
+    href: '/sign-in',
+    cta: 'Try it out',
+    className: 'col-span-3 lg:col-span-1',
+    background: (
+      <div className='absolute inset-0 overflow-hidden'>
+        <div className='absolute top-10 left-6 text-sm opacity-5 text-blue-300 font-bold'>
+          #photography
         </div>
-      ),
-    },
-    {
-      Icon: Compass,
-      name: 'Discover Content',
-      description: 'Find new creators and content tailored to your interests.',
-      href: '/sign-in',
-      cta: 'Explore now',
-      className: 'col-span-3 lg:col-span-2',
-      background: (
-        <div className='absolute right-5 top-10 grid grid-cols-3 gap-2 [mask-image:linear-gradient(to_top,transparent_10%,#000_100%)]'>
-          {[...Array(6)].map((_, idx) => (
-            <div
-              key={idx}
-              className='w-16 h-16 rounded-md bg-gradient-to-br from-indigo-500/20 to-purple-500/20'
-            />
-          ))}
+        <div className='absolute bottom-12 right-8 text-sm opacity-5 text-indigo-300 font-bold'>
+          #moments
         </div>
-      ),
-    },
-    {
-      Icon: MessageCircle,
-      name: 'Connect',
-      description: 'Chat with friends and create meaningful connections.',
-      className: 'col-span-3 lg:col-span-1',
-      href: '/sign-in',
-      cta: 'Start chatting',
-      background: (
-        <SimpleCalendar
-          selected={new Date()}
-          className='absolute right-0 top-10 origin-top scale-75 transition-all duration-300 ease-out [mask-image:linear-gradient(to_top,transparent_40%,#000_100%)] group-hover:scale-90'
-        />
-      ),
-    },
-  ];
-
-  // Features for second Bento grid
-  const advancedFeatures: Feature[] = [
-    {
-      Icon: User,
-      name: 'Profile Customization',
-      description: 'Create a unique profile that showcases your personality.',
-      href: '/sign-in',
-      cta: 'Customize now',
-      className: 'col-span-3 lg:col-span-2',
-      background: (
-        <div className='absolute right-10 top-10 w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 flex items-center justify-center'>
-          <User className='w-8 h-8 text-white/70' />
+        <div className='absolute top-4 right-10 text-sm opacity-5 text-purple-300 font-bold'>
+          #create
         </div>
-      ),
-    },
-    {
-      Icon: () => (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-5 h-5"
-        >
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"></path>
-          <path d="M12 2a15.3 15.3 0 0 0-4 10 15.3 15.3 0 0 0 4 10"></path>
-          <path d="M2 12h20"></path>
-        </svg>
-      ),
-      name: 'Multilingual Support',
-      description: 'Translate content into over 100 languages powered by Google Cloud.',
-      href: '/sign-in',
-      cta: 'Try translations',
-      className: 'col-span-3 lg:col-span-1',
-      background: (
-        <div className='absolute inset-0 overflow-hidden'>
-          <div className='absolute top-6 left-3 text-xs opacity-10 text-blue-300 font-bold'>こんにちは</div>
-          <div className='absolute top-12 left-10 text-xs opacity-10 text-indigo-300 font-bold'>Bonjour</div>
-          <div className='absolute top-4 right-5 text-xs opacity-10 text-purple-300 font-bold'>안녕하세요</div>
-          <div className='absolute bottom-12 left-6 text-xs opacity-10 text-sky-300 font-bold'>Hola</div>
-          <div className='absolute bottom-6 right-12 text-xs opacity-10 text-violet-300 font-bold'>Guten Tag</div>
-          <div className='absolute bottom-16 right-3 text-xs opacity-10 text-blue-300 font-bold'>Привет</div>
-          <div className='absolute top-18 left-18 text-xs opacity-10 text-indigo-300 font-bold'>مرحبا</div>
+        <div className='absolute bottom-6 left-10 text-sm opacity-5 text-sky-300 font-bold'>
+          #share
         </div>
-      ),
-    },
-    {
-      Icon: Bookmark,
-      name: 'Collections',
-      description: 'Organize saved posts into custom collections.',
-      href: '/sign-in',
-      cta: 'Create collection',
-      className: 'col-span-3 lg:col-span-1',
-      background: (
-        <div className='absolute right-5 top-10 grid grid-cols-2 gap-2'>
+      </div>
+    ),
+  },
+  {
+    Icon: Heart,
+    name: 'Engage With Content',
+    description: 'Like, comment and save your favorite posts for later viewing.',
+    href: '/sign-in',
+    cta: 'Learn more',
+    className: 'col-span-3 lg:col-span-2',
+    background: (
+      <div className='absolute right-5 top-10 [mask-image:linear-gradient(to_top,transparent_10%,#000_100%)]'>
+        <div className='grid grid-cols-2 gap-4'>
           {[...Array(4)].map((_, idx) => (
             <div
               key={idx}
-              className='w-12 h-12 rounded-md bg-gradient-to-br from-amber-500/20 to-orange-500/20'
-            />
+              className='w-24 h-24 rounded-lg bg-gradient-to-br from-purple-500/10 to-blue-500/10 flex items-center justify-center'
+            >
+              <Heart className='w-8 h-8 text-white/20' />
+            </div>
           ))}
         </div>
-      ),
-    },
-    {
-      Icon: () => (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-5 h-5"
-        >
-          <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
-          <path d="M9.9 8.7h-2a.7.7 0 0 0-.7.7v5.2a.7.7 0 0 0 .7.7h2a.7.7 0 0 0 .7-.7V9.4a.7.7 0 0 0-.7-.7Z"></path>
-          <path d="M16.7 8.7h-2a.7.7 0 0 0-.7.7v5.2a.7.7 0 0 0 .7.7h2a.7.7 0 0 0 .7-.7V9.4a.7.7 0 0 0-.7-.7Z"></path>
-        </svg>
-      ),
-      name: 'GIF Support',
-      description: 'Express yourself with GIFs in comments powered by GIPHY integration.',
-      href: '/sign-in',
-      cta: 'Try GIFs',
-      className: 'col-span-3 lg:col-span-2',
-      background: (
-        <div className='absolute inset-0 overflow-hidden'>
-          <div className='absolute inset-0 opacity-20'>
-            <div className='absolute top-4 right-8 w-16 h-16 rounded-lg bg-pink-400/30 animate-bounce' style={{ animationDuration: '3s' }}></div>
-            <div className='absolute bottom-8 right-20 w-12 h-12 rounded-lg bg-blue-400/30 animate-bounce' style={{ animationDuration: '2.5s' }}></div>
-            <div className='absolute top-16 left-8 w-10 h-10 rounded-lg bg-purple-400/30 animate-bounce' style={{ animationDuration: '4s' }}></div>
-            <div className='absolute bottom-12 left-12 w-14 h-14 rounded-lg bg-indigo-400/30 animate-bounce' style={{ animationDuration: '3.5s' }}></div>
-            <div className='absolute top-24 right-16 w-8 h-8 rounded-lg bg-green-400/30 animate-bounce' style={{ animationDuration: '2.8s' }}></div>
-          </div>
+      </div>
+    ),
+  },
+  {
+    Icon: Compass,
+    name: 'Discover Content',
+    description: 'Find new creators and content tailored to your interests.',
+    href: '/sign-in',
+    cta: 'Explore now',
+    className: 'col-span-3 lg:col-span-2',
+    background: (
+      <div className='absolute right-5 top-10 grid grid-cols-3 gap-2 [mask-image:linear-gradient(to_top,transparent_10%,#000_100%)]'>
+        {[...Array(6)].map((_, idx) => (
+          <div
+            key={idx}
+            className='w-16 h-16 rounded-md bg-gradient-to-br from-indigo-500/10 to-purple-500/10'
+          />
+        ))}
+      </div>
+    ),
+  },
+  {
+    Icon: MessageCircle,
+    name: 'Connect',
+    description: 'Chat with friends and create meaningful connections.',
+    className: 'col-span-3 lg:col-span-1',
+    href: '/sign-in',
+    cta: 'Start chatting',
+    background: (
+      <div className='absolute right-5 top-10 opacity-20'>
+        <div className='flex flex-col gap-2'>
+          <div className='w-32 h-6 rounded-full bg-violet-500/20 self-end'></div>
+          <div className='w-24 h-6 rounded-full bg-indigo-500/20 self-start'></div>
+          <div className='w-36 h-6 rounded-full bg-violet-500/20 self-end'></div>
+          <div className='w-28 h-6 rounded-full bg-indigo-500/20 self-start'></div>
         </div>
-      ),
-    },
-  ];
+      </div>
+    ),
+  },
+];
 
-  // Custom scrollbar styles
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      ::-webkit-scrollbar {
-        width: 10px;
-        background: #000000;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #333;
-        border-radius: 10px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #444;
-      }
-      html {
-        scroll-behavior: smooth;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
+const glassFeatures: GlassFeature[] = [
+  {
+    title: 'Real-time Messaging',
+    description: 'Connect instantly with your followers through secure, instant messaging',
+    icon: <MessageCircle className="h-5 w-5 text-violet-400" />,
+  },
+  {
+    title: 'Post Creation',
+    description: 'Create and share posts with tags for better discovery by other users',
+    icon: <Camera className="h-5 w-5 text-indigo-400" />,
+  },
+  {
+    title: 'Multilingual Support',
+    description: 'Reach global audiences with automatic translation of posts and comments',
+    icon: <Globe className="h-5 w-5 text-blue-400" />,
+  },
+  {
+    title: 'Custom Collections',
+    description: 'Organize saved content into personalized collections',
+    icon: <Bookmark className="h-5 w-5 text-pink-400" />,
+  },
+];
 
-  // Handle scroll effects
+const LandingPage: React.FC = () => {
+  const { data: posts } = useGetRecentPosts();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const topSectionRef = useRef<HTMLElement>(null);
+
+  // Use the custom intersection observer hook
+  const { hasIntersected, setupIntersectionObserver } = useIntersectionObserver();
+
+  // Optimize scroll event listener with debounce
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      if (timeoutId) {
+        return;
+      }
+
+      timeoutId = setTimeout(() => {
+        if (window.scrollY > 50) {
+          setIsScrolled(true);
+        } else {
+          setIsScrolled(false);
+        }
+        timeoutId = null as unknown as ReturnType<typeof setTimeout>;
+      }, 100); // Debounce by 100ms
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
+
+  // Inject styles only once
+  useEffect(() => {
+    return injectStyles();
+  }, []);
+
+  // Transform posts into products format, memoize to prevent recalculation
+  const parallaxProducts = React.useMemo(() => {
+    return posts?.documents?.map((post: any) => ({
+      title: post.caption || (post.creator?.name ?? 'Horizon Post'),
+      thumbnail: post.imageUrl,
+    })) || [];
+  }, [posts]);
 
   return (
     <div className='w-full min-h-screen bg-black text-white font-inter overflow-x-hidden'>
-      {/* Header */}
+      {/* Header - Optimized with simplified structure */}
       <header
         ref={headerRef}
-        className={`w-full py-4 px-6 fixed top-0 z-40 transition-all duration-500 ${isScrolled ? 'bg-black/80 backdrop-blur-sm' : 'bg-transparent'}`}
+        className={`w-full py-4 px-6 fixed top-0 z-40 transition-all duration-300 ${isScrolled ? 'bg-black/80 backdrop-blur-sm' : 'bg-transparent'}`}
       >
         <nav className='flex justify-between items-center max-w-[1400px] mx-auto w-full'>
           <h1
@@ -560,12 +395,12 @@ const LandingPage = () => {
         </nav>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section - Simplified with fewer animations */}
       <section
         ref={topSectionRef}
         className='relative h-screen flex items-center justify-center overflow-hidden'
       >
-        <div className='absolute inset-0 z-0'>
+        <div className='absolute inset-0 z-0 position-relative'>
           <SimplifiedBackground />
         </div>
 
@@ -574,26 +409,26 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className='mb-6 flex items-center justify-center'
+            className='mb-4 sm:mb-6 flex items-center justify-center'
           >
-            <h1 className='text-5xl md:text-7xl lg:text-8xl font-bold text-center text-white px-4'>
+            <h1 className='text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold text-center text-white px-2 sm:px-4'>
               <TypewriterEffect words={words} />
             </h1>
           </motion.div>
 
-          <div className='mt-8 max-w-3xl mx-auto'>
+          <div className='mt-6 sm:mt-8 max-w-3xl mx-auto'>
             <TextGenerateEffect words='Join millions of creators sharing their moments, connecting with others, and building their digital legacy through the power of visual storytelling.' />
 
-            <div className='mt-10 flex justify-center'>
-              {/* Animated gradient button */}
+            <div className='mt-8 sm:mt-10 flex justify-center'>
+              {/* Simplified gradient button */}
               <motion.button
                 onClick={() => (window.location.href = '/sign-up')}
-                className='relative inline-flex h-14 overflow-hidden rounded-full p-[1px] focus:outline-none'
+                className='relative inline-flex h-12 sm:h-14 overflow-hidden rounded-full p-[1px] focus:outline-none'
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <span className='absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]' />
-                <span className='inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-slate-950 px-8 py-4 text-base font-medium text-white backdrop-blur-3xl'>
+                <span className='inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-slate-950 px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium text-white backdrop-blur-3xl'>
                   Get Started
                 </span>
               </motion.button>
@@ -603,58 +438,64 @@ const LandingPage = () => {
       </section>
 
       {/* Tech Stack Section */}
-      <section className='relative py-20 overflow-hidden bg-black'>
-        <div className='max-w-7xl mx-auto px-6 text-center'>
-          <TextReveal className='text-3xl md:text-4xl font-bold mb-4 px-4'>
-            Built With Modern Technologies
-          </TextReveal>
-          <p className='text-gray-400 max-w-2xl mx-auto mb-16 px-4 text-xs sm:text-sm'>
-            Horizon leverages the latest web technologies to provide a seamless,
-            fast, and engaging social media experience
-          </p>
+      <section
+        className='relative py-16 sm:py-20 overflow-hidden bg-black'
+        ref={setupIntersectionObserver('tech-stack')}
+      >
+        {hasIntersected['tech-stack'] && (
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 text-center'>
+            <Suspense fallback={<LoadingFallback />}>
+              <TextReveal className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-2 sm:px-4'>
+                Built With Modern Technologies
+              </TextReveal>
+            </Suspense>
+            <p className='text-gray-400 max-w-2xl mx-auto mb-8 sm:mb-10 px-2 sm:px-4 text-xs sm:text-sm'>
+              Horizon leverages the latest web technologies to provide a seamless,
+              fast, and engaging social media experience
+            </p>
 
-          <div className='h-64 md:h-80 relative mb-8'>
-            <IconCloud
-              images={[
-                // Frontend core
-                'https://cdn.simpleicons.org/react/61DAFB',
-                'https://cdn.simpleicons.org/typescript/3178C6',
-                'https://cdn.simpleicons.org/tailwindcss/06B6D4',
-                'https://cdn.simpleicons.org/vite/646CFF',
-
-                // UI/Animation
-                'https://cdn.simpleicons.org/framermotion/0055FF',
-                'https://cdn.simpleicons.org/reactrouter/CA4245',
-
-                // Backend
-                'https://cdn.simpleicons.org/appwrite/FD366E',
-                'https://cdn.simpleicons.org/socket.io/ffffff',
-
-                // State management
-                'https://cdn.simpleicons.org/reactquery/FF4154',
-
-                // Form handling
-                'https://cdn.simpleicons.org/zod/3E67B1',
-                'https://cdn.simpleicons.org/reacthookform/EC5990',
-
-                // Tools & ecosystem
-                'https://cdn.simpleicons.org/git/F05032',
-                'https://cdn.simpleicons.org/github/181717',
-                'https://cdn.simpleicons.org/jest/C21325',
-
-                // Deployment
-                'https://cdn.simpleicons.org/vercel/ffffff',
-              ]}
-              iconSize={32}
-              canvasWidth={400}
-              canvasHeight={350}
-            />
+            <div className='h-[360px] sm:h-[400px] md:h-[460px] relative mb-8 sm:mb-12'>
+              <Suspense fallback={<LoadingFallback />}>
+                {hasIntersected['tech-stack'] && (
+                  <TechStackOrbit />
+                )}
+              </Suspense>
+            </div>
           </div>
+        )}
+      </section>
+
+      {/* Feature Cards Carousel Section */}
+      <section
+        className="w-full py-12 sm:py-16 bg-black relative overflow-hidden"
+        ref={setupIntersectionObserver('feature-carousel')}
+      >
+        <div className="max-w-6xl mx-auto mb-6 sm:mb-8 px-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4 mb-6 sm:mb-10">
+            <div>
+              <h4 className="text-violet-400 text-sm sm:text-base font-medium mb-1 sm:mb-2">EXPERIENCE</h4>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+                <span className="bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Explore Horizon features</span>
+              </h2>
+            </div>
+            <p className="text-gray-400 max-w-md text-xs sm:text-sm mt-2 md:mt-0">
+              Discover how Horizon empowers creators and communities
+            </p>
+          </div>
+
+          {hasIntersected['feature-carousel'] && (
+            <Suspense fallback={<LoadingFallback />}>
+              <AppleCardsCarousel items={carouselItems} />
+            </Suspense>
+          )}
         </div>
       </section>
 
-      {/* Feature Showcase with BentoGrid */}
-      <section className='w-full px-6 py-20 bg-black relative'>
+      {/* Feature Showcase with BentoGrid - Lazy Loaded */}
+      <section
+        className='w-full px-6 py-20 bg-black relative'
+        ref={setupIntersectionObserver('feature-grid')}
+      >
         <div className='max-w-[1400px] mx-auto'>
           <motion.div
             initial={{ opacity: 0 }}
@@ -671,134 +512,122 @@ const LandingPage = () => {
             </p>
           </motion.div>
 
-          <div className='mb-16 px-2 sm:px-0'>
-            <BentoGrid>
-              {features.map((feature, idx) => (
-                <BentoCard key={idx} {...feature} />
-              ))}
-            </BentoGrid>
-          </div>
-
-          <motion.h2
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: '-100px' }}
-            className='text-3xl font-bold text-center my-16 font-inter tracking-tight px-4'
-          >
-            Elevate Your Social Experience
-          </motion.h2>
-
-          <div className='mb-16 px-2 sm:px-0'>
-            <BentoGrid>
-              {advancedFeatures.map((feature, idx) => (
-                <BentoCard key={idx} {...feature} />
-              ))}
-            </BentoGrid>
-          </div>
+          {hasIntersected['feature-grid'] && (
+            <div className='mb-16 px-2 sm:px-0'>
+              <Suspense fallback={<LoadingFallback />}>
+                <BentoGrid>
+                  {features.map((feature, idx) => (
+                    <BentoCard key={idx} {...feature} />
+                  ))}
+                </BentoGrid>
+              </Suspense>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Hero Parallax Section */}
-      {parallaxProducts.length > 0 && (
-        <HeroParallax products={parallaxProducts} />
-      )}
+      {/* Glass Cards Section */}
+      <section
+        className="w-full bg-black relative overflow-hidden pb-24 sm:pb-36 md:pb-48"
+        ref={setupIntersectionObserver('glass-cards')}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-16">
+            <h4 className="text-violet-400 text-sm sm:text-base font-medium mb-1 sm:mb-2">PREMIUM FEATURES</h4>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+              Advanced tools for creators
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-xs sm:text-sm">
+              Take your content to the next level with our powerful creator tools
+            </p>
+          </div>
 
-      {/* Testimonials - Infinite Moving Cards */}
-      <div className='relative flex flex-col items-center justify-center bg-black overflow-hidden py-14 mb-0'>
-        <h2 className='text-2xl md:text-3xl font-bold text-center text-white mb-8 px-4'>
+          {hasIntersected['glass-cards'] && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {glassFeatures.map((feature, index) => (
+                <GlassCard
+                  key={index}
+                  title={feature.title}
+                  description={feature.description}
+                  icon={feature.icon}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Hero Parallax Section - Only load when visible and only if posts exist */}
+      <section
+        ref={setupIntersectionObserver('parallax')}
+        className="w-full bg-black relative"
+      >
+        {hasIntersected['parallax'] && parallaxProducts.length > 0 && (
+          <Suspense fallback={<LoadingFallback />}>
+            <HeroParallax products={parallaxProducts} />
+          </Suspense>
+        )}
+      </section>
+
+      {/* Testimonials - Infinite Moving Cards - Lazy loaded */}
+      <div
+        className='relative flex flex-col items-center justify-center bg-black overflow-hidden py-14 mb-0'
+        ref={setupIntersectionObserver('testimonials')}
+      >
+        <h2 className='text-xl md:text-2xl font-bold text-center text-white mb-6 px-4'>
           What Our Users Say
         </h2>
-        <div className='relative w-full max-w-[1400px] mx-auto'>
-          <InfiniteMovingCards
-            items={testimonials}
-            direction='right'
-            speed='slow'
-          />
+        <div className='relative w-full max-w-[1200px] mx-auto'>
+          {hasIntersected['testimonials'] && (
+            <Suspense fallback={<LoadingFallback />}>
+              <InfiniteMovingCards
+                items={testimonials}
+                direction='right'
+                speed='slow'
+              />
+            </Suspense>
+          )}
         </div>
       </div>
 
-      {/* Features Grid */}
-      <section
-        ref={aboutSectionRef}
-        className='w-full px-6 pt-4 pb-14 bg-black relative overflow-hidden'
-      >
-        <div className='max-w-7xl mx-auto'>
-          <motion.div style={{ opacity, y }} className='text-center mb-16'>
-            <TextReveal className='text-3xl md:text-4xl font-bold mb-6 px-4'>
-              Experience the Difference
-            </TextReveal>
-            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-xs sm:text-sm'>
-              More than just a social network - a complete platform for
-              creators, influencers, and everyone with a story to tell
-            </p>
-          </motion.div>
-
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12 px-4 sm:px-0'>
-            <FeatureCard
-              title='Real-time Messaging'
-              description='Connect instantly with friends and followers through our lightning-fast messaging system'
-              icon={<MessageCircle className='w-6 h-6' />}
-              index={0}
-            />
-            <FeatureCard
-              title='Global Reach'
-              description='Connect with creators from around the world and expand your network'
-              icon={<Globe className='w-6 h-6' />}
-              index={1}
-            />
-            <FeatureCard
-              title='Advanced Search'
-              description="Find exactly what you're looking for with our powerful search algorithm"
-              icon={<Search className='w-6 h-6' />}
-              index={2}
-            />
-          </div>
-        </div>
-      </section>
-
       {/* Express Yourself Section with Morphing Text */}
-      <section className='w-full px-6 py-20 relative z-10 bg-black'>
+      <section className='w-full px-4 sm:px-6 py-16 sm:py-20 relative z-10 bg-black'>
         <div className='max-w-[1400px] mx-auto'>
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: '-100px' }}
-            className='text-center mb-16'
+            className='text-center mb-10 sm:mb-16'
           >
-            {/* Smaller MorphingText component */}
+            {/* MorphingText component with responsive props */}
             <MorphingText
               texts={expressYourselfPhrases}
-              className='mb-4 font-inter tracking-tight'
+              className='mb-3 sm:mb-4 font-inter tracking-tight'
               fontSize='text-4xl'
               mobileSize='text-2xl'
               tabletSize='text-3xl'
             />
-            <p className='text-gray-400 max-w-2xl mx-auto px-4 text-xs sm:text-sm'>
-              Horizon gives you the tools to share your authentic self with the
-              world
+            <p className='text-gray-400 max-w-2xl mx-auto px-2 sm:px-4 text-xs sm:text-sm'>
+              Horizon gives you the tools to share your authentic self with the world
             </p>
           </motion.div>
-
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-12 px-2 sm:px-0'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 px-2 sm:px-0'>
             {[
               {
                 title: 'Connect',
-                description:
-                  'Build meaningful connections with creators worldwide',
-                icon: <MessageCircle className='w-6 h-6' />,
+                description: 'Build meaningful connections with creators worldwide',
+                icon: <MessageCircle className='w-5 h-5 sm:w-6 sm:h-6' />,
               },
               {
                 title: 'Grow',
-                description:
-                  'Develop your personal brand and reach new audiences',
-                icon: <Award className='w-6 h-6' />,
+                description: 'Develop your personal brand and reach new audiences',
+                icon: <Award className='w-5 h-5 sm:w-6 sm:h-6' />,
               },
-
               {
-                title: ' Share Stories',
-                description:
-                  'Share your daily moments through photos and stories',
-                icon: <Camera className='w-6 h-6' />,
+                title: 'Share Stories',
+                description: 'Share your daily moments through photos and stories',
+                icon: <Camera className='w-5 h-5 sm:w-6 sm:h-6' />,
               },
             ].map((feature, index) => (
               <motion.div
@@ -807,15 +636,15 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.2 }}
                 viewport={{ once: true }}
-                className='text-center p-8 rounded-2xl border border-white/10 bg-white/[0.02] transition-all duration-500 hover:bg-white/[0.05] hover:border-violet-500/30'
+                className='text-center p-6 sm:p-8 rounded-2xl border border-white/10 bg-white/[0.02] transition-all duration-500 hover:bg-white/[0.05] hover:border-violet-500/30'
               >
-                <div className='relative mx-auto mb-4 w-14 h-14 flex items-center justify-center rounded-full bg-gradient-to-br from-violet-600/20 to-indigo-600/20 text-violet-500 group-hover:text-white transition-all duration-300'>
+                <div className='relative mx-auto mb-3 sm:mb-4 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-full bg-gradient-to-br from-violet-600/20 to-indigo-600/20 text-violet-500 group-hover:text-white transition-all duration-300'>
                   {feature.icon}
                 </div>
-                <h3 className='text-xl font-bold mb-4 font-inter'>
+                <h3 className='text-lg sm:text-xl font-bold mb-2 sm:mb-4 font-inter'>
                   {feature.title}
                 </h3>
-                <p className='text-gray-400 font-inter leading-relaxed text-sm'>
+                <p className='text-gray-400 font-inter leading-relaxed text-xs sm:text-sm'>
                   {feature.description}
                 </p>
               </motion.div>
@@ -824,20 +653,22 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className='w-full px-6 py-16 bg-black relative overflow-hidden'>
-        <div className='max-w-[800px] mx-auto text-center relative z-10 px-4'>
-          <h2 className='text-2xl sm:text-3xl md:text-4xl font-bold mb-4 px-4 text-violet-500'>
+      {/* CTA Section - Simplified */}
+      <section className='w-full px-4 sm:px-6 py-12 sm:py-16 bg-black relative overflow-hidden'>
+        <div className="absolute inset-0 bg-black" />
+
+        <div className='max-w-[800px] mx-auto text-center relative z-10 px-2 sm:px-4'>
+          <h2 className='text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-2 sm:px-4 text-violet-500'>
             Ready to Join Horizon?
           </h2>
-          <p className='text-sm sm:text-base text-gray-300 mb-8 max-w-xl mx-auto px-4'>
+          <p className='text-xs sm:text-sm md:text-base text-gray-300 mb-6 sm:mb-8 max-w-xl mx-auto px-2 sm:px-4'>
             Start sharing your story with the world today and connect with
             like-minded creators.
           </p>
 
           <motion.button
             onClick={() => (window.location.href = '/sign-up')}
-            className='relative px-6 py-2.5 rounded-full overflow-hidden'
+            className='relative px-5 sm:px-6 py-2 sm:py-2.5 rounded-full overflow-hidden'
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             initial={{ opacity: 0, y: 20 }}
@@ -845,18 +676,18 @@ const LandingPage = () => {
             viewport={{ once: true }}
           >
             <span className='absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600'></span>
-            <span className='relative z-10 text-white font-medium text-sm'>
+            <span className='relative z-10 text-white font-medium text-xs sm:text-sm'>
               Create Your Account
             </span>
           </motion.button>
 
-          <p className='text-gray-400 mt-6 px-4 text-xs'>
+          <p className='text-gray-400 mt-4 sm:mt-6 px-2 sm:px-4 text-xs'>
             Join thousands of creators already on the platform
           </p>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer - Simplified */}
       <footer className='w-full px-6 py-12 relative z-10 bg-black border-t border-white/10'>
         <div className='max-w-[1400px] mx-auto'>
           <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-10'>

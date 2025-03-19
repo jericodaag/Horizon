@@ -87,6 +87,16 @@ module.exports = {
             opacity: '0.3',
           },
         },
+        orbit: {
+          '0%': {
+            transform:
+              'rotate(calc(var(--angle) * 1deg)) translateX(var(--radius, 160px)) rotate(calc(var(--angle) * -1deg))',
+          },
+          '100%': {
+            transform:
+              'rotate(calc(var(--angle) * 1deg + 360deg)) translateX(var(--radius, 160px)) rotate(calc(var(--angle) * -1deg - 360deg))',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -97,6 +107,7 @@ module.exports = {
         spin: 'spin 2s linear infinite',
         ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
         'subtle-float': 'subtle-float 10s ease-in-out infinite',
+        orbit: 'orbit var(--duration, 20s) linear infinite',
       },
     },
   },

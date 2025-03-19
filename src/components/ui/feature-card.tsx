@@ -24,7 +24,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
       transition={{ delay: index * 0.2, duration: 0.5 }}
       viewport={{ once: true }}
       className={cn(
-        'group flex flex-col p-8 rounded-2xl transition-all duration-300',
+        'group flex flex-col items-center p-8 rounded-2xl transition-all duration-300',
         'hover:bg-white/[0.05] hover:shadow-lg hover:shadow-violet-500/10',
         'border border-white/[0.08] bg-white/[0.02]',
         className
@@ -33,10 +33,10 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
       <div className='relative mb-6 w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet-600/20 to-indigo-600/20 text-violet-500 group-hover:from-violet-600/30 group-hover:to-indigo-600/30 group-hover:text-white transition-all duration-300'>
         {icon}
       </div>
-      <h3 className='text-2xl font-bold mb-3 text-white group-hover:text-violet-400 transition-colors duration-300'>
+      <h3 className='text-2xl font-bold mb-3 text-white group-hover:text-violet-400 transition-colors duration-300 text-center'>
         {title}
       </h3>
-      <p className='text-gray-400 group-hover:text-gray-300 transition-colors duration-300'>
+      <p className='text-gray-400 group-hover:text-gray-300 transition-colors duration-300 text-center'>
         {description}
       </p>
     </motion.div>
