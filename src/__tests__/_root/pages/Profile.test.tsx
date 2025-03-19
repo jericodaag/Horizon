@@ -1,407 +1,493 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { BrowserRouter } from 'react-router-dom';
 import Profile from '@/_root/pages/Profile';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Create QueryClient for testing
-const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            retry: false,
-            gcTime: 0,
-        },
-    },
-});
+// Create a mockNavigate function we'll use in our react-router-dom mock
+const mockNavigate = jest.fn();
 
-// Mock data
-const mockCurrentUser = {
-    $id: 'user-1',
-    name: 'Test User',
-    username: 'testuser',
-    imageUrl: '/test-profile.jpg',
-    coverImageUrl: '/test-cover.jpg',
-    bio: 'This is a test bio',
-    $createdAt: '2023-01-01T00:00:00.000Z',
-    coverPosition: JSON.stringify({ x: 0, y: 50 }),
-};
-
-const mockPosts = {
-    documents: [
-        {
-            $id: 'post-1',
-            caption: 'Test post 1',
-            imageUrl: '/test-post-1.jpg',
-            creator: mockCurrentUser,
-            likes: [],
-            tags: ['tag1', 'tag2'],
-        },
-        {
-            $id: 'post-2',
-            caption: 'Test post 2',
-            imageUrl: '/test-post-2.jpg',
-            creator: mockCurrentUser,
-            likes: [],
-            tags: ['tag3'],
-        },
-    ],
-};
-
-const mockFollowers = [
-    {
-        $id: 'follower-1',
-        name: 'Follower 1',
-        username: 'follower1',
-        imageUrl: '/follower-1.jpg',
-    },
-    {
-        $id: 'follower-2',
-        name: 'Follower 2',
-        username: 'follower2',
-        imageUrl: '/follower-2.jpg',
-    },
-];
-
-const mockFollowing = [
-    {
-        $id: 'following-1',
-        name: 'Following 1',
-        username: 'following1',
-        imageUrl: '/following-1.jpg',
-    },
-];
-
-const mockSavedPosts = [
-    {
-        $id: 'saved-post-1',
-        caption: 'Saved post 1',
-        imageUrl: '/saved-post-1.jpg',
-        creator: {
-            $id: 'other-user',
-            name: 'Other User',
-            imageUrl: '/other-profile.jpg',
-        },
-        likes: [],
-        tags: ['saved'],
-    },
-];
-
-// Mock all necessary modules
-jest.mock('@/context/AuthContext', () => ({
-    useUserContext: () => ({
-        user: { id: 'user-1' },
-        isLoading: false,
-    }),
+// Mock dependencies
+jest.mock('react-router-dom', () => ({
+  useParams: () => ({ id: 'user123' }),
+  Link: ({ to, state, children, className }: any) => (
+    <a
+      href={to}
+      className={className}
+      data-testid={`link-to-${to}`}
+      data-state={JSON.stringify(state)}
+    >
+      {children}
+    </a>
+  ),
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('@/lib/react-query/queries', () => ({
-    useGetUserById: () => ({
-        data: mockCurrentUser,
-        isLoading: false,
-    }),
-    useGetUserPosts: () => ({
-        data: mockPosts,
-        isLoading: false,
-    }),
-    useGetFollowers: () => ({
-        data: mockFollowers,
-        isLoading: false,
-    }),
-    useGetFollowing: () => ({
-        data: mockFollowing,
-        isLoading: false,
-    }),
-    useGetSavedPosts: () => ({
-        data: mockSavedPosts,
-        isLoading: false,
-    }),
-    useIsFollowing: () => ({
-        data: false,
-    }),
-    useFollowUser: () => ({
-        mutate: jest.fn(),
-    }),
-    useUnfollowUser: () => ({
-        mutate: jest.fn(),
-    }),
+  useGetUserById: jest.fn(),
+  useGetUserPosts: jest.fn(),
+  useGetFollowers: jest.fn(),
+  useGetFollowing: jest.fn(),
+  useGetSavedPosts: jest.fn(),
+  useGetLikedPosts: jest.fn(),
+  useIsFollowing: jest.fn(),
+  useFollowUser: jest.fn(),
+  useUnfollowUser: jest.fn(),
 }));
 
-// Mock components
 jest.mock('@/components/shared/GridPostList', () => ({
-    __esModule: true,
-    default: ({ posts, showUser }) => (
-        <div data-testid="grid-post-list" data-posts-count={posts?.length || 0} data-show-user={showUser}>
-            {posts?.map(post => (
-                <div key={post.$id} data-testid="post-item">
-                    {post.caption}
-                </div>
-            ))}
+  __esModule: true,
+  default: ({ posts, showStats, showUser }: any) => (
+    <div
+      data-testid='grid-post-list'
+      data-showstats={showStats}
+      data-showuser={showUser}
+    >
+      {posts.map((post: any) => (
+        <div key={post.$id} data-testid={`post-${post.$id}`}>
+          {post.caption}
         </div>
-    ),
+      ))}
+      {posts.length === 0 && <div>No posts</div>}
+    </div>
+  ),
 }));
 
 jest.mock('@/components/shared/Loader', () => ({
-    __esModule: true,
-    default: () => <div data-testid="loader">Loading...</div>,
+  __esModule: true,
+  default: () => <div data-testid='loader'>Loading...</div>,
 }));
 
 jest.mock('@/components/shared/FollowButton', () => ({
-    __esModule: true,
-    default: ({ userId, compact }) => (
-        <button data-testid="follow-button" data-user-id={userId} data-compact={compact}>
-            Follow
-        </button>
-    ),
+  __esModule: true,
+  default: ({ userId }: any) => (
+    <button data-testid={`follow-button-${userId}`}>Follow</button>
+  ),
 }));
 
 jest.mock('@/components/shared/FollowModal', () => ({
-    __esModule: true,
-    default: ({ isOpen, type, userId, onClose }) => (
-        isOpen ? (
-            <div data-testid="follow-modal" data-type={type} data-user-id={userId}>
-                <button onClick={onClose} data-testid="close-modal">Close</button>
-            </div>
-        ) : null
-    ),
+  __esModule: true,
+  default: ({ userId, type, isOpen, onClose }: any) =>
+    isOpen ? (
+      <div data-testid='follow-modal' data-type={type} data-userid={userId}>
+        <button onClick={onClose} data-testid='close-modal'>
+          Close
+        </button>
+      </div>
+    ) : null,
 }));
 
-// Mock other dependencies
-jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom'),
-    useParams: () => ({ id: 'user-1' }),
-    Link: ({ to, children, className }) => (
-        <a href={to} className={className} data-testid="mock-link">
-            {children}
-        </a>
-    ),
-}));
-
-jest.mock('framer-motion', () => ({
-    motion: {
-        div: ({ children, ...props }) => <div {...props}>{children}</div>,
+jest.mock('@/context/AuthContext', () => ({
+  useUserContext: () => ({
+    user: {
+      id: 'currentuser123',
+      name: 'Current User',
+      username: 'currentuser',
+      email: 'current@example.com',
+      imageUrl: 'https://example.com/current-avatar.jpg',
     },
-    AnimatePresence: ({ children }) => <>{children}</>,
+  }),
+}));
+
+jest.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, className, variant }: any) => (
+    <button
+      onClick={onClick}
+      className={className}
+      data-variant={variant}
+      data-testid='button'
+    >
+      {children}
+    </button>
+  ),
+}));
+
+jest.mock('@/components/ui/tabs', () => ({
+  Tabs: ({ children, defaultValue }: any) => (
+    <div data-testid='tabs' data-default-value={defaultValue}>
+      {children}
+    </div>
+  ),
+  TabsList: ({ children, className }: any) => (
+    <div data-testid='tabs-list' className={className}>
+      {children}
+    </div>
+  ),
+  TabsTrigger: ({ children, value, className }: any) => (
+    <button
+      data-testid={`tab-${value}`}
+      data-value={value}
+      className={className}
+    >
+      {children}
+    </button>
+  ),
+  TabsContent: ({ children, value }: any) => (
+    <div data-testid={`tab-content-${value}`} data-value={value}>
+      {children}
+    </div>
+  ),
 }));
 
 jest.mock('lucide-react', () => ({
-    MessageCircle: () => <span data-testid="message-icon">Message</span>,
-    Edit3: () => <span data-testid="edit-icon">Edit</span>,
-    Calendar: () => <span data-testid="calendar-icon">Calendar</span>,
+  MessageCircle: () => <span data-testid='message-icon'>Message Icon</span>,
+  Edit3: () => <span data-testid='edit-icon'>Edit Icon</span>,
+  Calendar: () => <span data-testid='calendar-icon'>Calendar Icon</span>,
 }));
 
-// Create a mock for the Tabs component
-jest.mock('@/components/ui/tabs', () => {
-    return {
-        Tabs: ({ children }) => <div data-testid="tabs-container">{children}</div>,
-        TabsList: ({ children }) => <div data-testid="tabs-list">{children}</div>,
-        TabsTrigger: ({ children, value }) => (
-            <button
-                data-testid={`tab-${value}`}
-                data-value={value}
-            >
-                {children}
-            </button>
-        ),
-        TabsContent: ({ children, value }) => (
-            <div
-                data-testid={`tab-content-${value}`}
-                data-value={value}
-            >
-                {children}
-            </div>
-        ),
-    };
-});
+// Import the mocked modules
+import {
+  useGetUserById,
+  useGetUserPosts,
+  useGetFollowers,
+  useGetFollowing,
+  useGetSavedPosts,
+  useGetLikedPosts,
+} from '@/lib/react-query/queries';
 
 describe('Profile Component', () => {
-    // Helper to render component with necessary providers
-    const renderProfile = () => {
-        return render(
-            <QueryClientProvider client={queryClient}>
-                <BrowserRouter>
-                    <Profile />
-                </BrowserRouter>
-            </QueryClientProvider>
-        );
-    };
+  // Mock user data
+  const mockUser = {
+    $id: 'user123',
+    $createdAt: '2023-01-01T12:00:00.000Z',
+    name: 'Test User',
+    username: 'testuser',
+    email: 'test@example.com',
+    imageUrl: 'https://example.com/avatar.jpg',
+    bio: 'This is a test bio',
+  };
 
-    beforeEach(() => {
-        jest.clearAllMocks();
+  // Mock posts data
+  const mockPosts = {
+    documents: [
+      {
+        $id: 'post1',
+        caption: 'Test post 1',
+        imageUrl: 'https://example.com/post1.jpg',
+        creator: { $id: 'user123', name: 'Test User' },
+      },
+      {
+        $id: 'post2',
+        caption: 'Test post 2',
+        imageUrl: 'https://example.com/post2.jpg',
+        creator: { $id: 'user123', name: 'Test User' },
+      },
+    ],
+  };
+
+  // Mock saved posts
+  const mockSavedPosts = [
+    {
+      $id: 'saved1',
+      caption: 'Saved post 1',
+      imageUrl: 'https://example.com/saved1.jpg',
+      creator: { $id: 'otheruser', name: 'Other User' },
+    },
+  ];
+
+  // Mock liked posts
+  const mockLikedPosts = [
+    {
+      $id: 'liked1',
+      caption: 'Liked post 1',
+      imageUrl: 'https://example.com/liked1.jpg',
+      creator: { $id: 'otheruser', name: 'Other User' },
+    },
+  ];
+
+  // Mock followers and following
+  const mockFollowers = [
+    { $id: 'follower1', name: 'Follower 1', username: 'follower1' },
+    { $id: 'follower2', name: 'Follower 2', username: 'follower2' },
+  ];
+
+  const mockFollowing = [
+    { $id: 'following1', name: 'Following 1', username: 'following1' },
+    { $id: 'following2', name: 'Following 2', username: 'following2' },
+    { $id: 'following3', name: 'Following 3', username: 'following3' },
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Default mock implementations
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: mockUser,
+      isLoading: false,
     });
 
-    // 1. Basic rendering tests
-    it('renders profile information correctly', () => {
-        renderProfile();
-
-        // Basic profile info
-        expect(screen.getByText('Test User')).toBeInTheDocument();
-        expect(screen.getByText('@testuser')).toBeInTheDocument();
-        expect(screen.getByText('This is a test bio')).toBeInTheDocument();
-
-        // Join date
-        expect(screen.getByTestId('calendar-icon')).toBeInTheDocument();
-        expect(screen.getByText(/joined/i, { exact: false })).toBeInTheDocument();
+    (useGetUserPosts as jest.Mock).mockReturnValue({
+      data: mockPosts,
+      isLoading: false,
     });
 
-    it('displays edit button on own profile', () => {
-        renderProfile();
-
-        // Check for edit profile elements
-        const editElements = screen.getAllByTestId('edit-icon');
-        expect(editElements.length).toBeGreaterThan(0);
-
-        // No message button should appear (it's own profile)
-        expect(screen.queryByText('Message')).not.toBeInTheDocument();
-    });
-    it('displays posts in the posts tab', () => {
-        // Render the profile component
-        renderProfile();
-
-        // Instead of looking for specific data-testid attributes or DOM structure,
-        // just verify that the post content is visible in the document
-        expect(screen.getByText('Test post 1')).toBeInTheDocument();
-        expect(screen.getByText('Test post 2')).toBeInTheDocument();
-
-        // That's it! If we can see the post content, the posts tab is working
+    (useGetFollowers as jest.Mock).mockReturnValue({
+      data: mockFollowers,
     });
 
-    // 2. Tab switching tests
-    it('shows saved tab on own profile', () => {
-        renderProfile();
-
-        // Check if saved tab exists (only shows on own profile)
-        const savedTab = screen.getByTestId('tab-posts').parentElement;
-        expect(savedTab).toBeInTheDocument();
+    (useGetFollowing as jest.Mock).mockReturnValue({
+      data: mockFollowing,
     });
 
-    // 3. State handling tests
-    it('displays loading state when user data is loading', () => {
-        // Override the mock for this specific test
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserById').mockReturnValueOnce({
-            data: null,
-            isLoading: true
-        });
-
-        renderProfile();
-
-        expect(screen.getByTestId('loader')).toBeInTheDocument();
+    (useGetSavedPosts as jest.Mock).mockReturnValue({
+      data: mockSavedPosts,
+      isLoading: false,
     });
 
-    it('displays error state when user is not found', () => {
-        // Override the mock
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserById').mockReturnValueOnce({
-            data: null,
-            isLoading: false
-        });
+    (useGetLikedPosts as jest.Mock).mockReturnValue({
+      data: mockLikedPosts,
+      isLoading: false,
+    });
+  });
 
-        renderProfile();
-
-        expect(screen.getByText('User not found')).toBeInTheDocument();
+  it('renders loading state while fetching user data', () => {
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: true,
     });
 
-    it('displays empty state when user has no posts', () => {
-        // Override the mock
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserPosts').mockReturnValueOnce({
-            data: { documents: [] },
-            isLoading: false
-        });
+    render(<Profile />);
 
-        renderProfile();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByText('Test User')).not.toBeInTheDocument();
+  });
 
-        expect(screen.getByText('No posts yet')).toBeInTheDocument();
+  it('renders user not found message when user data is missing', () => {
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: false,
     });
 
-    // 4. Interaction tests
-    it('opens followers modal when clicking followers count', async () => {
-        renderProfile();
+    render(<Profile />);
 
-        // Find and click the followers button
-        const followersText = screen.getByText('Followers');
-        const followersButton = followersText.closest('button');
+    expect(screen.getByText('User not found')).toBeInTheDocument();
+  });
 
-        if (followersButton) {
-            fireEvent.click(followersButton);
+  it('renders user profile with correct data', () => {
+    render(<Profile />);
 
-            // Verify modal appears
-            await waitFor(() => {
-                const modal = screen.getByTestId('follow-modal');
-                expect(modal).toBeInTheDocument();
-                expect(modal).toHaveAttribute('data-type', 'followers');
-            });
+    // Check for basic user info
+    expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(screen.getByText('@testuser')).toBeInTheDocument();
+    expect(screen.getByText('This is a test bio')).toBeInTheDocument();
 
-            // Close modal
-            fireEvent.click(screen.getByTestId('close-modal'));
+    // Check for join date formatting
+    expect(screen.getByText(/Joined January 2023/)).toBeInTheDocument();
 
-            // Verify modal is gone
-            await waitFor(() => {
-                expect(screen.queryByTestId('follow-modal')).not.toBeInTheDocument();
-            });
-        }
+    // Check stats are displayed - use querySelector approach for post count
+    const postCountElement = document.querySelector(
+      '.flex-center.gap-2 p.text-primary-500'
+    );
+    expect(postCountElement).toHaveTextContent('2');
+
+    expect(screen.getByText('Followers')).toBeInTheDocument();
+    expect(screen.getByText('Following')).toBeInTheDocument();
+  });
+
+  it('renders edit profile button for own profile', () => {
+    // Make this user's own profile
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: { ...mockUser, $id: 'currentuser123' },
+      isLoading: false,
     });
 
-    it('opens following modal when clicking following count', async () => {
-        renderProfile();
+    render(<Profile />);
 
-        // Find and click the following button
-        const followingText = screen.getByText('Following');
-        const followingButton = followingText.closest('button');
+    // Use getAllByTestId to get all edit profile links and find the one containing "Edit Profile"
+    const editProfileLinks = screen.getAllByTestId(
+      'link-to-/update-profile/currentuser123'
+    );
+    const profileEditLink = editProfileLinks.find((link) =>
+      link.textContent?.includes('Edit Profile')
+    );
 
-        if (followingButton) {
-            fireEvent.click(followingButton);
+    expect(profileEditLink).toBeInTheDocument();
+    expect(profileEditLink).toHaveTextContent('Edit Profile');
 
-            // Verify modal appears
-            await waitFor(() => {
-                const modal = screen.getByTestId('follow-modal');
-                expect(modal).toBeInTheDocument();
-                expect(modal).toHaveAttribute('data-type', 'following');
-            });
-        }
+    // Follow button should not be visible on own profile
+    expect(
+      screen.queryByTestId('follow-button-currentuser123')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders follow button and message button for other users profiles', () => {
+    render(<Profile />);
+
+    // Should show follow button
+    expect(screen.getByTestId('follow-button-user123')).toBeInTheDocument();
+
+    // Should show message button
+    const messageLink = screen.getByTestId('link-to-/messages');
+    expect(messageLink).toBeInTheDocument();
+    expect(messageLink).toHaveTextContent('Message');
+
+    // Edit profile button should not be visible
+    expect(
+      screen.queryByTestId('link-to-/update-profile/user123')
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens followers modal when followers count is clicked', () => {
+    render(<Profile />);
+
+    // Click on followers count
+    fireEvent.click(screen.getByText('Followers'));
+
+    // Modal should be visible with followers type
+    const modal = screen.getByTestId('follow-modal');
+    expect(modal).toBeInTheDocument();
+    expect(modal).toHaveAttribute('data-type', 'followers');
+
+    // Close modal
+    fireEvent.click(screen.getByTestId('close-modal'));
+    expect(screen.queryByTestId('follow-modal')).not.toBeInTheDocument();
+  });
+
+  it('opens following modal when following count is clicked', () => {
+    render(<Profile />);
+
+    // Click on following count
+    fireEvent.click(screen.getByText('Following'));
+
+    // Modal should be visible with following type
+    const modal = screen.getByTestId('follow-modal');
+    expect(modal).toBeInTheDocument();
+    expect(modal).toHaveAttribute('data-type', 'following');
+  });
+
+  it('displays user posts in the posts tab', () => {
+    render(<Profile />);
+
+    const postsTabContent = screen.getByTestId('tab-content-posts');
+    expect(postsTabContent).toBeInTheDocument();
+
+    // Check that the grid post list is rendered with correct props
+    const gridPostList = screen.getByTestId('grid-post-list');
+    expect(gridPostList).toBeInTheDocument();
+    expect(gridPostList).toHaveAttribute('data-showstats', 'true');
+
+    // Check that the posts are rendered
+    expect(screen.getByTestId('post-post1')).toBeInTheDocument();
+    expect(screen.getByTestId('post-post2')).toBeInTheDocument();
+  });
+
+  it('shows empty state when user has no posts', () => {
+    (useGetUserPosts as jest.Mock).mockReturnValue({
+      data: { documents: [] },
+      isLoading: false,
     });
 
-    // 5. Testing other profile view (not own profile)
-    it('shows follow and message buttons on other user profile', () => {
-        // Override the user context mock to be different from profile ID
-        jest.spyOn(require('@/context/AuthContext'), 'useUserContext').mockReturnValueOnce({
-            user: { id: 'different-user' },
-            isLoading: false,
-        });
+    render(<Profile />);
 
-        // Override the query to return a different user
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserById').mockReturnValueOnce({
-            data: { ...mockCurrentUser, $id: 'other-id' },
-            isLoading: false
-        });
+    expect(screen.getByText('No posts yet')).toBeInTheDocument();
 
-        renderProfile();
-
-        // Check for follow button
-        expect(screen.getByTestId('follow-button')).toBeInTheDocument();
-
-        // Check for message button
-        expect(screen.getByTestId('message-icon')).toBeInTheDocument();
-
-        // Should not show edit button
-        const editProfileButton = screen.queryByText(/Edit Profile/i);
-        expect(editProfileButton).not.toBeInTheDocument();
+    // On own profile, should show create post button
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: { ...mockUser, $id: 'currentuser123' },
+      isLoading: false,
     });
 
-    it('does not show saved tab on other user profile', () => {
-        // Override the user context mock to be different from profile ID
-        jest.spyOn(require('@/context/AuthContext'), 'useUserContext').mockReturnValueOnce({
-            user: { id: 'different-user' },
-            isLoading: false,
-        });
+    render(<Profile />);
 
-        // Override the query to return a different user
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserById').mockReturnValueOnce({
-            data: { ...mockCurrentUser, $id: 'other-id' },
-            isLoading: false
-        });
+    expect(screen.getByText('Create your first post')).toBeInTheDocument();
+  });
 
-        renderProfile();
+  it('shows saved posts tab only on own profile', () => {
+    // Other user's profile
+    render(<Profile />);
 
-        // The saved tab should not be present
-        const tabsList = screen.getByTestId('tabs-list');
-        expect(tabsList.textContent).not.toContain('Saved');
+    // Should not show saved posts tab
+    expect(screen.queryByTestId('tab-saved')).not.toBeInTheDocument();
+
+    // Own profile
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: { ...mockUser, $id: 'currentuser123' },
+      isLoading: false,
     });
+
+    render(<Profile />);
+
+    // Should show saved posts tab
+    expect(screen.getByTestId('tab-saved')).toBeInTheDocument();
+  });
+
+  it('shows liked posts tab only on own profile', () => {
+    // Other user's profile
+    render(<Profile />);
+
+    // Should not show liked posts tab
+    expect(screen.queryByTestId('tab-liked')).not.toBeInTheDocument();
+
+    // Own profile
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: { ...mockUser, $id: 'currentuser123' },
+      isLoading: false,
+    });
+
+    render(<Profile />);
+
+    // Should show liked posts tab
+    expect(screen.getByTestId('tab-liked')).toBeInTheDocument();
+  });
+
+  it('displays loading state while fetching posts', () => {
+    (useGetUserPosts as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: true,
+    });
+
+    render(<Profile />);
+
+    const postsTabContent = screen.getByTestId('tab-content-posts');
+    expect(postsTabContent).toContainElement(screen.getByTestId('loader'));
+  });
+
+  it('displays custom cover image with correct positioning', () => {
+    // Mock user with cover image and position
+    (useGetUserById as jest.Mock).mockReturnValue({
+      data: {
+        ...mockUser,
+        coverImageUrl: 'https://example.com/cover.jpg',
+        coverPosition: JSON.stringify({ x: 0, y: 30 }),
+      },
+      isLoading: false,
+    });
+
+    render(<Profile />);
+
+    const coverImage = screen.getByAltText('cover');
+    expect(coverImage).toBeInTheDocument();
+    expect(coverImage).toHaveAttribute('src', 'https://example.com/cover.jpg');
+    expect(coverImage).toHaveStyle('object-position: center 30%');
+  });
+
+  it('displays fallback cover gradient when no cover image is present', () => {
+    render(<Profile />);
+
+    // Should not show cover image
+    expect(screen.queryByAltText('cover')).not.toBeInTheDocument();
+
+    // Should show gradient div instead
+    const coverContainer = document.querySelector('.w-full.h-64');
+    expect(coverContainer).toBeInTheDocument();
+
+    // Find the gradient div within the cover container
+    const gradientDiv = coverContainer?.querySelector('.bg-gradient-to-r');
+    expect(gradientDiv).toBeInTheDocument();
+    expect(gradientDiv).toHaveClass(
+      'w-full h-full from-primary-600 to-purple-600 rounded-b-xl'
+    );
+  });
+
+  console.log(screen.debug());
+
+  it('passes the correct user data to message link state', () => {
+    render(<Profile />);
+
+    const messageLink = screen.getByTestId('link-to-/messages');
+    expect(messageLink).toHaveAttribute(
+      'data-state',
+      JSON.stringify({
+        initialConversation: mockUser,
+      })
+    );
+  });
 });

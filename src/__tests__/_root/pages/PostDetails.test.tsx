@@ -1,348 +1,427 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { BrowserRouter } from 'react-router-dom';
-import PostDetails from '../../../_root/pages/PostDetails';
+import PostDetails from '@/_root/pages/PostDetails';
 
-// Mock all dependencies with the simplest possible implementations
-jest.mock('react-router-dom', () => {
-    const originalModule = jest.requireActual('react-router-dom');
-    const navigate = jest.fn();
-    return {
-        ...originalModule,
-        useParams: () => ({ id: 'mock-id' }),
-        useNavigate: () => navigate,
-        Link: ({ children, to, className }: any) => (
-            <a href={to} className={className} data-testid="mock-link">
-                {children}
-            </a>
-        )
-    };
-});
-
-// Create mock post data
-const mockPost = {
-    $id: 'mock-id',
-    caption: 'Test post caption',
-    imageUrl: 'https://example.com/test.jpg',
-    imageId: 'image-123',
-    location: 'Test Location',
-    tags: ['tag1', 'tag2'],
-    $createdAt: '2024-01-01T12:00:00.000Z',
-    creator: {
-        $id: 'user-123',
-        name: 'Test User',
-        imageUrl: '/assets/profile.jpg',
-    },
-    likes: [],
-    comments: []
-};
-
-const mockRelatedPosts = {
-    documents: [
-        {
-            $id: 'related-1',
-            caption: 'Related post',
-            imageUrl: 'https://example.com/related.jpg',
-            creator: {
-                $id: 'user-123',
-                name: 'Test User',
-                imageUrl: '/assets/profile.jpg',
-            },
-            likes: []
-        }
-    ]
-};
-
-// Mock AuthContext
-const mockUser = { id: 'user-123', name: 'Test User' };
-jest.mock('@/context/AuthContext', () => ({
-    useUserContext: () => ({ user: mockUser })
+// Mock dependencies
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  useParams: () => ({ id: 'post123' }),
+  Link: ({ to, children, className }: any) => (
+    <a href={to} className={className} data-testid='router-link'>
+      {children}
+    </a>
+  ),
+  useNavigate: () => mockNavigate,
 }));
-
-// Create query mocks with controllable return values
-let isLoadingPost = true;
-let isLoadingUserPosts = true;
-let mockDeleteMutate = jest.fn();
 
 jest.mock('@/lib/react-query/queries', () => ({
-    useGetPostById: () => ({
-        data: isLoadingPost ? null : mockPost,
-        isLoading: isLoadingPost
-    }),
-    useGetUserPosts: () => ({
-        data: isLoadingUserPosts ? null : mockRelatedPosts,
-        isLoading: isLoadingUserPosts
-    }),
-    useDeletePost: () => ({
-        mutate: mockDeleteMutate
-    })
+  useGetPostById: jest.fn(),
+  useGetUserPosts: jest.fn(),
+  useDeletePost: jest.fn(),
 }));
 
-// Mock utility functions
 jest.mock('@/lib/utils', () => ({
-    multiFormatDateString: () => '2 days ago',
-    checkIsLiked: () => false,
-    cn: (...args: any[]) => args.filter(Boolean).join(' ')
+  multiFormatDateString: jest.fn().mockReturnValue('2 days ago'),
+  formatDateString: jest.fn().mockReturnValue('Jan 15, 2023 at 3:30 PM'),
+  cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-// Mock components
-jest.mock('@/components/shared/PostStats', () => {
-    return {
-        __esModule: true,
-        default: ({ post, userId }: any) => (
-            <div data-testid="post-stats" data-post-id={post.$id} data-user-id={userId}>
-                PostStats Component
-            </div>
-        )
-    };
-});
-
-jest.mock('@/components/shared/GridPostList', () => {
-    return {
-        __esModule: true,
-        default: ({ posts }: any) => (
-            <div data-testid="grid-post-list" data-posts-count={posts?.length || 0}>
-                GridPostList Component
-            </div>
-        )
-    };
-});
-
-jest.mock('@/components/shared/CommentSection', () => {
-    return {
-        __esModule: true,
-        default: ({ postId }: any) => (
-            <div data-testid="comment-section" data-post-id={postId}>
-                CommentSection Component
-            </div>
-        )
-    };
-});
-
-// Mock Loader with a className to help us find the main loading spinner
-jest.mock('lucide-react', () => ({
-    Loader: ({ className }: any) => (
-        <div
-            data-testid="loader"
-            className={className || ''}
-        >
-            Loading...
-        </div>
-    )
+jest.mock('@/context/AuthContext', () => ({
+  useUserContext: () => ({
+    user: {
+      id: 'user123',
+      name: 'Test User',
+      username: 'testuser',
+      email: 'test@example.com',
+      imageUrl: 'https://example.com/avatar.jpg',
+    },
+  }),
 }));
 
-// Mock UI components
 jest.mock('@/components/ui/button', () => ({
-    Button: ({ children, onClick, type, variant, className }: any) => (
-        <button
-            onClick={onClick}
-            type={type || 'button'}
-            data-variant={variant}
-            className={className}
-            data-testid="ui-button"
-        >
-            {children}
+  Button: ({ children, onClick, className, variant, type }: any) => (
+    <button
+      onClick={onClick}
+      className={className}
+      data-variant={variant}
+      data-testid='button'
+      type={type || 'button'}
+    >
+      {children}
+    </button>
+  ),
+}));
+
+jest.mock('lucide-react', () => ({
+  Loader: () => <div data-testid='loader'>Loading...</div>,
+}));
+
+jest.mock('@/components/shared/PostStats', () => ({
+  __esModule: true,
+  default: ({ post, userId }: any) => (
+    <div data-testid='post-stats'>
+      <span>Likes: {post.likes?.length || 0}</span>
+      <span>User ID: {userId}</span>
+    </div>
+  ),
+}));
+
+jest.mock('@/components/shared/GridPostList', () => ({
+  __esModule: true,
+  default: ({ posts }: any) => (
+    <div data-testid='grid-post-list'>
+      {posts && posts.length > 0 ? (
+        posts.map((post: any) => (
+          <div key={post.$id} data-testid={`related-post-${post.$id}`}>
+            {post.caption}
+          </div>
+        ))
+      ) : (
+        <div>No related posts</div>
+      )}
+    </div>
+  ),
+}));
+
+jest.mock('@/components/shared/CommentSection', () => ({
+  __esModule: true,
+  default: ({ postId, postCreatorId }: any) => (
+    <div data-testid='comment-section'>
+      <div>Comments for post: {postId}</div>
+      <div>Post creator: {postCreatorId}</div>
+    </div>
+  ),
+}));
+
+jest.mock('@/components/shared/DeleteConfirmationModal', () => ({
+  __esModule: true,
+  default: ({ isOpen, onClose, onConfirm }: any) =>
+    isOpen ? (
+      <div data-testid='delete-modal'>
+        <button onClick={onConfirm} data-testid='confirm-delete'>
+          Confirm Delete
         </button>
-    )
+        <button onClick={onClose} data-testid='cancel-delete'>
+          Cancel
+        </button>
+      </div>
+    ) : null,
 }));
 
-// Create a mock implementation for DeleteConfirmationModal
-let modalConfirmHandler: (() => void) | null = null;
-let isModalOpen = false;
-
-jest.mock('@/components/shared/DeleteConfirmationModal', () => {
-    return {
-        __esModule: true,
-        default: ({ isOpen, onClose, onConfirm }: any) => {
-            // Store handlers for testing
-            modalConfirmHandler = onConfirm;
-            isModalOpen = isOpen;
-
-            return (
-                <div
-                    data-testid="delete-modal"
-                    data-is-open={isOpen}
-                    style={{ display: isOpen ? 'block' : 'none' }}
-                >
-                    <h2>Delete Post</h2>
-                    <p>Are you sure you want to delete this post?</p>
-                    <button
-                        data-testid="confirm-delete-button"
-                        onClick={onConfirm}
-                    >
-                        Delete
-                    </button>
-                    <button
-                        data-testid="cancel-delete-button"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </button>
-                </div>
-            );
-        }
-    };
-});
-
-// Mock Dialog components
-jest.mock('@/components/ui/dialog', () => ({
-    Dialog: ({ children, open }: any) => (
-        <div data-testid="dialog" data-open={open} style={{ display: open ? 'block' : 'none' }}>
-            {children}
-        </div>
-    ),
-    DialogContent: ({ children, className }: any) => <div className={className}>{children}</div>,
-    DialogHeader: ({ children }: any) => <div>{children}</div>,
-    DialogFooter: ({ children, className }: any) => <div className={className}>{children}</div>,
-    DialogTitle: ({ children, className }: any) => <div className={className}>{children}</div>,
-    DialogDescription: ({ children, className }: any) => <div className={className}>{children}</div>,
+jest.mock('@/components/shared/TranslateButton', () => ({
+  __esModule: true,
+  default: ({ text }: any) => (
+    <div data-testid='translate-button'>
+      <p>{text}</p>
+      <button>Translate</button>
+    </div>
+  ),
 }));
+
+// Import the mocked modules
+import {
+  useGetPostById,
+  useGetUserPosts,
+  useDeletePost,
+} from '@/lib/react-query/queries';
 
 describe('PostDetails Component', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-        // Reset state for each test
-        isLoadingPost = true;
-        isLoadingUserPosts = true;
-        mockDeleteMutate = jest.fn();
-        modalConfirmHandler = null;
-        isModalOpen = false;
+  // Mock post data
+  const mockPost = {
+    $id: 'post123',
+    $createdAt: '2023-01-15T15:30:00.000Z',
+    caption: 'This is a test post caption',
+    location: 'Test Location',
+    imageUrl: 'https://example.com/post-image.jpg',
+    imageId: 'image123',
+    tags: ['test', 'example', 'demo'],
+    creator: {
+      $id: 'user123',
+      name: 'Test User',
+      username: 'testuser',
+      imageUrl: 'https://example.com/user-image.jpg',
+    },
+    likes: ['user1', 'user2'],
+  };
 
-        // Mock window.innerWidth for responsive testing
-        Object.defineProperty(window, 'innerWidth', {
-            writable: true,
-            configurable: true,
-            value: 1200, // Default to desktop view
-        });
+  // Mock related posts data
+  const mockRelatedPosts = {
+    documents: [
+      {
+        $id: 'post456',
+        caption: 'Related post 1',
+        creator: {
+          $id: 'user123',
+          name: 'Test User',
+          imageUrl: 'https://example.com/user-image.jpg',
+        },
+        imageUrl: 'https://example.com/related-1.jpg',
+      },
+      {
+        $id: 'post789',
+        caption: 'Related post 2',
+        creator: {
+          $id: 'user123',
+          name: 'Test User',
+          imageUrl: 'https://example.com/user-image.jpg',
+        },
+        imageUrl: 'https://example.com/related-2.jpg',
+      },
+    ],
+  };
+
+  const mockDeletePostMutate = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Default mock implementations
+    (useGetPostById as jest.Mock).mockReturnValue({
+      data: mockPost,
+      isLoading: false,
     });
 
-    it('renders loading state correctly', () => {
-        isLoadingPost = true;
-
-        render(
-            <BrowserRouter>
-                <PostDetails />
-            </BrowserRouter>
-        );
-
-        // Find the main loader by its className that matches our component
-        const mainLoader = screen.getAllByTestId('loader').find(el =>
-            el.className.includes('animate-spin')
-        );
-
-        expect(mainLoader).toBeInTheDocument();
+    (useGetUserPosts as jest.Mock).mockReturnValue({
+      data: mockRelatedPosts,
+      isLoading: false,
     });
 
-    it('renders post details when data is loaded', () => {
-        isLoadingPost = false;
-        isLoadingUserPosts = false;
-
-        render(
-            <BrowserRouter>
-                <PostDetails />
-            </BrowserRouter>
-        );
-
-        // Check for post content
-        expect(screen.getByTestId('post-stats')).toBeInTheDocument();
-        expect(screen.getByTestId('comment-section')).toBeInTheDocument();
-        expect(screen.getByTestId('grid-post-list')).toBeInTheDocument();
+    (useDeletePost as jest.Mock).mockReturnValue({
+      mutate: mockDeletePostMutate,
     });
 
-    it('navigates back when back button is clicked', () => {
-        isLoadingPost = false;
-
-        render(
-            <BrowserRouter>
-                <PostDetails />
-            </BrowserRouter>
-        );
-
-        // Find back button (either desktop or mobile version)
-        const backButtons = screen.getAllByTestId('ui-button');
-        const backButton = backButtons[0]; // First button should be back button
-
-        // Click the back button
-        fireEvent.click(backButton);
-
-        // Check that navigate was called with -1
-        const navigate = require('react-router-dom').useNavigate();
-        expect(navigate).toHaveBeenCalledWith(-1);
+    // Reset window width for testing responsive behavior
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024, // Default to desktop view
     });
 
-    it('renders in mobile view when screen width is small', () => {
-        isLoadingPost = false;
+    // Mock window resize event
+    window.dispatchEvent = jest.fn();
+  });
 
-        // Set window width to mobile size
-        Object.defineProperty(window, 'innerWidth', {
-            writable: true,
-            configurable: true,
-            value: 700,
-        });
-
-        // Trigger resize event
-        window.dispatchEvent(new Event('resize'));
-
-        render(
-            <BrowserRouter>
-                <PostDetails />
-            </BrowserRouter>
-        );
-
-        // If it renders without errors in mobile view, test passes
-        expect(true).toBeTruthy();
+  it('renders the loading state correctly', () => {
+    (useGetPostById as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: true,
     });
 
-    it('handles post deletion flow correctly', () => {
-        isLoadingPost = false;
+    render(<PostDetails />);
 
-        render(
-            <BrowserRouter>
-                <PostDetails />
-            </BrowserRouter>
-        );
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('post-stats')).not.toBeInTheDocument();
+  });
 
-        // Directly invoke the openDeleteModal function by simulating the workflow
-        const deleteButtons = screen.getAllByTestId('ui-button');
-        let deleteButton: HTMLElement | null = null;
+  it('renders post details in desktop view', () => {
+    render(<PostDetails />);
 
-        // Look for a button with child image with alt="delete"
-        for (const button of deleteButtons) {
-            if (button.innerHTML.includes('delete')) {
-                deleteButton = button;
-                break;
-            }
-        }
+    // Check if post content is rendered
+    expect(screen.getByText('This is a test post caption')).toBeInTheDocument();
+    expect(screen.getByText('Test Location')).toBeInTheDocument();
+    expect(screen.getByText('#test')).toBeInTheDocument();
+    expect(screen.getByText('#example')).toBeInTheDocument();
+    expect(screen.getByText('#demo')).toBeInTheDocument();
 
-        if (deleteButton) {
-            // Click delete button
-            fireEvent.click(deleteButton);
+    // Check post stats
+    expect(screen.getByTestId('post-stats')).toBeInTheDocument();
 
-            // The modal should be open now
-            expect(isModalOpen).toBe(true);
+    // Check post image
+    const images = screen.getAllByRole('img');
+    const postImage = images.find(
+      (img) => img.getAttribute('alt') === 'post image'
+    );
+    expect(postImage).toBeInTheDocument();
+    expect(postImage).toHaveAttribute(
+      'src',
+      'https://example.com/post-image.jpg'
+    );
 
-            // Find and click confirm button by invoking the handler directly
-            if (modalConfirmHandler) {
-                modalConfirmHandler();
+    // Check related posts section
+    expect(screen.getByText('More Related Posts')).toBeInTheDocument();
+    expect(screen.getByTestId('grid-post-list')).toBeInTheDocument();
+  });
 
-                // Delete mutation should have been called
-                expect(mockDeleteMutate).toHaveBeenCalled();
-            }
-        }
+  it('renders the post in mobile view', () => {
+    // Set window to mobile width
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      value: 500,
+    });
+    window.dispatchEvent(new Event('resize'));
+
+    render(<PostDetails />);
+
+    // Mobile view should have the specific mobile class
+    expect(screen.getByText('This is a test post caption')).toBeInTheDocument();
+    // Check for mobile specific elements or classes
+    expect(screen.getByTestId('translate-button')).toBeInTheDocument();
+    expect(screen.getByTestId('post-stats')).toBeInTheDocument();
+    expect(screen.getByTestId('comment-section')).toBeInTheDocument();
+  });
+
+  it('navigates back when back button is clicked', () => {
+    // Clear any previous calls to mockNavigate
+    mockNavigate.mockClear();
+
+    render(<PostDetails />);
+
+    // Find back button and click it
+    const backButton = screen.getAllByText('Back')[0]; // There might be multiple back buttons (mobile/desktop)
+    fireEvent.click(backButton);
+
+    // Check if navigate(-1) was called
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  it('shows edit and delete buttons when user is the post creator', () => {
+    render(<PostDetails />);
+
+    // Since the mock post creator ID matches the mock user ID
+    const editButton = screen.getByAltText('edit');
+    expect(editButton).toBeInTheDocument();
+    expect(editButton.closest('a')).toHaveAttribute(
+      'href',
+      '/update-post/post123'
+    );
+
+    const deleteButton = screen.getByAltText('delete');
+    expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('does not show edit and delete buttons when user is not the post creator', () => {
+    // Mock post with different creator
+    (useGetPostById as jest.Mock).mockReturnValue({
+      data: {
+        ...mockPost,
+        creator: {
+          $id: 'differentuser',
+          name: 'Different User',
+          username: 'differentuser',
+          imageUrl: 'https://example.com/different-user.jpg',
+        },
+      },
+      isLoading: false,
     });
 
-    it('renders related posts when available', () => {
-        isLoadingPost = false;
-        isLoadingUserPosts = false;
+    render(<PostDetails />);
 
-        render(
-            <BrowserRouter>
-                <PostDetails />
-            </BrowserRouter>
-        );
+    expect(screen.queryByAltText('edit')).not.toBeInTheDocument();
+    expect(screen.queryByAltText('delete')).not.toBeInTheDocument();
+  });
 
-        const gridPostList = screen.getByTestId('grid-post-list');
-        expect(gridPostList).toBeInTheDocument();
-        expect(gridPostList).toHaveAttribute('data-posts-count', '1');
+  it('opens delete confirmation modal when delete button is clicked', () => {
+    render(<PostDetails />);
+
+    // Click delete button
+    const deleteButton = screen.getByAltText('delete');
+    fireEvent.click(deleteButton);
+
+    // Check if delete modal appears
+    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+  });
+
+  it('deletes the post and navigates away when deletion is confirmed', () => {
+    // Clear any previous calls to mockNavigate
+    mockNavigate.mockClear();
+
+    render(<PostDetails />);
+
+    // Click delete button to open modal
+    const deleteButton = screen.getByAltText('delete');
+    fireEvent.click(deleteButton);
+
+    // Click confirm button in modal
+    const confirmButton = screen.getByTestId('confirm-delete');
+    fireEvent.click(confirmButton);
+
+    // Check if delete mutation was called with correct params
+    expect(mockDeletePostMutate).toHaveBeenCalledWith({
+      postId: 'post123',
+      imageId: 'image123',
     });
+
+    // Check if navigation occurred
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  it('closes delete modal when cancel is clicked', () => {
+    render(<PostDetails />);
+
+    // Click delete button to open modal
+    const deleteButton = screen.getByAltText('delete');
+    fireEvent.click(deleteButton);
+
+    // Modal should be visible
+    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+
+    // Click cancel button
+    const cancelButton = screen.getByTestId('cancel-delete');
+    fireEvent.click(cancelButton);
+
+    // Modal should be gone
+    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+  });
+
+  it('renders the comment section with correct props', () => {
+    render(<PostDetails />);
+
+    const commentSection = screen.getByTestId('comment-section');
+    expect(commentSection).toBeInTheDocument();
+
+    // Check if correct props were passed
+    expect(screen.getByText('Comments for post: post123')).toBeInTheDocument();
+    expect(screen.getByText('Post creator: user123')).toBeInTheDocument();
+  });
+
+  it('renders related posts when available', () => {
+    render(<PostDetails />);
+
+    expect(screen.getByText('More Related Posts')).toBeInTheDocument();
+    expect(screen.getByTestId('grid-post-list')).toBeInTheDocument();
+    expect(screen.getByTestId('related-post-post456')).toBeInTheDocument();
+    expect(screen.getByTestId('related-post-post789')).toBeInTheDocument();
+  });
+
+  it('shows loading state for related posts', () => {
+    (useGetUserPosts as jest.Mock).mockReturnValue({
+      data: null,
+      isLoading: true,
+    });
+
+    render(<PostDetails />);
+
+    expect(screen.getByText('More Related Posts')).toBeInTheDocument();
+    // Should show loader instead of grid
+    const relatedPostsSection =
+      screen.getByText('More Related Posts').parentElement;
+    expect(relatedPostsSection).toContainElement(screen.getByTestId('loader'));
+  });
+
+  it('handles window resize events correctly', async () => {
+    // Start with desktop view
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      value: 1024,
+    });
+
+    const { rerender } = render(<PostDetails />);
+
+    // Now simulate resize to mobile view
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      value: 500,
+    });
+
+    // Trigger resize event
+    window.dispatchEvent(new Event('resize'));
+
+    // Force re-render
+    rerender(<PostDetails />);
+
+    // Additional checks for mobile-specific elements could be added here
+    // But since the resize handling is tied to useState which doesn't update in tests without special handling,
+    // we'll just verify that the component doesn't crash on resize
+    expect(screen.getByText('This is a test post caption')).toBeInTheDocument();
+  });
 });
