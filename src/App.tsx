@@ -18,7 +18,7 @@ import {
 } from './_root/pages';
 import { Toaster } from '@/components/ui/toaster';
 import Messages from './_root/pages/Messages';
-import Loader from '@/components/shared/Loader'; // Import your Loader component
+import Loader from '@/components/shared/Loader';
 
 const App = () => {
   const { isAuthenticated, isLoading } = useUserContext();
