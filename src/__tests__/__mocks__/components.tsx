@@ -1,26 +1,121 @@
-// Mock Topbar component
+// Mock Topbar component with user context
 jest.mock('@/components/shared/Topbar', () => ({
     __esModule: true,
-    default: () => <div data-testid="topbar-mock">Topbar</div>
+    default: () => {
+        // Mock the required context here so it's properly represented in tests
+        const mockUser = {
+            id: 'user123',
+            name: 'Test User',
+            username: 'testuser',
+            imageUrl: '/assets/icons/profile-placeholder.svg'
+        };
+
+        return (
+            <section data-testid="topbar-mock" className="topbar">
+                <div className="flex-between py-4 px-5">
+                    <div className="logo-container" data-testid="topbar-logo">Logo</div>
+                    <div className="user-actions" data-testid="topbar-user-actions">
+                        <button data-testid="topbar-logout-button">Logout</button>
+                        <div data-testid="topbar-profile-link">Profile ({mockUser.username})</div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 }));
 
-// Mock LeftSidebar component
+// Mock LeftSidebar component with navigation links
 jest.mock('@/components/shared/LeftSidebar', () => ({
     __esModule: true,
-    default: () => <div data-testid="left-sidebar-mock">Left Sidebar</div>
+    default: () => {
+        // Mock the required context and sidebar links
+        const mockUser = {
+            id: 'user123',
+            name: 'Test User',
+            username: 'testuser',
+            imageUrl: '/assets/icons/profile-placeholder.svg'
+        };
+
+        const mockSidebarLinks = [
+            { label: 'Home', route: '/', imgURL: '/assets/icons/home.svg' },
+            { label: 'Explore', route: '/explore', imgURL: '/assets/icons/explore.svg' },
+            { label: 'People', route: '/people', imgURL: '/assets/icons/people.svg' }
+        ];
+
+        return (
+            <nav data-testid="left-sidebar-mock" className="leftsidebar">
+                <div className="flex flex-col gap-11">
+                    <div data-testid="sidebar-logo">Logo</div>
+
+                    <div data-testid="sidebar-user-profile">
+                        <img
+                            src={mockUser.imageUrl}
+                            alt="profile"
+                            className="h-14 w-14 rounded-full object-cover"
+                        />
+                        <div>
+                            <p>{mockUser.name}</p>
+                            <p>@{mockUser.username}</p>
+                        </div>
+                    </div>
+
+                    <ul data-testid="sidebar-nav-links">
+                        {mockSidebarLinks.map(link => (
+                            <li key={link.label} data-testid={`sidebar-link-${link.label.toLowerCase()}`}>
+                                {link.label}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <button data-testid="sidebar-logout-button">Logout</button>
+            </nav>
+        );
+    }
 }));
 
 // Mock RightSideBar component
 jest.mock('@/components/shared/RightSideBar', () => ({
     __esModule: true,
-    default: () => <div data-testid="right-sidebar-mock">Right Sidebar</div>
+    default: () => (
+        <section data-testid="right-sidebar-mock" className="rightsidebar">
+            <div data-testid="rightsidebar-content">Right Sidebar Content</div>
+        </section>
+    )
 }));
 
-// Mock BottomBar component
+// Mock BottomBar component with navigation links
 jest.mock('@/components/shared/BottomBar', () => ({
     __esModule: true,
-    default: () => <div data-testid="bottom-bar-mock">Bottom Bar</div>
+    default: () => {
+        const mockBottombarLinks = [
+            { label: 'Home', route: '/', imgURL: '/assets/icons/home.svg' },
+            { label: 'Explore', route: '/explore', imgURL: '/assets/icons/explore.svg' },
+            { label: 'Create', route: '/create-post', imgURL: '/assets/icons/create.svg' }
+        ];
+
+        return (
+            <section data-testid="bottom-bar-mock" className="bottom-bar">
+                {mockBottombarLinks.map(link => (
+                    <div
+                        key={`bottombar-${link.label}`}
+                        data-testid={`bottombar-link-${link.label.toLowerCase()}`}
+                        className="flex-center flex-col gap-1 p-2"
+                    >
+                        <img
+                            src={link.imgURL}
+                            alt={link.label}
+                            width={16}
+                            height={16}
+                        />
+                        <p>{link.label}</p>
+                    </div>
+                ))}
+            </section>
+        );
+    }
 }));
+
 
 // Mock for react-router-dom Outlet
 jest.mock('react-router-dom', () => ({
