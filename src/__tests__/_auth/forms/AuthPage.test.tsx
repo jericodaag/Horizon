@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import AuthPage from '@/_auth/forms/AuthPage';
+import '@testing-library/jest-dom';
 
 // These mocks are specific to this test and not covered by global setupMocks
 jest.mock('@/_auth/forms/SigninForm', () => ({

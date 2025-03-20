@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import AuthLayout from '@/_auth/AuthLayout';
+import '@testing-library/jest-dom';
 
 describe('AuthLayout', () => {
   it('renders the layout with correct structure', () => {
