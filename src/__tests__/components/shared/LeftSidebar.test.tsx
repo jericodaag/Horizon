@@ -1,173 +1,184 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import RightSidebar from '@/components/shared/RightSideBar';
+import LeftSidebar from '@/components/shared/LeftSidebar';
 
-// Mock the React Router components
+// Unmock the component we're testing
+jest.unmock('@/components/shared/LeftSidebar');
+
+// Mock necessary dependencies
 jest.mock('react-router-dom', () => ({
-    Link: ({ children, to, className }) => (
-        <a href={to} className={className} data-testid={`link-${to}`}>
-            {children}
-        </a>
-    )
+  Link: ({ children, to, className }) => (
+    <a href={to} className={className} data-testid={`link-to-${to}`}>
+      {children}
+    </a>
+  ),
+  NavLink: ({ children, to, className }) => (
+    <a href={to} className={className} data-testid={`navlink-to-${to}`}>
+      {children}
+    </a>
+  ),
+  useLocation: () => ({
+    pathname: '/explore',
+  }),
+  useNavigate: () => jest.fn(),
 }));
 
-// Mock the FollowButton component
-jest.mock('@/components/shared/FollowButton', () => ({
-    __esModule: true,
-    default: ({ userId, className }) => (
-        <button
-            data-testid={`follow-button-${userId}`}
-            className={className}
-        >
-            Follow
-        </button>
-    )
+// Mock constants
+jest.mock('@/constants', () => ({
+  sidebarLinks: [
+    { label: 'Home', route: '/', imgURL: '/assets/icons/home.svg' },
+    {
+      label: 'Explore',
+      route: '/explore',
+      imgURL: '/assets/icons/explore.svg',
+    },
+    { label: 'People', route: '/people', imgURL: '/assets/icons/people.svg' },
+    { label: 'Saved', route: '/saved', imgURL: '/assets/icons/saved.svg' },
+    {
+      label: 'Create Post',
+      route: '/create-post',
+      imgURL: '/assets/icons/create.svg',
+    },
+  ],
 }));
 
-// Mock the API queries
+// Mock AuthContext
+jest.mock('@/context/AuthContext', () => ({
+  useUserContext: () => ({
+    user: {
+      id: 'user123',
+      name: 'Test User',
+      username: 'testuser',
+      imageUrl: '/assets/icons/profile-placeholder.svg',
+    },
+  }),
+}));
+
+// Mock React Query
 jest.mock('@/lib/react-query/queries', () => ({
-    useGetTopCreators: () => {
-        // Return test data
-        return {
-            data: [
-                {
-                    $id: 'user1',
-                    name: 'Creator One',
-                    username: 'creatorone',
-                    imageUrl: '/creator1.jpg',
-                    followerCount: 125
-                },
-                {
-                    $id: 'user2',
-                    name: 'Creator Two',
-                    username: 'creatortwo',
-                    imageUrl: '/creator2.jpg',
-                    followerCount: 98
-                },
-                {
-                    $id: 'user3',
-                    name: 'Creator Three',
-                    username: 'creatorthree',
-                    imageUrl: null,
-                    followerCount: 75
-                }
-            ],
-            isLoading: false
-        };
-    }
+  useSignOutAccount: () => ({
+    mutate: jest.fn(),
+    isSuccess: false,
+    isPending: false,
+  }),
 }));
 
-describe('RightSidebar Component', () => {
-    it('renders the Top Creators heading', () => {
-        render(<RightSidebar />);
+// Mock lucide-react icons
+jest.mock('lucide-react', () => ({
+  Loader2: () => <div data-testid='loader-icon'>Loading Icon</div>,
+}));
 
-        expect(screen.getByText('Top Creators')).toBeInTheDocument();
-        expect(screen.getByText('(Most Followed)')).toBeInTheDocument();
-    });
+describe('LeftSidebar Component', () => {
+  it('renders logo, profile, and navigation links', () => {
+    render(<LeftSidebar />);
 
-    it('renders creator cards for each top creator', () => {
-        render(<RightSidebar />);
+    // Check if logo is rendered
+    expect(screen.getByAltText('logo')).toBeInTheDocument();
 
-        // Check if all creator names are displayed
-        expect(screen.getByText('Creator One')).toBeInTheDocument();
-        expect(screen.getByText('Creator Two')).toBeInTheDocument();
-        expect(screen.getByText('Creator Three')).toBeInTheDocument();
+    // Check if profile is rendered
+    expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(screen.getByText('@testuser')).toBeInTheDocument();
 
-        // Check if usernames are displayed with @ prefix
-        expect(screen.getByText('@creatorone')).toBeInTheDocument();
-        expect(screen.getByText('@creatortwo')).toBeInTheDocument();
-        expect(screen.getByText('@creatorthree')).toBeInTheDocument();
+    // Check if all navigation links are rendered
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Explore')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(screen.getByText('Create Post')).toBeInTheDocument();
 
-        // Check if follower counts are displayed
-        expect(screen.getByText('125 followers')).toBeInTheDocument();
-        expect(screen.getByText('98 followers')).toBeInTheDocument();
-        expect(screen.getByText('75 followers')).toBeInTheDocument();
-    });
+    // Check if logout button is rendered
+    expect(screen.getByText('Logout')).toBeInTheDocument();
+  });
 
-    it('renders follow buttons for each creator', () => {
-        render(<RightSidebar />);
+  it('highlights the active navigation link', () => {
+    render(<LeftSidebar />);
 
-        // Check if follow buttons are present for each creator
-        expect(screen.getByTestId('follow-button-user1')).toBeInTheDocument();
-        expect(screen.getByTestId('follow-button-user2')).toBeInTheDocument();
-        expect(screen.getByTestId('follow-button-user3')).toBeInTheDocument();
-    });
+    // Get all sidebar links
+    const sidebarItems = screen.getAllByRole('listitem');
 
-    it('renders profile images for creators with images', () => {
-        render(<RightSidebar />);
+    // Find the Explore item (index 1) which should be active based on our mock
+    const exploreItem = sidebarItems.find((item) =>
+      item.textContent?.includes('Explore')
+    );
+    expect(exploreItem).toHaveClass('bg-primary-500');
 
-        // Check for profile images for creators with imageUrl
-        const profileImages = screen.getAllByRole('img');
+    // Find a non-active item (Home) and check it doesn't have the active class
+    const homeItem = sidebarItems.find((item) =>
+      item.textContent?.includes('Home')
+    );
+    expect(homeItem).not.toHaveClass('bg-primary-500');
+  });
 
-        // Should be 2 creators with images
-        expect(profileImages.length).toBe(2);
+  it('applies invert-white class to active link icon', () => {
+    render(<LeftSidebar />);
 
-        // Verify the image sources
-        expect(profileImages[0]).toHaveAttribute('src', '/creator1.jpg');
-        expect(profileImages[1]).toHaveAttribute('src', '/creator2.jpg');
-    });
+    // Find all navigation item images
+    const navImages = screen
+      .getAllByRole('img')
+      .filter(
+        (img) =>
+          img.getAttribute('alt') !== 'logo' &&
+          img.getAttribute('alt') !== 'profile' &&
+          img.getAttribute('alt') !== 'logout'
+      );
 
-    it('renders initial avatar for creators without images', () => {
-        render(<RightSidebar />);
+    // Find the Explore icon which should have invert-white
+    const exploreIcon = navImages.find(
+      (img) => img.getAttribute('alt') === 'Explore'
+    );
+    expect(exploreIcon).toHaveClass('invert-white');
 
-        // Creator Three doesn't have an image, so should show an initial
-        const initialDiv = screen.getByText('C'); // First letter of Creator Three
-        expect(initialDiv).toBeInTheDocument();
-    });
+    // Find the Home icon which should not have invert-white
+    const homeIcon = navImages.find(
+      (img) => img.getAttribute('alt') === 'Home'
+    );
+    expect(homeIcon).not.toHaveClass('invert-white');
+  });
 
-    it('shows loader when loading creators', () => {
-        // Override the mock to simulate loading state
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetTopCreators').mockReturnValue({
-            data: [],
-            isLoading: true
-        });
+  it('shows loading state when signing out', () => {
+    // Override the mock to simulate loading state
+    jest
+      .spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount')
+      .mockReturnValue({
+        mutate: jest.fn(),
+        isSuccess: false,
+        isPending: true,
+      });
 
-        render(<RightSidebar />);
+    render(<LeftSidebar />);
 
-        // Check for loader
-        expect(screen.getByRole('status')).toBeInTheDocument();
-    });
+    // Check if loading text is displayed
+    expect(screen.getByText('Logging out...')).toBeInTheDocument();
+    expect(screen.queryByText('Logout')).not.toBeInTheDocument();
+  });
 
-    it('shows message when no creators are found', () => {
-        // Override the mock to return empty data
-        jest.spyOn(require('@/lib/react-query/queries'), 'useGetTopCreators').mockReturnValue({
-            data: [],
-            isLoading: false
-        });
+  it('calls signOut function when logout button is clicked', () => {
+    const mockSignOut = jest.fn();
 
-        render(<RightSidebar />);
+    // Override the mock to provide our mock function
+    jest
+      .spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount')
+      .mockReturnValue({
+        mutate: mockSignOut,
+        isSuccess: false,
+        isPending: false,
+      });
 
-        // Check for no creators message
-        expect(screen.getByText('No creators found')).toBeInTheDocument();
-    });
+    render(<LeftSidebar />);
 
-    it('applies correct layout classes for grid display', () => {
-        render(<RightSidebar />);
+    // Find and click logout button
+    fireEvent.click(screen.getByText('Logout'));
 
-        // Check the container has grid classes
-        const gridContainer = screen.getByText('Creator One').closest('.grid');
-        if (!gridContainer) {
-            throw new Error('Grid container not found');
-        }
-        expect(gridContainer).toHaveClass('grid-cols-2');
-        expect(gridContainer).toHaveClass('gap-4');
-    });
+    // Verify the signOut function was called
+    expect(mockSignOut).toHaveBeenCalled();
+  });
 
-    it('provides links to creator profiles', () => {
-        render(<RightSidebar />);
+  it('navigates to profile page when profile link is clicked', () => {
+    render(<LeftSidebar />);
 
-        // Creator One's profile link should point to their profile
-        const creatorOneLink = screen.getByText('Creator One').closest('a');
-        if (!creatorOneLink) {
-            throw new Error('Creator One link not found');
-        }
-        expect(creatorOneLink).toHaveAttribute('href', '/profile/user1');
-
-        // Creator Two's profile link should point to their profile
-        const creatorTwoLink = screen.getByText('Creator Two').closest('a');
-        if (!creatorTwoLink) {
-            throw new Error('Creator Two link not found');
-        }
-        expect(creatorTwoLink).toHaveAttribute('href', '/profile/user2');
-    });
+    // Find profile link
+    const profileLink = screen.getByTestId('link-to-/profile/user123');
+    expect(profileLink).toBeInTheDocument();
+    expect(profileLink).toHaveAttribute('href', '/profile/user123');
+  });
 });

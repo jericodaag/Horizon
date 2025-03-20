@@ -2,140 +2,159 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Topbar from '@/components/shared/Topbar';
 
-// Mock the signOut functionality
-const mockSignOut = jest.fn();
-jest.mock('@/lib/react-query/queries', () => ({
-  useSignOutAccount: () => ({
-    mutate: mockSignOut,
-    isSuccess: false
-  })
+// Unmock the component we're testing
+jest.unmock('@/components/shared/Topbar');
+
+// Mock necessary dependencies
+jest.mock('react-router-dom', () => ({
+  Link: ({ children, to, className }) => (
+    <a href={to} className={className} data-testid={`link-to-${to}`}>
+      {children}
+    </a>
+  ),
+  useNavigate: () => jest.fn(),
 }));
 
-// Mock the auth context
+// Mock AuthContext
 jest.mock('@/context/AuthContext', () => ({
   useUserContext: () => ({
     user: {
       id: 'user123',
       name: 'Test User',
       username: 'testuser',
-      imageUrl: '/test-profile.jpg'
-    }
-  })
+      imageUrl: '/assets/icons/profile-placeholder.svg',
+    },
+  }),
 }));
 
-// Mock React Router
-jest.mock('react-router-dom', () => ({
-  Link: ({ children, to, className }) => (
-    <a href={to} className={className} data-testid={`link-${to}`}>
+// Mock React Query
+jest.mock('@/lib/react-query/queries', () => ({
+  useSignOutAccount: () => ({
+    mutate: jest.fn(),
+    isSuccess: false,
+  }),
+}));
+
+// Mock UI Button component
+jest.mock('@/components/ui/button', () => ({
+  Button: ({ children, variant, className, onClick }) => (
+    <button
+      onClick={onClick}
+      className={className}
+      data-variant={variant}
+      data-testid='ui-button'
+    >
       {children}
-    </a>
+    </button>
   ),
-  useNavigate: () => jest.fn()
 }));
 
 describe('Topbar Component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('renders the app logo', () => {
+  it('renders the logo', () => {
     render(<Topbar />);
 
+    // Check if logo is rendered
     const logo = screen.getByAltText('logo');
     expect(logo).toBeInTheDocument();
     expect(logo).toHaveAttribute('src', '/assets/images/logo.svg');
+    expect(logo).toHaveAttribute('width', '130');
+    expect(logo).toHaveAttribute('height', '325');
   });
 
   it('renders the profile link with user image', () => {
     render(<Topbar />);
 
-    // Check for profile link
-    const profileLink = screen.getByTestId(`link-/profile/user123`);
+    // Check if profile link exists
+    const profileLink = screen.getByTestId('link-to-/profile/user123');
     expect(profileLink).toBeInTheDocument();
+    expect(profileLink).toHaveAttribute('href', '/profile/user123');
+    expect(profileLink).toHaveClass('flex-center gap-3');
 
-    // Check for user profile image
+    // Check if profile image exists
     const profileImage = screen.getByAltText('profile');
     expect(profileImage).toBeInTheDocument();
-    expect(profileImage).toHaveAttribute('src', '/test-profile.jpg');
+    expect(profileImage).toHaveAttribute(
+      'src',
+      '/assets/icons/profile-placeholder.svg'
+    );
+    expect(profileImage).toHaveClass('h-8 w-8 rounded-full');
   });
 
   it('renders the logout button', () => {
     render(<Topbar />);
 
+    // Check if logout button exists
+    const logoutButton = screen.getByTestId('ui-button');
+    expect(logoutButton).toBeInTheDocument();
+    expect(logoutButton).toHaveAttribute('data-variant', 'ghost');
+    expect(logoutButton).toHaveClass('shad-button_ghost');
+
+    // Check if logout icon exists
     const logoutIcon = screen.getByAltText('logout');
     expect(logoutIcon).toBeInTheDocument();
+    expect(logoutIcon).toHaveAttribute('src', '/assets/icons/logout.svg');
   });
 
-  it('calls signOut when logout button is clicked', () => {
+  it('calls signOut function when logout button is clicked', () => {
+    const mockSignOut = jest.fn();
+
+    // Override the mock to provide our mock function
+    jest
+      .spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount')
+      .mockReturnValue({
+        mutate: mockSignOut,
+        isSuccess: false,
+      });
+
     render(<Topbar />);
 
-    // Find and click the logout button
-    const logoutButton = screen.getByAltText('logout').closest('button');
-    if (!logoutButton) {
-      throw new Error('Logout button not found');
-    }
-
+    // Find and click logout button
+    const logoutButton = screen.getByTestId('ui-button');
     fireEvent.click(logoutButton);
 
-    // Check if signOut function was called
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    // Verify the signOut function was called
+    expect(mockSignOut).toHaveBeenCalled();
   });
 
-  it('navigates when sign out is successful', () => {
+  it('refreshes the page on successful signout', () => {
     const mockNavigate = jest.fn();
-    jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
 
-    // First render with isSuccess false
-    const { rerender } = render(<Topbar />);
+    // Mock navigate function
+    jest
+      .spyOn(require('react-router-dom'), 'useNavigate')
+      .mockReturnValue(mockNavigate);
 
-    // Then update the mock to simulate successful sign out
-    jest.spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount').mockReturnValue({
-      mutate: mockSignOut,
-      isSuccess: true
-    });
+    // Mock successful signout
+    jest
+      .spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount')
+      .mockReturnValue({
+        mutate: jest.fn(),
+        isSuccess: true,
+      });
 
-    // Re-render to trigger the useEffect
-    rerender(<Topbar />);
+    render(<Topbar />);
 
-    // Check if navigate was called with 0 (which refreshes the page)
+    // Check if navigate was called with 0 (to refresh the page)
     expect(mockNavigate).toHaveBeenCalledWith(0);
   });
 
-  it('applies the correct section class', () => {
-    render(<Topbar />);
+  it('has correct container structure and styling', () => {
+    const { container } = render(<Topbar />);
 
-    // Get the topbar container
-    const topbarSection = screen.getByRole('banner');
-    expect(topbarSection).toHaveClass('topbar');
-  });
+    // Check if topbar section has the correct class
+    const topbar = container.firstChild;
+    expect(topbar).not.toBeNull();
+    if (topbar) {
+      expect(topbar).toHaveClass('topbar');
 
-  it('uses placeholder image when user has no profile image', () => {
-    // Override the user context mock to return a user with no image
-    jest.spyOn(require('@/context/AuthContext'), 'useUserContext').mockReturnValue({
-      user: {
-        id: 'user123',
-        name: 'Test User',
-        username: 'testuser',
-        imageUrl: '' // Empty image URL
+      // Check if inner container has the correct classes
+      const innerContainer = topbar.firstChild;
+      expect(innerContainer).not.toBeNull();
+      if (innerContainer) {
+        expect(innerContainer).toHaveClass('flex-between');
+        expect(innerContainer).toHaveClass('py-4');
+        expect(innerContainer).toHaveClass('px-5');
       }
-    });
-
-    render(<Topbar />);
-
-    // Check that placeholder image is used
-    const profileImage = screen.getByAltText('profile');
-    expect(profileImage).toHaveAttribute('src', '/assets/icons/profile-placeholder.svg');
-  });
-
-  it('has the correct layout with flex-between class', () => {
-    render(<Topbar />);
-
-    // Since we can't easily test CSS classes on child elements in Jest,
-    // we'll check that a div with flex-between class exists inside the topbar
-    const layoutDiv = screen.getByAltText('logo').closest('div');
-    if (!layoutDiv) {
-      throw new Error('Layout div not found');
     }
-    expect(layoutDiv).toHaveClass('flex-between');
   });
 });

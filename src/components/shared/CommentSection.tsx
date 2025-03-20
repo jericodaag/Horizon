@@ -19,7 +19,10 @@ type CommentSectionProps = {
   postCreatorId: string;
 };
 
-const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({
+  postId,
+  postCreatorId,
+}) => {
   const { user } = useUserContext();
   const [commentText, setCommentText] = useState<string>('');
   const [comments, setComments] = useState<IComment[]>([]);
@@ -261,7 +264,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }
 
       if (userLikedComment) {
         // Unlike: Remove user ID from likes array
-        const filteredLikes = likesArray.filter(id => id !== user.id);
+        const filteredLikes = likesArray.filter((id) => id !== user.id);
 
         await databases.updateDocument(
           appwriteConfig.databaseId,
@@ -271,11 +274,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }
         );
 
         // Update local state
-        setComments(prevComments =>
-          prevComments.map(c =>
-            c.$id === comment.$id
-              ? { ...c, likes: filteredLikes }
-              : c
+        setComments((prevComments) =>
+          prevComments.map((c) =>
+            c.$id === comment.$id ? { ...c, likes: filteredLikes } : c
           )
         );
       } else {
@@ -290,11 +291,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }
         );
 
         // Update local state
-        setComments(prevComments =>
-          prevComments.map(c =>
-            c.$id === comment.$id
-              ? { ...c, likes: likesArray }
-              : c
+        setComments((prevComments) =>
+          prevComments.map((c) =>
+            c.$id === comment.$id ? { ...c, likes: likesArray } : c
           )
         );
       }
@@ -444,10 +443,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }
                   <button
                     type='button'
                     onClick={() => handleLikeComment(comment)}
-                    className={`text-xs ${comment.likes.includes(user.id)
-                      ? 'text-primary-500 font-medium'
-                      : 'text-light-3 hover:text-light-1'
-                      }`}
+                    className={`text-xs ${
+                      comment.likes.includes(user.id)
+                        ? 'text-primary-500 font-medium'
+                        : 'text-light-3 hover:text-light-1'
+                    }`}
                   >
                     {comment.likes.includes(user.id) ? 'Liked' : 'Like'}
                     {comment.likes.length > 0 && (
@@ -465,7 +465,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }
                       Delete
                     </button>
                   )}
-
                 </div>
               </div>
             </div>
@@ -482,8 +481,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, postCreatorId }
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Delete Comment"
-        description="Are you sure you want to delete this comment? This action cannot be undone."
+        title='Delete Comment'
+        description='Are you sure you want to delete this comment? This action cannot be undone.'
       />
     </div>
   );
