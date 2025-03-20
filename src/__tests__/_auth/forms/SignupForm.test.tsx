@@ -2,14 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SignupForm from '@/_auth/forms/SignupForm';
 import '@testing-library/jest-dom';
 
-// Import mock functions from global setup
-import {
-  mockNavigate,
-  mockCreateUserAccount,
-  mockSignInAccount,
-  mockCheckAuthUser,
-  mockToast
-} from '@/__tests__/__mocks__/setupMocks';
+// Import mock functions from organized mock files
+import { mockNavigate } from '@/__tests__/__mocks__/router';
+import { mockCreateUserAccount, mockSignInAccount, mockCheckAuthUser } from '@/__tests__/__mocks__/api';
+import { mockToast } from '@/__tests__/__mocks__/ui';
 
 describe('SignupForm', () => {
   const mockOnLoadingChange = jest.fn();

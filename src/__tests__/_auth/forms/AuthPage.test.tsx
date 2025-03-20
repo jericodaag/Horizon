@@ -1,8 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import AuthPage from '@/_auth/forms/AuthPage';
 import '@testing-library/jest-dom';
+import { mockNavigate } from '@/__tests__/__mocks__/router';
 
-// These mocks are specific to this test and not covered by global setupMocks
+// These mocks are specific to this test and not covered by global mocks
 jest.mock('@/_auth/forms/SigninForm', () => ({
   __esModule: true,
   default: ({ onLoadingChange }) => (
@@ -25,7 +26,7 @@ jest.mock('@/_auth/forms/SignupForm', () => ({
   ),
 }));
 
-// Mock for Image constructor
+// Mock for Image constructor can remain at the test level
 const originalImage = global.Image;
 beforeAll(() => {
   // @ts-ignore - we need to use this approach for mocking the Image constructor
@@ -57,9 +58,11 @@ describe('AuthPage', () => {
   });
 
   it('renders signin form when path is /sign-in', () => {
+    // Reset the mock to return sign-in path
     jest.spyOn(require('react-router-dom'), 'useLocation').mockReturnValue({
       pathname: '/sign-in'
     });
+
     render(<AuthPage />);
 
     expect(screen.getByTestId('mock-signin-form')).toBeInTheDocument();
@@ -71,6 +74,7 @@ describe('AuthPage', () => {
     jest.spyOn(require('react-router-dom'), 'useLocation').mockReturnValue({
       pathname: '/sign-up'
     });
+
     render(<AuthPage />);
 
     expect(screen.getByTestId('mock-signup-form')).toBeInTheDocument();
@@ -79,9 +83,7 @@ describe('AuthPage', () => {
   });
 
   it('navigates back to landing page when back button is clicked', () => {
-    const mockNavigate = jest.fn();
-    jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
-
+    mockNavigate.mockClear();
     render(<AuthPage />);
     fireEvent.click(screen.getByText('Back to Home'));
 
@@ -89,11 +91,10 @@ describe('AuthPage', () => {
   });
 
   it('navigates to signup page when Sign up button is clicked', () => {
-    const mockNavigate = jest.fn();
+    mockNavigate.mockClear();
     jest.spyOn(require('react-router-dom'), 'useLocation').mockReturnValue({
       pathname: '/sign-in'
     });
-    jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
 
     render(<AuthPage />);
     fireEvent.click(screen.getByText('Sign up'));

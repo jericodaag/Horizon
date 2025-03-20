@@ -2,27 +2,6 @@ import { render, screen } from '@testing-library/react';
 import RootLayout from '@/_root/RootLayout';
 import '@testing-library/jest-dom';
 
-// These mocks are specific to this test and not covered by global setupMocks
-jest.mock('@/components/shared/Topbar', () => ({
-    __esModule: true,
-    default: () => <div data-testid="topbar-mock">Topbar Component</div>
-}));
-
-jest.mock('@/components/shared/LeftSidebar', () => ({
-    __esModule: true,
-    default: () => <div data-testid="left-sidebar-mock">LeftSidebar Component</div>
-}));
-
-jest.mock('@/components/shared/RightSideBar', () => ({
-    __esModule: true,
-    default: () => <div data-testid="right-sidebar-mock">RightSidebar Component</div>
-}));
-
-jest.mock('@/components/shared/BottomBar', () => ({
-    __esModule: true,
-    default: () => <div data-testid="bottom-bar-mock">BottomBar Component</div>
-}));
-
 describe('RootLayout', () => {
     beforeEach(() => {
         jest.clearAllMocks();

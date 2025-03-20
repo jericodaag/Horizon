@@ -2,11 +2,17 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SigninForm from '@/_auth/forms/SigninForm';
 import '@testing-library/jest-dom';
 
-// These should be imported from your setupMocks.tsx
-import { mockNavigate, mockSignInAccount, mockCheckAuthUser, mockToast } from '@/__tests__/__mocks__/setupMocks';
+// Import mock functions from organized mock files
+import { mockNavigate } from '@/__tests__/__mocks__/router';
+import { mockSignInAccount, mockCheckAuthUser } from '@/__tests__/__mocks__/api';
+import { mockToast } from '@/__tests__/__mocks__/ui';
 
 describe('SigninForm', () => {
   const mockOnLoadingChange = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
