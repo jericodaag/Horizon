@@ -2,45 +2,8 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AllUsers from '@/_root/pages/AllUsers';
 
-// Mock the dependencies
-jest.mock('@/lib/react-query/queries', () => ({
-    useGetUsers: jest.fn()
-}));
-
-jest.mock('@/components/shared/Loader', () => ({
-    __esModule: true,
-    default: () => <div data-testid="loader">Loading...</div>
-}));
-
-jest.mock('@/components/shared/FollowButton', () => ({
-    __esModule: true,
-    default: ({ userId, className }: any) => (
-        <button data-testid={`follow-button-${userId}`} className={className}>
-            Follow
-        </button>
-    )
-}));
-
-// Mock react-router-dom Link component
-jest.mock('react-router-dom', () => ({
-    Link: ({ to, className, children }: any) => (
-        <a href={to} className={className} data-testid="router-link">
-            {children}
-        </a>
-    )
-}));
-
-// Mock framer-motion
-jest.mock('framer-motion', () => ({
-    motion: {
-        li: ({ children, ...props }: any) => (
-            <li {...props}>{children}</li>
-        )
-    },
-}));
-
-// Import the mocked module to control its behavior
-import { useGetUsers } from '@/lib/react-query/queries';
+// Import specific mocks we need
+import { mockGetUsers } from '@/__tests__/__mocks__/api';
 
 describe('AllUsers Component', () => {
     beforeEach(() => {
@@ -48,8 +11,8 @@ describe('AllUsers Component', () => {
     });
 
     it('renders the header correctly', () => {
-        // Mock the hook with default state (loaded)
-        (useGetUsers as jest.Mock).mockReturnValue({
+        // Configure the mock for this test
+        mockGetUsers.mockReturnValue({
             data: { documents: [] },
             isLoading: false
         });
@@ -59,8 +22,8 @@ describe('AllUsers Component', () => {
     });
 
     it('shows loader when fetching users', () => {
-        // Mock the hook to return loading state
-        (useGetUsers as jest.Mock).mockReturnValue({
+        // Configure the mock for this test
+        mockGetUsers.mockReturnValue({
             data: undefined,
             isLoading: true
         });
@@ -72,8 +35,8 @@ describe('AllUsers Component', () => {
     });
 
     it('renders user list when data is loaded', () => {
-        // Mock the hook to return users
-        (useGetUsers as jest.Mock).mockReturnValue({
+        // Configure the mock for this test
+        mockGetUsers.mockReturnValue({
             data: {
                 documents: [
                     {
@@ -111,7 +74,7 @@ describe('AllUsers Component', () => {
         expect(screen.getByTestId('follow-button-user1')).toBeInTheDocument();
         expect(screen.getByTestId('follow-button-user2')).toBeInTheDocument();
 
-        // Check for post counts (simplify by just checking for the values)
+        // Check for post counts and likes
         const postCounts = screen.getAllByText(/\d+/);
         expect(postCounts.some(element => element.textContent === '3')).toBeTruthy();
         expect(postCounts.some(element => element.textContent === '42')).toBeTruthy();

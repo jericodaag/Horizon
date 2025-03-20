@@ -2,35 +2,14 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import EditPost from '@/_root/pages/EditPost';
 
-// Mock react-router-dom
+// Import specific mocks we need
+import { mockGetPostById } from '@/__tests__/__mocks__/api';
+
+// Mock useParams to return a specific ID
 jest.mock('react-router-dom', () => ({
-    useParams: jest.fn()
+    ...jest.requireActual('react-router-dom'),
+    useParams: () => ({ id: 'post123' })
 }));
-
-// Mock the PostForm component
-jest.mock('@/components/forms/PostForm', () => ({
-    __esModule: true,
-    default: ({ action, post }: { action: string; post: any }) => (
-        <div data-testid="post-form" data-action={action} data-post-id={post?.$id}>
-            Mocked Post Form
-        </div>
-    )
-}));
-
-// Mock the Loader component
-jest.mock('@/components/shared/Loader', () => ({
-    __esModule: true,
-    default: () => <div data-testid="loader">Loading...</div>
-}));
-
-// Mock the query hook
-jest.mock('@/lib/react-query/queries', () => ({
-    useGetPostById: jest.fn()
-}));
-
-// Import mocked modules
-import { useParams } from 'react-router-dom';
-import { useGetPostById } from '@/lib/react-query/queries';
 
 describe('EditPost Component', () => {
     beforeEach(() => {
@@ -38,11 +17,8 @@ describe('EditPost Component', () => {
     });
 
     it('shows loader when fetching post data', () => {
-        // Mock route params
-        (useParams as jest.Mock).mockReturnValue({ id: 'post123' });
-
-        // Mock loading state
-        (useGetPostById as jest.Mock).mockReturnValue({
+        // Configure the mock for this test
+        mockGetPostById.mockReturnValue({
             data: null,
             isLoading: true
         });
@@ -54,17 +30,14 @@ describe('EditPost Component', () => {
     });
 
     it('renders the edit form with post data when loaded', () => {
-        // Mock route params
-        (useParams as jest.Mock).mockReturnValue({ id: 'post123' });
-
-        // Mock post data
+        // Configure the mock for this test
         const mockPost = {
             $id: 'post123',
             caption: 'Test post',
             imageUrl: 'image.jpg'
         };
 
-        (useGetPostById as jest.Mock).mockReturnValue({
+        mockGetPostById.mockReturnValue({
             data: mockPost,
             isLoading: false
         });
@@ -79,7 +52,7 @@ describe('EditPost Component', () => {
         expect(iconImg).toBeInTheDocument();
         expect(iconImg).toHaveAttribute('src', '/assets/icons/edit.svg');
 
-        // Check if PostForm is rendered with the correct props
+        // Check if PostForm is rendered with the correct attributes
         const postForm = screen.getByTestId('post-form');
         expect(postForm).toBeInTheDocument();
         expect(postForm).toHaveAttribute('data-action', 'Update');

@@ -1,3 +1,33 @@
+// Mock Topbar component
+jest.mock('@/components/shared/Topbar', () => ({
+    __esModule: true,
+    default: () => <div data-testid="topbar-mock">Topbar</div>
+}));
+
+// Mock LeftSidebar component
+jest.mock('@/components/shared/LeftSidebar', () => ({
+    __esModule: true,
+    default: () => <div data-testid="left-sidebar-mock">Left Sidebar</div>
+}));
+
+// Mock RightSideBar component
+jest.mock('@/components/shared/RightSideBar', () => ({
+    __esModule: true,
+    default: () => <div data-testid="right-sidebar-mock">Right Sidebar</div>
+}));
+
+// Mock BottomBar component
+jest.mock('@/components/shared/BottomBar', () => ({
+    __esModule: true,
+    default: () => <div data-testid="bottom-bar-mock">Bottom Bar</div>
+}));
+
+// Mock for react-router-dom Outlet
+jest.mock('react-router-dom', () => ({
+    ...jest.requireActual('react-router-dom'),
+    Outlet: () => <div data-testid="outlet-mock">Outlet Content</div>
+}));
+
 // Mock Loader component
 jest.mock('@/components/shared/Loader', () => ({
     __esModule: true,
@@ -45,6 +75,18 @@ jest.mock('@/components/shared/PostCardSkeleton', () => ({
     default: () => (
         <div data-testid='post-skeleton'>Loading...</div>
     ),
+}));
+
+// Mock PostForm component
+jest.mock('@/components/forms/PostForm', () => ({
+    __esModule: true,
+    default: ({ action, post }) => (
+        <div
+            data-testid="post-form"
+            data-action={action}
+            data-post-id={post?.$id}
+        />
+    )
 }));
 
 // Mock ConversationList component

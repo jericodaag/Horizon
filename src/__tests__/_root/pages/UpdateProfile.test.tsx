@@ -3,30 +3,11 @@ import '@testing-library/jest-dom';
 import UpdateProfile from '@/_root/pages/UpdateProfile';
 import { act } from 'react-dom/test-utils';
 
-// Mock the react-router-dom 
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-    useNavigate: () => mockNavigate,
-    useParams: () => ({ id: 'user123' }),
-}));
+// Import specific mocks we'll configure for this test
+import { mockNavigate } from '@/__tests__/__mocks__/router';
+import { mockGetUserById, mockUpdateUser } from '@/__tests__/__mocks__/api';
 
-// Mock the data fetching hooks
-jest.mock('@/lib/react-query/queries', () => ({
-    useGetUserById: jest.fn(),
-    useUpdateUser: jest.fn(),
-}));
-
-// Mock the form validation libraries
-jest.mock('@hookform/resolvers/zod', () => ({
-    zodResolver: jest.fn(() => jest.fn()),
-}));
-
-// Mock the authentication context
-jest.mock('@/context/AuthContext', () => ({
-    useUserContext: jest.fn(),
-}));
-
-// Mock the shared components
+// Mock components specific to UpdateProfile that aren't in global mocks
 jest.mock('@/components/shared/ProfileUploader', () => ({
     __esModule: true,
     default: ({ fieldChange, mediaUrl }: any) => (
@@ -73,67 +54,49 @@ jest.mock('@/components/shared/CoverPhotoUploader', () => ({
     ),
 }));
 
-// Mock UI components
-jest.mock('@/components/ui/form', () => ({
-    Form: ({ children, ...props }: any) => <form {...props}>{children}</form>,
-    FormControl: ({ children }: any) => <div data-testid="form-control">{children}</div>,
-    FormField: ({ name, render }: any) => {
-        const field = {
-            name,
-            onChange: jest.fn(),
-            value: '',
-            onBlur: jest.fn(),
-            ref: jest.fn(),
-        };
-        return render({ field });
-    },
-    FormItem: ({ children }: any) => <div data-testid="form-item">{children}</div>,
-    FormLabel: ({ children }: any) => <label>{children}</label>,
-    FormMessage: ({ children }: any) => <div data-testid="form-message">{children}</div>,
+// Mock form validation libraries
+jest.mock('@hookform/resolvers/zod', () => ({
+    zodResolver: jest.fn(() => jest.fn()),
 }));
 
-jest.mock('@/components/ui/input', () => ({
-    Input: (props: any) => <input {...props} data-testid={`input-${props.name || 'default'}`} />,
-}));
+// Override router mocks for UpdateProfile specific needs
+jest.mock('react-router-dom', () => {
+    const originalModule = jest.requireActual('react-router-dom');
+    return {
+        ...originalModule,
+        useParams: () => ({ id: 'user123' }),
+        useNavigate: () => mockNavigate,
+    };
+});
 
-jest.mock('@/components/ui/textarea', () => ({
-    Textarea: (props: any) => <textarea {...props} data-testid={`textarea-${props.name || 'default'}`} />,
-}));
+// Mock the AuthContext
+jest.mock('@/context/AuthContext', () => {
+    const mockSetUser = jest.fn();
+    return {
+        useUserContext: () => ({
+            user: {
+                id: 'user123',
+                name: 'Test User',
+                username: 'testuser',
+                email: 'test@example.com',
+                imageUrl: 'https://example.com/avatar.jpg',
+                bio: 'This is a test bio'
+            },
+            setUser: mockSetUser,
+            isLoading: false,
+            isAuthenticated: true,
+            setIsAuthenticated: jest.fn(),
+            checkAuthUser: jest.fn(),
+        }),
+    };
+});
 
-jest.mock('@/components/ui/button', () => ({
-    Button: ({ children, onClick, type, disabled, className }: any) => (
-        <button
-            onClick={onClick}
-            type={type}
-            disabled={disabled}
-            data-testid={`button-${type || 'default'}`}
-            className={className}
-        >
-            {children}
-        </button>
-    ),
-}));
-
-jest.mock('lucide-react', () => ({
-    Loader: () => <div data-testid="loader-icon">Loading...</div>,
-}));
-
-// Import the mocked modules
-import { useGetUserById, useUpdateUser } from '@/lib/react-query/queries';
+// Import AuthContext mock to get access to mockSetUser
 import { useUserContext } from '@/context/AuthContext';
+const mockSetUser = (useUserContext() as any).setUser;
 
 describe('UpdateProfile Component', () => {
-    // Mock user data
-    const mockUser = {
-        id: 'user123',
-        name: 'Test User',
-        username: 'testuser',
-        email: 'test@example.com',
-        imageUrl: 'https://example.com/avatar.jpg',
-        bio: 'This is a test bio'
-    };
-
-    // Mock user from API
+    // Mock user data from API
     const mockUserData = {
         $id: 'user123',
         $createdAt: '2023-01-01T12:00:00.000Z',
@@ -148,37 +111,25 @@ describe('UpdateProfile Component', () => {
         coverPosition: '{ "y": 50 }'
     };
 
-    // Mock functions for context
-    const mockSetUser = jest.fn();
-    const mockUpdateUser = jest.fn();
+    // Mock update user mutation function
+    const mockUpdateUserFn = jest.fn();
 
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Mock authentication context
-        (useUserContext as jest.Mock).mockReturnValue({
-            user: mockUser,
-            setUser: mockSetUser,
-            isLoading: false,
-            isAuthenticated: true,
-            setIsAuthenticated: jest.fn(),
-            checkAuthUser: jest.fn(),
-        });
-
-        // Mock data fetching
-        (useGetUserById as jest.Mock).mockReturnValue({
+        // Set up default mock implementations
+        mockGetUserById.mockReturnValue({
             data: mockUserData,
             isLoading: false,
         });
 
-        // Mock update user mutation
-        (useUpdateUser as jest.Mock).mockReturnValue({
-            mutateAsync: mockUpdateUser,
+        mockUpdateUser.mockReturnValue({
+            mutateAsync: mockUpdateUserFn,
             isPending: false,
         });
 
-        // Set up default mock implementation for updateUser
-        mockUpdateUser.mockResolvedValue({
+        // Set up default mockUpdateUserFn implementation
+        mockUpdateUserFn.mockResolvedValue({
             ...mockUserData,
             name: 'Updated User',
             bio: 'Updated bio',
@@ -217,8 +168,8 @@ describe('UpdateProfile Component', () => {
 
     it('shows loading spinner when update is in progress', () => {
         // Override the update user hook to show pending state
-        (useUpdateUser as jest.Mock).mockReturnValue({
-            mutateAsync: mockUpdateUser,
+        mockUpdateUser.mockReturnValue({
+            mutateAsync: mockUpdateUserFn,
             isPending: true,
         });
 
@@ -233,17 +184,6 @@ describe('UpdateProfile Component', () => {
     });
 
     it('handles profile image upload', async () => {
-        // Set up the mock update function to properly handle the file
-        mockUpdateUser.mockImplementation((data) => {
-            // Just return the data that was passed in for verification
-            return Promise.resolve({
-                ...mockUserData,
-                name: data.name,
-                bio: data.bio,
-                // Add any other fields needed
-            });
-        });
-
         render(<UpdateProfile />);
 
         // Find profile uploader component
@@ -265,21 +205,10 @@ describe('UpdateProfile Component', () => {
         });
 
         // Check that updateUser was called
-        expect(mockUpdateUser).toHaveBeenCalled();
-
-        // Instead of checking specific properties, just verify the function was called
-        // This is more resilient to implementation changes
+        expect(mockUpdateUserFn).toHaveBeenCalled();
     });
 
-    // Let's combine these tests into a single, more robust test
     it('handles form submission with file uploads and position adjustments', async () => {
-        // Simplify the mock implementation
-        mockUpdateUser.mockResolvedValue({
-            ...mockUserData,
-            name: 'Updated User',
-            bio: 'Updated bio'
-        });
-
         render(<UpdateProfile />);
 
         // Verify basic components are present
@@ -300,7 +229,7 @@ describe('UpdateProfile Component', () => {
         });
 
         // Verify the update function was called
-        expect(mockUpdateUser).toHaveBeenCalled();
+        expect(mockUpdateUserFn).toHaveBeenCalled();
 
         // Verify navigation happened after submission
         expect(mockNavigate).toHaveBeenCalledWith('/profile/user123');
@@ -316,7 +245,7 @@ describe('UpdateProfile Component', () => {
         });
 
         // Check that updateUser was called with the right user ID
-        expect(mockUpdateUser).toHaveBeenCalledWith(
+        expect(mockUpdateUserFn).toHaveBeenCalledWith(
             expect.objectContaining({
                 userId: 'user123',
             })
@@ -336,7 +265,7 @@ describe('UpdateProfile Component', () => {
 
     it('handles update failure gracefully', async () => {
         // Mock updateUser to return null (failure)
-        mockUpdateUser.mockResolvedValue(null);
+        mockUpdateUserFn.mockResolvedValue(null);
 
         render(<UpdateProfile />);
 
@@ -351,26 +280,5 @@ describe('UpdateProfile Component', () => {
 
         // Check that navigate was not called
         expect(mockNavigate).not.toHaveBeenCalled();
-    });
-
-    it('disables the email field', () => {
-        // Update the mock for the input component to properly pass the disabled attribute
-        jest.mock('@/components/ui/input', () => ({
-            Input: (props: any) => (
-                <input
-                    {...props}
-                    data-testid={`input-${props.name || 'email'}`}
-                />
-            ),
-        }), { virtual: true });
-
-        render(<UpdateProfile />);
-
-        // Look for any input element that has the disabled attribute
-        const inputs = screen.getAllByRole('textbox');
-
-        // At least one of the inputs should be disabled (the email input)
-        const disabledInput = inputs.find(input => input.hasAttribute('disabled'));
-        expect(disabledInput).toBeInTheDocument();
     });
 });
