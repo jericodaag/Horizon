@@ -1146,64 +1146,61 @@ export async function getUserConversations(userId: string) {
       [
         Query.equal('sender', userId),
         Query.orderDesc('createdAt'),
-        Query.limit(50), // Limit for better performance
+        Query.limit(50),
       ]
     );
 
-    // Get most recent received messages
     const receivedMessages = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.messagesCollectionId,
       [
         Query.equal('receiver', userId),
         Query.orderDesc('createdAt'),
-        Query.limit(50), // Limit for better performance
+        Query.limit(50),
       ]
     );
 
-    // Extract unique conversation partners with latest message
     const conversations = new Map();
     const unreadCounts = new Map();
 
-    // First, count unread messages for each conversation partner
-    for (const message of receivedMessages.documents) {
-      if (!message.isRead) {
-        const senderId = message.sender.$id;
-        unreadCounts.set(senderId, (unreadCounts.get(senderId) || 0) + 1);
+    if (receivedMessages && receivedMessages.documents) {
+      for (const message of receivedMessages.documents) {
+        if (message && !message.isRead && message.sender) {
+          const senderId = message.sender.$id;
+          if (senderId) {
+            unreadCounts.set(senderId, (unreadCounts.get(senderId) || 0) + 1);
+          }
+        }
       }
     }
 
-    // Process all messages to find latest for each conversation
     const allMessages = [
-      ...sentMessages.documents,
-      ...receivedMessages.documents,
+      ...(sentMessages?.documents || []),
+      ...(receivedMessages?.documents || []),
     ];
 
-    // Sort by creation date (most recent first)
     allMessages.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    // Build conversation list
     for (const message of allMessages) {
-      // Determine conversation partner
+      if (!message || !message.sender || !message.receiver) continue;
+
       const partnerId =
         message.sender.$id === userId
           ? message.receiver.$id
           : message.sender.$id;
 
-      // Skip messages to self
-      if (partnerId === userId) continue;
+      if (!partnerId || partnerId === userId) continue;
 
-      // Skip if we already have a more recent message for this partner
       if (conversations.has(partnerId)) continue;
 
-      // Get partner details
       const partner =
         message.sender.$id === userId ? message.receiver : message.sender;
 
-      // Add to conversations map
+      if (!partner) continue;
+
       conversations.set(partnerId, {
         user: partner,
         lastMessage: message,
@@ -1214,7 +1211,7 @@ export async function getUserConversations(userId: string) {
     return Array.from(conversations.values());
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return []; // Return empty array on error
+    return [];
   }
 }
 
