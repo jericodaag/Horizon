@@ -38,22 +38,30 @@ const ConversationList = memo(
         const bLatestSocketMsg = latestMessages[bUserId];
 
         if (aLatestSocketMsg && bLatestSocketMsg) {
-          return new Date(bLatestSocketMsg.timestamp).getTime() -
-            new Date(aLatestSocketMsg.timestamp).getTime();
+          return (
+            new Date(bLatestSocketMsg.timestamp).getTime() -
+            new Date(aLatestSocketMsg.timestamp).getTime()
+          );
         }
 
         if (aLatestSocketMsg) {
           return new Date(aLatestSocketMsg.timestamp).getTime() >
-            new Date(b.lastMessage.createdAt).getTime() ? -1 : 1;
+            new Date(b.lastMessage.createdAt).getTime()
+            ? -1
+            : 1;
         }
 
         if (bLatestSocketMsg) {
           return new Date(a.lastMessage.createdAt).getTime() >
-            new Date(bLatestSocketMsg.timestamp).getTime() ? -1 : 1;
+            new Date(bLatestSocketMsg.timestamp).getTime()
+            ? -1
+            : 1;
         }
 
-        return new Date(b.lastMessage.createdAt).getTime() -
-          new Date(a.lastMessage.createdAt).getTime();
+        return (
+          new Date(b.lastMessage.createdAt).getTime() -
+          new Date(a.lastMessage.createdAt).getTime()
+        );
       });
     }, [conversations, latestMessages]);
 
@@ -106,12 +114,8 @@ const ConversationItem = memo(
     onClick,
     currentUserId,
   }: ConversationItemProps) => {
-    const {
-      onlineUsers,
-      notificationCount,
-      clearNotifications,
-      latestMessages,
-    } = useSocket();
+    const { notificationCount, clearNotifications, latestMessages } =
+      useSocket();
 
     if (!conversation || !conversation.user || !conversation.lastMessage) {
       return null;
@@ -126,12 +130,11 @@ const ConversationItem = memo(
 
     const newMessageCount = notificationCount[userId] || 0;
     const totalUnreadCount = unreadCount + newMessageCount;
-    const isOnline = onlineUsers.includes(userId);
 
     const latestSocketMessage = latestMessages[userId];
     const actualMessageContent =
       latestSocketMessage &&
-        new Date(latestSocketMessage.timestamp) > new Date(lastMessage.createdAt)
+      new Date(latestSocketMessage.timestamp) > new Date(lastMessage.createdAt)
         ? latestSocketMessage.content
         : messageContent;
 
@@ -178,8 +181,9 @@ const ConversationItem = memo(
 
     return (
       <div
-        className={`flex items-center p-4 cursor-pointer hover:bg-dark-3 transition-colors ${isSelected ? 'bg-dark-3' : ''} ${totalUnreadCount > 0 ? 'bg-opacity-70 bg-primary-900' : ''
-          }`}
+        className={`flex items-center p-4 cursor-pointer hover:bg-dark-3 transition-colors ${isSelected ? 'bg-dark-3' : ''} ${
+          totalUnreadCount > 0 ? 'bg-opacity-70 bg-primary-900' : ''
+        }`}
         onClick={handleClick}
       >
         <div className='relative flex-shrink-0'>
@@ -225,8 +229,10 @@ const ConversationItem = memo(
   (prevProps, nextProps) => {
     return (
       prevProps.isSelected === nextProps.isSelected &&
-      prevProps.conversation.unreadCount === nextProps.conversation.unreadCount &&
-      prevProps.conversation.lastMessage?.$id === nextProps.conversation.lastMessage?.$id
+      prevProps.conversation.unreadCount ===
+        nextProps.conversation.unreadCount &&
+      prevProps.conversation.lastMessage?.$id ===
+        nextProps.conversation.lastMessage?.$id
     );
   }
 );

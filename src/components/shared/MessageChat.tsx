@@ -52,7 +52,7 @@ const MessageChat = ({
     typingUsers,
     setTyping,
     readReceipts,
-    markMessageAsRead
+    markMessageAsRead,
   } = useSocket();
 
   const isOnline = onlineUsers.includes(conversationId);
@@ -65,7 +65,8 @@ const MessageChat = ({
     conversationId
   );
 
-  const { mutate: sendAppwriteMessage, isPending: isSending } = useSendMessage();
+  const { mutate: sendAppwriteMessage, isPending: isSending } =
+    useSendMessage();
 
   const { mutate: markAsRead } = useMarkMessagesAsRead();
 
@@ -87,28 +88,41 @@ const MessageChat = ({
         receiver: { $id: receivedMessage.receiverId },
         content: receivedMessage.content,
         createdAt: receivedMessage.timestamp || new Date().toISOString(),
-        isRead: false
+        isRead: false,
       };
 
       if (
-        (formattedMessage.sender.$id === currentUserId && formattedMessage.receiver.$id === conversationId) ||
-        (formattedMessage.sender.$id === conversationId && formattedMessage.receiver.$id === currentUserId)
+        (formattedMessage.sender.$id === currentUserId &&
+          formattedMessage.receiver.$id === conversationId) ||
+        (formattedMessage.sender.$id === conversationId &&
+          formattedMessage.receiver.$id === currentUserId)
       ) {
-        setSocketMessages(prev => {
-          const exists = prev.some(msg =>
-            msg.$id === formattedMessage.$id ||
-            (msg.content === formattedMessage.content &&
-              msg.sender.$id === formattedMessage.sender.$id &&
-              Math.abs(new Date(msg.createdAt).getTime() - new Date(formattedMessage.createdAt).getTime()) < 5000)
+        setSocketMessages((prev) => {
+          const exists = prev.some(
+            (msg) =>
+              msg.$id === formattedMessage.$id ||
+              (msg.content === formattedMessage.content &&
+                msg.sender.$id === formattedMessage.sender.$id &&
+                Math.abs(
+                  new Date(msg.createdAt).getTime() -
+                    new Date(formattedMessage.createdAt).getTime()
+                ) < 5000)
           );
 
           if (exists) return prev;
 
           setShouldScrollToBottom(true);
 
-          if (formattedMessage.sender.$id === conversationId && formattedMessage.receiver.$id === currentUserId) {
+          if (
+            formattedMessage.sender.$id === conversationId &&
+            formattedMessage.receiver.$id === currentUserId
+          ) {
             setTimeout(() => {
-              markMessageAsRead(formattedMessage.$id, formattedMessage.sender.$id, currentUserId);
+              markMessageAsRead(
+                formattedMessage.$id,
+                formattedMessage.sender.$id,
+                currentUserId
+              );
             }, 1000);
           }
 
@@ -122,14 +136,20 @@ const MessageChat = ({
     return () => {
       socket.off('receive_message', handleNewMessage);
     };
-  }, [socket, currentUserId, conversationId, processingMessageIds, markMessageAsRead]);
+  }, [
+    socket,
+    currentUserId,
+    conversationId,
+    processingMessageIds,
+    markMessageAsRead,
+  ]);
 
   const combinedMessages = useMemo(() => {
     if (!messages?.documents) return [...socketMessages];
 
     const messageMap = new Map();
 
-    messages.documents.forEach(doc => {
+    messages.documents.forEach((doc) => {
       const key = `${doc.sender.$id}-${doc.content}-${doc.createdAt.substring(0, 16)}`;
       messageMap.set(key, {
         $id: doc.$id,
@@ -145,7 +165,7 @@ const MessageChat = ({
       });
     });
 
-    socketMessages.forEach(msg => {
+    socketMessages.forEach((msg) => {
       if (!msg.createdAt) return;
 
       const key = `${msg.sender.$id}-${msg.content}-${msg.createdAt.substring(0, 16)}`;
@@ -153,27 +173,43 @@ const MessageChat = ({
       if (!messageMap.has(key)) {
         messageMap.set(key, {
           ...msg,
-          isRead: readReceipts[msg.$id] || msg.isRead
+          isRead: readReceipts[msg.$id] || msg.isRead,
         });
       }
     });
 
-    const sortedMessages = Array.from(messageMap.values())
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const sortedMessages = Array.from(messageMap.values()).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
 
-    sortedMessages.forEach(msg => {
-      if (msg.sender.$id === conversationId && msg.receiver.$id === currentUserId && !msg.isRead) {
+    sortedMessages.forEach((msg) => {
+      if (
+        msg.sender.$id === conversationId &&
+        msg.receiver.$id === currentUserId &&
+        !msg.isRead
+      ) {
         markMessageAsRead(msg.$id, msg.sender.$id, currentUserId);
       }
     });
 
-    if (sortedMessages.length > lastMessageLengthRef.current || lastMessageLengthRef.current === 0) {
+    if (
+      sortedMessages.length > lastMessageLengthRef.current ||
+      lastMessageLengthRef.current === 0
+    ) {
       setShouldScrollToBottom(true);
       lastMessageLengthRef.current = sortedMessages.length;
     }
 
     return sortedMessages;
-  }, [messages?.documents, socketMessages, readReceipts, conversationId, currentUserId, markMessageAsRead]);
+  }, [
+    messages?.documents,
+    socketMessages,
+    readReceipts,
+    conversationId,
+    currentUserId,
+    markMessageAsRead,
+  ]);
 
   useEffect(() => {
     if (conversationId && !isLoadingMessages) {
@@ -207,7 +243,8 @@ const MessageChat = ({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     } else if (messagesContainerRef.current) {
       // Fallback if the end ref is not yet available
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
     }
   };
 
@@ -225,7 +262,8 @@ const MessageChat = ({
   const handleSendMessage = async () => {
     if ((!newMessage.trim() && !attachment) || isSending || isUploading) return;
 
-    const messageContent = newMessage.trim() || (attachment ? 'Sent an attachment' : '');
+    const messageContent =
+      newMessage.trim() || (attachment ? 'Sent an attachment' : '');
     setNewMessage('');
 
     const tempId = `temp-${Date.now()}`;
@@ -236,7 +274,7 @@ const MessageChat = ({
       senderId: currentUserId,
       receiverId: conversationId,
       content: messageContent,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     if (socket && isConnected) {
@@ -318,9 +356,11 @@ const MessageChat = ({
           <ArrowLeft size={20} className='text-light-2' />
         </button>
 
-        <div className="relative">
+        <div className='relative'>
           <img
-            src={conversation.imageUrl || '/assets/icons/profile-placeholder.svg'}
+            src={
+              conversation.imageUrl || '/assets/icons/profile-placeholder.svg'
+            }
             alt={conversation.name}
             className='w-10 h-10 rounded-full object-cover border border-dark-4'
             onError={(e) => {
@@ -328,7 +368,7 @@ const MessageChat = ({
             }}
           />
 
-          <div className="absolute bottom-0 right-0 border-2 border-dark-2 rounded-full">
+          <div className='absolute bottom-0 right-0 border-2 border-dark-2 rounded-full'>
             <OnlineStatusIndicator userId={conversationId} />
           </div>
         </div>
@@ -337,11 +377,15 @@ const MessageChat = ({
           <h4 className='body-bold text-light-1 truncate'>
             {conversation.name}
           </h4>
-          <div className="flex items-center">
-            <p className='text-xs text-light-3 mr-2'>@{conversation.username}</p>
+          <div className='flex items-center'>
+            <p className='text-xs text-light-3 mr-2'>
+              @{conversation.username}
+            </p>
 
-            <span className={`text-xs ${isOnline ? 'text-green-500' : 'text-light-3'}`}>
-              {isTyping ? "Typing..." : (isOnline ? 'Online' : 'Offline')}
+            <span
+              className={`text-xs ${isOnline ? 'text-green-500' : 'text-light-3'}`}
+            >
+              {isTyping ? 'Typing...' : isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
         </div>
@@ -368,7 +412,8 @@ const MessageChat = ({
               if (!message || !message.sender || !message.receiver) return null;
 
               const isOwnMessage = message.sender.$id === currentUserId;
-              const isRead = isOwnMessage && (message.isRead || !!readReceipts[message.$id]);
+              const isRead =
+                isOwnMessage && (message.isRead || !!readReceipts[message.$id]);
 
               return (
                 <MessageBubble
@@ -380,13 +425,13 @@ const MessageChat = ({
               );
             })}
 
-            <div className="h-2"></div>
+            <div className='h-2'></div>
             <div ref={messagesEndRef} />
 
             {isTyping && (
-              <div className="flex justify-start mb-1">
-                <div className="bg-dark-3 text-light-1 rounded-2xl rounded-tl-none px-4 py-2">
-                  <div className="typing-indicator">
+              <div className='flex justify-start mb-1'>
+                <div className='bg-dark-3 text-light-1 rounded-2xl rounded-tl-none px-4 py-2'>
+                  <div className='typing-indicator'>
                     <span></span>
                     <span></span>
                     <span></span>
@@ -452,10 +497,11 @@ const MessageChat = ({
           <Button
             variant='ghost'
             size='icon'
-            className={`p-2 rounded-full ${isSending || isUploading || (!newMessage.trim() && !attachment)
-              ? 'text-light-3'
-              : 'text-primary-500 hover:text-primary-600 hover:bg-dark-3'
-              }`}
+            className={`p-2 rounded-full ${
+              isSending || isUploading || (!newMessage.trim() && !attachment)
+                ? 'text-light-3'
+                : 'text-primary-500 hover:text-primary-600 hover:bg-dark-3'
+            }`}
             onClick={handleSendMessage}
             disabled={
               isSending || isUploading || (!newMessage.trim() && !attachment)
@@ -474,7 +520,7 @@ const MessageChat = ({
 };
 
 const MessageBubble = memo(
-  ({ message, isOwnMessage, isRead }: MessageBubbleProps) => {
+  ({ message, isOwnMessage }: MessageBubbleProps) => {
     const timeAgo = useMemo(() => {
       try {
         return formatDistanceToNow(new Date(message.createdAt), {
@@ -493,12 +539,13 @@ const MessageBubble = memo(
         className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-1 message-bubble`}
       >
         <div
-          className={`max-w-[75%] rounded-2xl px-4 py-3 ${isOwnMessage
-            ? hasError
-              ? 'bg-red-800 text-light-1 rounded-tr-none'
-              : 'bg-primary-500 text-light-1 rounded-tr-none'
-            : 'bg-dark-3 text-light-1 rounded-tl-none'
-            }`}
+          className={`max-w-[75%] rounded-2xl px-4 py-3 ${
+            isOwnMessage
+              ? hasError
+                ? 'bg-red-800 text-light-1 rounded-tr-none'
+                : 'bg-primary-500 text-light-1 rounded-tr-none'
+              : 'bg-dark-3 text-light-1 rounded-tl-none'
+          }`}
         >
           {message.attachmentUrl && message.attachmentType === 'image' && (
             <div className='mb-2 rounded-lg overflow-hidden'>
@@ -526,7 +573,9 @@ const MessageBubble = memo(
             </p>
           )}
 
-          <p className={`text-xs mt-1 ${isOwnMessage ? 'text-light-2 opacity-80' : 'text-light-3'}`}>
+          <p
+            className={`text-xs mt-1 ${isOwnMessage ? 'text-light-2 opacity-80' : 'text-light-3'}`}
+          >
             {timeAgo}
           </p>
         </div>
