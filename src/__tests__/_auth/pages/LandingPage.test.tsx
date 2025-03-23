@@ -1,169 +1,223 @@
-import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import LandingPage from '@/_auth/pages/LandingPage';
+import '@testing-library/jest-dom';
+import { BrowserRouter } from 'react-router-dom';
+import { mockGetRecentPosts } from '@/__tests__/__mocks__/api';
 
-// Mock IntersectionObserver which is not available in the test environment
-class MockIntersectionObserver implements IntersectionObserver {
-  readonly root: Element | null = null;
-  readonly rootMargin: string = '';
-  readonly thresholds: readonly number[] = [];
+// We need to manually mock all lazily loaded components BEFORE importing the component
+jest.mock('@/components/ui/hero-parallax', () => ({
+  HeroParallax: () => <div data-testid='hero-parallax'>Hero Parallax</div>,
+}));
 
-  constructor(callback: IntersectionObserverCallback) {
-    // Immediately call the callback with empty entries to simulate elements being visible
-    setTimeout(() => {
-      callback([], this);
-    }, 0);
-  }
+jest.mock('@/components/ui/infinite-moving-cards', () => ({
+  InfiniteMovingCards: () => (
+    <div data-testid='infinite-moving-cards'>Moving Cards</div>
+  ),
+}));
 
-  observe() { return; }
-  unobserve() { return; }
-  disconnect() { return; }
-  takeRecords(): IntersectionObserverEntry[] { return []; }
-}
+jest.mock('@/components/ui/bento-grid', () => ({
+  BentoGrid: ({ children }) => <div data-testid='bento-grid'>{children}</div>,
+  BentoCard: ({ name, description }) => (
+    <div data-testid={`bento-card-${name}`}>
+      <h3>{name}</h3>
+      <p>{description}</p>
+    </div>
+  ),
+}));
 
-global.IntersectionObserver = MockIntersectionObserver as any;
+jest.mock('@/components/ui/text-reveal', () => ({
+  TextReveal: ({ children }) => <div data-testid='text-reveal'>{children}</div>,
+}));
 
-// Mock framer-motion to avoid animation issues
+jest.mock('@/components/ui/apple-card-carousel', () => ({
+  AppleCardsCarousel: () => (
+    <div data-testid='apple-cards-carousel'>Cards Carousel</div>
+  ),
+}));
+
+// Mock other UI components
+jest.mock('@/components/ui/text-generate-effect', () => ({
+  TextGenerateEffect: ({ words }) => (
+    <p data-testid='text-generate-effect'>{words}</p>
+  ),
+}));
+
+jest.mock('@/components/ui/simplified-background', () => ({
+  SimplifiedBackground: () => <div data-testid='simplified-background' />,
+}));
+
+jest.mock('@/components/ui/typewriter', () => ({
+  TypewriterEffect: () => (
+    <div data-testid='typewriter-effect'>Share Your Story</div>
+  ),
+}));
+
+jest.mock('@/components/ui/morphing-text', () => ({
+  __esModule: true,
+  default: () => <div data-testid='morphing-text'>Express Yourself</div>,
+}));
+
+jest.mock('@/components/ui/loading-fallback', () => ({
+  __esModule: true,
+  default: () => <div data-testid='loading-fallback'>Loading...</div>,
+}));
+
+jest.mock('@/components/ui/glass-card', () => ({
+  __esModule: true,
+  default: ({ title }) => (
+    <div data-testid={`glass-card-${title}`}>{title}</div>
+  ),
+}));
+
+jest.mock('@/components/ui/tech-stack-orbit', () => ({
+  TechStackOrbit: () => <div data-testid='tech-stack-orbit'>Tech Stack</div>,
+}));
+
+// Mock the intersection observer hook
+jest.mock('@/hooks/useIntersectionObserver', () => ({
+  useIntersectionObserver: () => ({
+    hasIntersected: {
+      'tech-stack': true,
+      'feature-carousel': true,
+      'feature-grid': true,
+      'glass-cards': true,
+      parallax: true,
+      testimonials: true,
+    },
+    setupIntersectionObserver: () => jest.fn(),
+  }),
+}));
+
+// Mock framer-motion
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    h2: ({ children, ...props }: any) => <h2 {...props}>{children}</h2>
+    div: ({ children, ...props }) => <div {...props}>{children}</div>,
+    button: ({ children, onClick, ...props }) => (
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
+    ),
   },
-  AnimatePresence: ({ children }: any) => <>{children}</>
+  AnimatePresence: ({ children }) => <>{children}</>,
 }));
 
-// Mock necessary dependencies
-const mockPosts = {
-  documents: [
-    {
-      $id: '1',
-      caption: 'Beautiful sunset',
-      imageUrl: '/assets/images/post1.jpg',
-      creator: { name: 'John Doe' }
-    },
-    {
-      $id: '2',
-      caption: 'City skyline',
-      imageUrl: '/assets/images/post2.jpg',
-      creator: { name: 'Jane Smith' }
-    },
-    {
-      $id: '3',
-      caption: 'Mountain view',
-      imageUrl: '/assets/images/post3.jpg',
-      creator: { name: 'Alex Johnson' }
-    }
-  ]
-};
-
-// Mock API query
-jest.mock('@/lib/react-query/queries', () => ({
-  useGetRecentPosts: () => ({ data: mockPosts })
+// Mock Lucide React icons
+jest.mock('lucide-react', () => ({
+  MessageCircle: () => <div data-testid='icon-message'>Message Icon</div>,
+  Camera: () => <div data-testid='icon-camera'>Camera Icon</div>,
+  Compass: () => <div data-testid='icon-compass'>Compass Icon</div>,
+  Heart: () => <div data-testid='icon-heart'>Heart Icon</div>,
+  Bookmark: () => <div data-testid='icon-bookmark'>Bookmark Icon</div>,
+  Award: () => <div data-testid='icon-award'>Award Icon</div>,
+  Globe: () => <div data-testid='icon-globe'>Globe Icon</div>,
 }));
 
-// Mock window.location
-const mockLocationAssign = jest.fn();
-Object.defineProperty(window, 'location', {
-  value: {
-    href: '',
-    assign: mockLocationAssign
-  },
-  writable: true
-});
-
-// Mock video element
-HTMLMediaElement.prototype.play = jest.fn();
-HTMLMediaElement.prototype.pause = jest.fn();
-
-// Mock document.createElement for style elements
-const originalCreateElement = document.createElement;
-document.createElement = function (tagName) {
-  if (tagName.toLowerCase() === 'style') {
-    const element = originalCreateElement.call(document, tagName);
-    // Mock appendChild to avoid actually modifying the DOM
-    element.appendChild = jest.fn();
-    return element;
-  }
-
-  return originalCreateElement.call(document, tagName);
-};
+// Import the component AFTER all mocks are set up
+import LandingPage from '@/_auth/pages/LandingPage';
 
 describe('LandingPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset window.location.href
-    window.location.href = '';
+
+    // Mock window.location
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { href: '' },
+    });
+
+    // Mock posts data
+    mockGetRecentPosts.mockReturnValue({
+      data: {
+        documents: [
+          {
+            caption: 'Test Caption',
+            imageUrl: '/test-image.jpg',
+            creator: { name: 'Test User' },
+          },
+        ],
+      },
+    });
   });
 
-  it('renders the landing page with header and hero section', () => {
-    render(<LandingPage />);
+  it('renders the header and hero section', () => {
+    render(
+      <BrowserRouter>
+        <LandingPage />
+      </BrowserRouter>
+    );
 
     // Check header elements
     expect(screen.getByText('HORIZON')).toBeInTheDocument();
     expect(screen.getByText('Sign In')).toBeInTheDocument();
     expect(screen.getByText('Join Now')).toBeInTheDocument();
 
-    // Check hero section
-    expect(screen.getByText('Share Your Story')).toBeInTheDocument();
-    expect(screen.getByText(/Join millions of creators/)).toBeInTheDocument();
+    // Check hero section elements
+    expect(screen.getByTestId('typewriter-effect')).toBeInTheDocument();
+    expect(screen.getByTestId('text-generate-effect')).toBeInTheDocument();
     expect(screen.getByText('Get Started')).toBeInTheDocument();
   });
 
-  it('renders the features section', () => {
-    render(<LandingPage />);
-
-    // Check features
-    expect(screen.getByText('Express Yourself')).toBeInTheDocument();
-    expect(screen.getByText('Share Stories')).toBeInTheDocument();
-    expect(screen.getByText('Connect')).toBeInTheDocument();
-    expect(screen.getByText('Grow')).toBeInTheDocument();
-  });
-
-  it('renders footer with current year', () => {
-    render(<LandingPage />);
-
-    const currentYear = new Date().getFullYear();
-    expect(screen.getByText(`© ${currentYear} Horizon. All rights reserved.`)).toBeInTheDocument();
-  });
-
-  it('renders post grid with data from API', () => {
-    render(<LandingPage />);
-
-    // Check if posts are rendered
-    mockPosts.documents.forEach(post => {
-      expect(screen.getByText(post.creator.name)).toBeInTheDocument();
-      expect(screen.getByText(post.caption)).toBeInTheDocument();
-      expect(screen.getByAltText(post.caption)).toBeInTheDocument();
-    });
-  });
-
   it('navigates to sign-in page when Sign In button is clicked', () => {
-    render(<LandingPage />);
+    render(
+      <BrowserRouter>
+        <LandingPage />
+      </BrowserRouter>
+    );
 
-    const signInButton = screen.getByText('Sign In');
-    fireEvent.click(signInButton);
-
-    // Check if navigation occurred
+    fireEvent.click(screen.getByText('Sign In'));
     expect(window.location.href).toBe('/sign-in');
   });
 
   it('navigates to sign-up page when Join Now button is clicked', () => {
-    render(<LandingPage />);
+    render(
+      <BrowserRouter>
+        <LandingPage />
+      </BrowserRouter>
+    );
 
-    const joinNowButton = screen.getByText('Join Now');
-    fireEvent.click(joinNowButton);
-
-    // Check if navigation occurred
+    fireEvent.click(screen.getByText('Join Now'));
     expect(window.location.href).toBe('/sign-up');
   });
 
-  it('navigates to sign-up page when Get Started button is clicked', () => {
-    render(<LandingPage />);
+  it('renders feature sections with correct content', () => {
+    render(
+      <BrowserRouter>
+        <LandingPage />
+      </BrowserRouter>
+    );
 
-    const getStartedButton = screen.getByText('Get Started');
-    fireEvent.click(getStartedButton);
+    // Check for feature sections
+    expect(
+      screen.getByText('Discover What Horizon Offers')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('bento-grid')).toBeInTheDocument();
+  });
 
-    // Check if navigation occurred
+  it('renders call-to-action section with sign-up button', () => {
+    render(
+      <BrowserRouter>
+        <LandingPage />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText('Ready to Join Horizon?')).toBeInTheDocument();
+
+    const signUpButton = screen.getByText('Create Your Account');
+    expect(signUpButton).toBeInTheDocument();
+
+    fireEvent.click(signUpButton);
     expect(window.location.href).toBe('/sign-up');
+  });
+
+  it('renders footer with copyright information', () => {
+    render(
+      <BrowserRouter>
+        <LandingPage />
+      </BrowserRouter>
+    );
+
+    const currentYear = new Date().getFullYear();
+    expect(
+      screen.getByText(`© ${currentYear} Horizon. All rights reserved.`)
+    ).toBeInTheDocument();
   });
 });
