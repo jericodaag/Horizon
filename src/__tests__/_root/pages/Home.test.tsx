@@ -1,9 +1,34 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '@/_root/pages/Home';
 
 // Import specific mocks we need
 import { mockGetRecentPosts } from '@/__tests__/__mocks__/api';
+
+// Mock the PostCard component
+jest.mock('@/components/shared/PostCard', () => ({
+  __esModule: true,
+  default: ({ post }) => (
+    <div data-testid={`post-card-${post.$id}`}>{post.caption}</div>
+  ),
+}));
+
+// Mock the PostCardSkeleton component
+jest.mock('@/components/shared/PostCardSkeleton', () => ({
+  __esModule: true,
+  default: () => <div data-testid='post-skeleton'>Loading...</div>,
+}));
+
+// Mock the ArrowUp icon
+jest.mock('lucide-react', () => ({
+  ArrowUp: () => <div data-testid='arrow-up-icon'>↑</div>,
+}));
 
 describe('Home Component', () => {
   const mockPostData = [

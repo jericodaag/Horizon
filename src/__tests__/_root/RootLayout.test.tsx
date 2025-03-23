@@ -2,38 +2,59 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RootLayout from '@/_root/RootLayout';
 
-// Import the global mocks
-import '@/__tests__/__mocks__/components';
+// Mock all child components
+jest.mock('@/components/shared/Topbar', () => ({
+  __esModule: true,
+  default: () => <div data-testid='topbar-component'>Topbar Component</div>,
+}));
 
-describe('RootLayout', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
+jest.mock('@/components/shared/LeftSidebar', () => ({
+  __esModule: true,
+  default: () => (
+    <div data-testid='left-sidebar-component'>LeftSidebar Component</div>
+  ),
+}));
 
-    it('renders all layout components correctly', () => {
-        render(<RootLayout />);
+jest.mock('@/components/shared/RightSideBar', () => ({
+  __esModule: true,
+  default: () => (
+    <div data-testid='right-sidebar-component'>RightSidebar Component</div>
+  ),
+}));
 
-        // Check if all layout components are rendered
-        expect(screen.getByTestId('topbar-mock')).toBeInTheDocument();
-        expect(screen.getByTestId('left-sidebar-mock')).toBeInTheDocument();
-        expect(screen.getByTestId('right-sidebar-mock')).toBeInTheDocument();
-        expect(screen.getByTestId('bottom-bar-mock')).toBeInTheDocument();
-        expect(screen.getByTestId('outlet-mock')).toBeInTheDocument();
-    });
+jest.mock('@/components/shared/BottomBar', () => ({
+  __esModule: true,
+  default: () => (
+    <div data-testid='bottom-bar-component'>BottomBar Component</div>
+  ),
+}));
 
-    it('renders correct structure with proper nesting', () => {
-        const { container } = render(<RootLayout />);
+// Mock the Outlet from react-router-dom
+jest.mock('react-router-dom', () => ({
+  Outlet: () => <div data-testid='outlet-content'>Main Content</div>,
+}));
 
-        // The main container is the root div of the component
-        const mainContainer = container.firstChild;
-        expect(mainContainer).toHaveClass('w-full');
-        expect(mainContainer).toHaveClass('md:flex');
+describe('RootLayout Component', () => {
+  it('renders all layout components in the correct structure', () => {
+    render(<RootLayout />);
 
-        // The section containing Outlet should have expected classes
-        const sectionElement = screen.getByTestId('outlet-mock').closest('section');
-        expect(sectionElement).toBeInTheDocument();
-        expect(sectionElement).toHaveClass('flex');
-        expect(sectionElement).toHaveClass('flex-1');
-        expect(sectionElement).toHaveClass('h-full');
-    });
+    // Verify that all layout components are rendered
+    expect(screen.getByTestId('topbar-component')).toBeInTheDocument();
+    expect(screen.getByTestId('left-sidebar-component')).toBeInTheDocument();
+    expect(screen.getByTestId('right-sidebar-component')).toBeInTheDocument();
+    expect(screen.getByTestId('bottom-bar-component')).toBeInTheDocument();
+    expect(screen.getByTestId('outlet-content')).toBeInTheDocument();
+
+    // Verify the outlet is within a section element with correct classes
+    const mainSection = screen.getByTestId('outlet-content').closest('section');
+    expect(mainSection).toHaveClass('flex flex-1 h-full');
+  });
+
+  it('has the correct root container class', () => {
+    render(<RootLayout />);
+
+    // Get the root div element
+    const rootContainer = screen.getByTestId('topbar-component').parentElement;
+    expect(rootContainer).toHaveClass('w-full md:flex');
+  });
 });

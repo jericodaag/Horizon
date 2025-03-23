@@ -1,271 +1,440 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Messages from '@/_root/pages/Messages';
-import { mockGetUserConversations, mockGetUsers, mockGetConversation } from '@/__tests__/__mocks__/api';
-import { mockLocation } from '@/__tests__/__mocks__/router';
 
-// Mock QueryClient
+// Import specific mocks we need
+import {
+  mockGetUserConversations,
+  mockGetUsers,
+} from '@/__tests__/__mocks__/api';
+
+// Mock the useQueryClient hooks from react-query
 jest.mock('@tanstack/react-query', () => ({
-  ...jest.requireActual('@tanstack/react-query'),
   useQueryClient: () => ({
     prefetchQuery: jest.fn(),
-    invalidateQueries: jest.fn()
-  })
+  }),
+}));
+
+// Mock the useLocation hook to test both with and without initialConversation
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: () => ({
+    pathname: '/messages',
+    state: null, // Default to no initialConversation
+  }),
+}));
+
+// Mock the Dialog component from shadcn/ui
+jest.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ children, open }) =>
+    open ? <div data-testid='dialog'>{children}</div> : null,
+  DialogContent: ({ children, className }) => (
+    <div data-testid='dialog-content' className={className}>
+      {children}
+    </div>
+  ),
+  DialogHeader: ({ children }) => (
+    <div data-testid='dialog-header'>{children}</div>
+  ),
+  DialogTitle: ({ children }) => (
+    <div data-testid='dialog-title'>{children}</div>
+  ),
+}));
+
+// Mock the Input component
+jest.mock('@/components/ui/input', () => ({
+  Input: ({ type, placeholder, value, onChange, className }) => (
+    <input
+      data-testid={`input-${type || 'text'}`}
+      type={type || 'text'}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className={className}
+    />
+  ),
+}));
+
+// Mock Lucide icons
+jest.mock('lucide-react', () => ({
+  Loader: () => <div data-testid='lucide-loader'>Loading...</div>,
+  PlusCircle: () => <div data-testid='plus-icon'>+</div>,
+  Search: () => <div data-testid='search-icon'>🔍</div>,
+}));
+
+// Mock the auth context to provide the current user
+jest.mock('@/context/AuthContext', () => ({
+  useUserContext: () => ({
+    user: {
+      id: 'currentuser123',
+      name: 'Current User',
+      username: 'currentuser',
+      email: 'current@example.com',
+      imageUrl: '/avatar.jpg',
+    },
+    isLoading: false,
+    isAuthenticated: true,
+  }),
+}));
+
+// Mock the components that the Messages component uses
+jest.mock('@/components/shared/ConversationList', () => ({
+  __esModule: true,
+  default: ({
+    conversations,
+    onSelectConversation,
+    selectedId,
+    currentUserId,
+  }) => (
+    <div
+      data-testid='conversation-list'
+      data-selected-id={selectedId}
+      data-current-user-id={currentUserId}
+    >
+      {conversations && conversations.length > 0 ? (
+        conversations.map((conversation) => (
+          <div
+            key={conversation.user.id}
+            data-testid={`conversation-${conversation.user.id}`}
+            onClick={() => onSelectConversation(conversation.user)}
+            className={selectedId === conversation.user.id ? 'selected' : ''}
+          >
+            {conversation.user.name}
+          </div>
+        ))
+      ) : (
+        <div data-testid='no-conversations'>No conversations yet</div>
+      )}
+    </div>
+  ),
+}));
+
+jest.mock('@/components/shared/MessageChat', () => ({
+  __esModule: true,
+  default: ({ conversation, currentUserId, onBack }) => (
+    <div
+      data-testid='message-chat'
+      data-user-id={conversation.id}
+      data-current-user-id={currentUserId}
+    >
+      <button data-testid='back-button' onClick={onBack}>
+        Back
+      </button>
+      <div data-testid='conversation-name'>{conversation.name}</div>
+    </div>
+  ),
 }));
 
 describe('Messages Component', () => {
+  // Sample conversation data
   const mockConversations = [
     {
       user: {
-        $id: 'user2',
-        name: 'Test User 2',
-        username: 'testuser2',
-        imageUrl: 'https://example.com/avatar2.jpg',
+        id: 'user1',
+        $id: 'user1',
+        name: 'User One',
+        username: 'userone',
+        imageUrl: '/user1.jpg',
       },
       lastMessage: {
-        $id: 'msg1',
-        content: 'Hello',
-        createdAt: '2023-01-01T12:00:00.000Z',
-        sender: { $id: 'user2' },
-        receiver: { $id: 'user1' },
-        isRead: false,
-      },
-      unreadCount: 1,
-    },
-    {
-      user: {
-        $id: 'user3',
-        name: 'Test User 3',
-        username: 'testuser3',
-        imageUrl: 'https://example.com/avatar3.jpg',
-      },
-      lastMessage: {
-        $id: 'msg2',
-        content: 'How are you?',
-        createdAt: '2023-01-02T12:00:00.000Z',
-        sender: { $id: 'user1' },
-        receiver: { $id: 'user3' },
-        isRead: true,
+        text: 'Hello there!',
+        createdAt: '2023-05-15T10:30:00.000Z',
       },
       unreadCount: 0,
     },
+    {
+      user: {
+        id: 'user2',
+        $id: 'user2',
+        name: 'User Two',
+        username: 'usertwo',
+        imageUrl: '/user2.jpg',
+      },
+      lastMessage: {
+        text: 'How are you?',
+        createdAt: '2023-05-14T15:45:00.000Z',
+      },
+      unreadCount: 2,
+    },
   ];
 
-  const mockUsers = {
+  // Sample users data for the new chat dialog
+  const mockAllUsers = {
     documents: [
       {
+        $id: 'currentuser123',
+        name: 'Current User',
+        username: 'currentuser',
+        imageUrl: '/avatar.jpg',
+      },
+      {
         $id: 'user1',
-        name: 'Test User',
-        username: 'testuser',
-        imageUrl: 'https://example.com/avatar.jpg',
+        name: 'User One',
+        username: 'userone',
+        imageUrl: '/user1.jpg',
       },
       {
         $id: 'user2',
-        name: 'Test User 2',
-        username: 'testuser2',
-        imageUrl: 'https://example.com/avatar2.jpg',
+        name: 'User Two',
+        username: 'usertwo',
+        imageUrl: '/user2.jpg',
       },
       {
         $id: 'user3',
-        name: 'Test User 3',
-        username: 'testuser3',
-        imageUrl: 'https://example.com/avatar3.jpg',
+        name: 'User Three',
+        username: 'userthree',
+        imageUrl: '/user3.jpg',
       },
     ],
   };
 
-  // Reset all mocks before each test
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset location state
-    mockLocation.state = null;
+    // Configure default mock implementations
+    mockGetUserConversations.mockReturnValue({
+      data: mockConversations,
+      isLoading: false,
+    });
 
-    // Set default mock return values
-    mockGetUserConversations.mockReturnValue(mockConversations);
-    mockGetUsers.mockReturnValue({ data: mockUsers, isLoading: false });
-    mockGetConversation.mockReturnValue({
-      documents: [
-        {
-          $id: 'msg1',
-          content: 'Hello there',
-          createdAt: new Date().toISOString(),
-          sender: { $id: 'user2' },
-          receiver: { $id: 'user123' },
-          isRead: false
-        }
-      ]
+    mockGetUsers.mockReturnValue({
+      data: mockAllUsers,
+      isLoading: false,
     });
   });
 
-  it('renders the messages page with title', () => {
+  it('renders the messages page with header', () => {
     render(<Messages />);
     expect(screen.getByText('Messages')).toBeInTheDocument();
   });
 
-  it('shows loading state when fetching conversations', () => {
-    // Override the default mock to return loading state
-    mockGetUserConversations.mockReturnValue(undefined);
-
-    // Use Jest's spyOn to override the React Query hook
-    jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserConversations')
-      .mockReturnValue({
-        data: undefined,
-        isLoading: true
-      });
+  it('shows loading state while fetching conversations', () => {
+    // Override the mock to return loading state
+    mockGetUserConversations.mockReturnValue({
+      data: null,
+      isLoading: true,
+    });
 
     render(<Messages />);
 
-    // Check for loader component
+    expect(screen.getByText('Conversations')).toBeInTheDocument();
     expect(screen.getByTestId('lucide-loader')).toBeInTheDocument();
   });
 
   it('renders conversation list when data is loaded', () => {
-    // Override the hook with our test data
-    jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserConversations')
-      .mockReturnValue({
-        data: mockConversations,
-        isLoading: false
-      });
-
     render(<Messages />);
 
-    // Check for conversation list and items
     expect(screen.getByTestId('conversation-list')).toBeInTheDocument();
+    expect(screen.getByTestId('conversation-user1')).toBeInTheDocument();
     expect(screen.getByTestId('conversation-user2')).toBeInTheDocument();
-    expect(screen.getByTestId('conversation-user3')).toBeInTheDocument();
   });
 
-  it('shows empty state when no conversations', () => {
-    // Override to return empty array
-    jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserConversations')
-      .mockReturnValue({
-        data: [],
-        isLoading: false
-      });
+  it('displays empty state message when no conversations exist', () => {
+    // Override the mock to return empty conversations
+    mockGetUserConversations.mockReturnValue({
+      data: [],
+      isLoading: false,
+    });
 
     render(<Messages />);
 
-    // Check for empty state message
     expect(screen.getByTestId('no-conversations')).toBeInTheDocument();
+    expect(
+      screen.getByText('Select a conversation or start a new one')
+    ).toBeInTheDocument();
   });
 
-  it('shows message chat when conversation is selected', async () => {
-    // Set up conversation data
-    jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserConversations')
-      .mockReturnValue({
-        data: mockConversations,
-        isLoading: false
-      });
-
+  it('opens new chat dialog when new message button is clicked', () => {
     render(<Messages />);
 
-    // Click on a conversation
-    const conversationBtn = screen.getByTestId('conversation-user2');
-    fireEvent.click(conversationBtn);
+    // Click the new message button (using the button that contains PlusCircle)
+    const newMessageButtons = screen.getAllByRole('button');
+    const newChatButton = newMessageButtons.find(
+      (button) =>
+        button.innerHTML.includes('plus-icon') ||
+        button.textContent?.includes('+')
+    );
 
-    // Check that message chat is shown
-    await waitFor(() => {
-      expect(screen.getByTestId('message-chat')).toBeInTheDocument();
-      expect(screen.getByTestId('conversation-name')).toHaveTextContent('Test User 2');
-    });
-  });
+    if (newChatButton) {
+      fireEvent.click(newChatButton);
+    } else {
+      throw new Error('New chat button not found');
+    }
 
-  it('returns to conversation list on back button click', async () => {
-    // Override window width to simulate mobile view
-    global.innerWidth = 500;
-    global.dispatchEvent(new Event('resize'));
-
-    // Set up conversation data
-    jest.spyOn(require('@/lib/react-query/queries'), 'useGetUserConversations')
-      .mockReturnValue({
-        data: mockConversations,
-        isLoading: false
-      });
-
-    render(<Messages />);
-
-    // Select a conversation first
-    const conversationBtn = screen.getByTestId('conversation-user2');
-    fireEvent.click(conversationBtn);
-
-    // Verify message chat is visible
-    await waitFor(() => {
-      expect(screen.getByTestId('message-chat')).toBeInTheDocument();
-    });
-
-    // Click back button
-    const backButton = screen.getByTestId('back-button');
-    fireEvent.click(backButton);
-
-    // Verify conversation list is visible again
-    await waitFor(() => {
-      // Make sure the conversation list is not hidden
-      const conversationList = screen.getByTestId('conversation-list').closest('.conversation-list');
-      expect(conversationList).not.toHaveClass('hidden');
-    });
-  });
-
-  it('opens new message dialog when new message button is clicked', () => {
-    render(<Messages />);
-
-    // Click the new message button (using aria-label)
-    const newMessageButton = screen.getByLabelText('New message');
-    fireEvent.click(newMessageButton);
-
-    // Check that dialog is shown
+    // Dialog should appear
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByTestId('dialog-title')).toHaveTextContent('New Message');
   });
 
-  it('filters users in new message dialog based on search query', async () => {
-    // Set up users data
-    jest.spyOn(require('@/lib/react-query/queries'), 'useGetUsers')
-      .mockReturnValue({
-        data: mockUsers,
-        isLoading: false
-      });
-
+  it('filters users in the new chat dialog when searching', () => {
     render(<Messages />);
 
-    // Open dialog
-    const newMessageButton = screen.getByLabelText('New message');
-    fireEvent.click(newMessageButton);
+    // Open the new chat dialog
+    const newMessageButtons = screen.getAllByRole('button');
+    const newChatButton = newMessageButtons.find(
+      (button) =>
+        button.innerHTML.includes('plus-icon') ||
+        button.textContent?.includes('+')
+    );
 
-    // Wait for dialog to open
-    await waitFor(() => {
-      expect(screen.getByTestId('dialog')).toBeInTheDocument();
-    });
+    if (newChatButton) {
+      fireEvent.click(newChatButton);
+    }
 
-    // Type search query
-    const searchInput = screen.getByPlaceholderText('Search users...');
-    expect(searchInput).toBeInTheDocument();
+    // Type in the search box
+    const searchInput = screen.getByTestId('input-text');
+    fireEvent.change(searchInput, { target: { value: 'three' } });
 
-    // Set search value
-    fireEvent.change(searchInput, { target: { value: 'testuser2' } });
+    // Wait for the filtered list to update
+    const userDivs = screen
+      .getAllByRole('button')
+      .filter((el) => el.textContent?.includes('User'));
 
-    // Check search input value
-    expect(searchInput).toHaveValue('testuser2');
+    // Should only show User Three
+    expect(userDivs.length).toBe(1);
+    expect(userDivs[0].textContent).toContain('User Three');
   });
 
-  it('handles initial conversation from location state', async () => {
-    // Set up initial conversation in location state
-    const initialConversation = {
-      $id: 'user4',
-      id: 'user4',
-      name: 'Initial User',
-      username: 'initialuser',
-      imageUrl: 'https://example.com/avatar4.jpg',
-    };
+  it('selects a conversation when clicked', () => {
+    render(<Messages />);
 
-    mockLocation.state = { initialConversation };
+    // Click on a conversation
+    fireEvent.click(screen.getByTestId('conversation-user1'));
+
+    // Check that the message chat is shown with the correct user
+    expect(screen.getByTestId('message-chat')).toBeInTheDocument();
+    expect(screen.getByTestId('message-chat')).toHaveAttribute(
+      'data-user-id',
+      'user1'
+    );
+    expect(screen.getByTestId('conversation-name')).toHaveTextContent(
+      'User One'
+    );
+  });
+
+  it('selects a user from new chat dialog', () => {
+    render(<Messages />);
+
+    // Open the new chat dialog
+    const newMessageButtons = screen.getAllByRole('button');
+    const newChatButton = newMessageButtons.find(
+      (button) =>
+        button.innerHTML.includes('plus-icon') ||
+        button.textContent?.includes('+')
+    );
+
+    if (newChatButton) {
+      fireEvent.click(newChatButton);
+    }
+
+    // After dialog opens, find all user buttons
+    const userButtons = screen
+      .getAllByRole('button')
+      .filter((btn) => btn.textContent?.includes('User Three'));
+
+    // Click on User Three
+    if (userButtons.length > 0) {
+      fireEvent.click(userButtons[0]);
+    }
+
+    // Dialog should close and chat should be opened
+    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('message-chat')).toBeInTheDocument();
+  });
+
+  it('displays a message chat with initialConversation from location state', () => {
+    // Override useLocation to include initialConversation
+    jest.spyOn(require('react-router-dom'), 'useLocation').mockReturnValue({
+      pathname: '/messages',
+      state: {
+        initialConversation: {
+          $id: 'user3',
+          name: 'User Three',
+          username: 'userthree',
+          imageUrl: '/user3.jpg',
+        },
+      },
+    });
 
     render(<Messages />);
 
-    // Should directly open message chat with initial user
-    await waitFor(() => {
-      expect(screen.getByTestId('message-chat')).toBeInTheDocument();
-      expect(screen.getByTestId('conversation-name')).toHaveTextContent('Initial User');
+    // Should immediately show the message chat with User Three
+    expect(screen.getByTestId('message-chat')).toBeInTheDocument();
+    expect(screen.getByTestId('message-chat')).toHaveAttribute(
+      'data-user-id',
+      'user3'
+    );
+    expect(screen.getByTestId('conversation-name')).toHaveTextContent(
+      'User Three'
+    );
+  });
+
+  it('goes back to conversation list in mobile view', () => {
+    // Set up window width for mobile view
+    global.innerWidth = 500;
+    global.dispatchEvent(new Event('resize'));
+
+    render(<Messages />);
+
+    // Select a conversation
+    fireEvent.click(screen.getByTestId('conversation-user1'));
+
+    // Message chat should be visible
+    expect(screen.getByTestId('message-chat')).toBeInTheDocument();
+
+    // Click back button
+    fireEvent.click(screen.getByTestId('back-button'));
+
+    // Conversation list should be visible again
+    expect(screen.getByTestId('conversation-list')).toBeInTheDocument();
+  });
+
+  it('shows loading state for users in new chat dialog', () => {
+    // Override the mock to return loading state for users
+    mockGetUsers.mockReturnValue({
+      data: null,
+      isLoading: true,
     });
+
+    render(<Messages />);
+
+    // Open the new chat dialog
+    const newMessageButtons = screen.getAllByRole('button');
+    const newChatButton = newMessageButtons.find(
+      (button) =>
+        button.innerHTML.includes('plus-icon') ||
+        button.textContent?.includes('+')
+    );
+
+    if (newChatButton) {
+      fireEvent.click(newChatButton);
+    }
+
+    // Should show loader while fetching users
+    const loaders = screen.getAllByTestId('lucide-loader');
+    expect(loaders.length).toBeGreaterThan(0);
+  });
+
+  it('shows empty state when no users match search query', () => {
+    render(<Messages />);
+
+    // Open the new chat dialog
+    const newMessageButtons = screen.getAllByRole('button');
+    const newChatButton = newMessageButtons.find(
+      (button) =>
+        button.innerHTML.includes('plus-icon') ||
+        button.textContent?.includes('+')
+    );
+
+    if (newChatButton) {
+      fireEvent.click(newChatButton);
+    }
+
+    // Type a search query that won't match any users
+    const searchInput = screen.getByTestId('input-text');
+    fireEvent.change(searchInput, { target: { value: 'nonexistentuser' } });
+
+    // Should show no users found message
+    expect(screen.getByText('No users found')).toBeInTheDocument();
   });
 });
