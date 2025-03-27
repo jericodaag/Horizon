@@ -52,11 +52,9 @@ const FollowButton = ({ userId, className = '', compact = false }: FollowButtonP
   // Determine button text based on follow state and compact prop
   const getButtonText = () => {
     if (compact) return null;
-
     if (isFollowingUser) {
       return isHovering ? 'Unfollow' : 'Following';
     }
-
     return 'Follow';
   };
 
