@@ -8,6 +8,7 @@ import { IComment } from '@/types';
 import { appwriteConfig, databases } from '@/lib/appwrite/config';
 import { Query } from 'appwrite';
 import TranslateButton from './TranslateButton';
+import { MapPin } from 'lucide-react';
 
 type PostCardProps = {
   post: Models.Document;
@@ -59,11 +60,13 @@ const PostCard = ({ post }: PostCardProps) => {
           [
             Query.equal('postId', [post.$id]),
             Query.orderDesc('$createdAt'),
-            Query.limit(1), // Changed from 3 to 1
+            Query.limit(1),
           ]
         );
 
-        setCommentCount(commentsData.total);
+        setCommentCount(
+          commentsData.documents.length > 0 ? commentsData.total || 0 : 0
+        );
 
         if (commentsData.documents.length === 0) {
           setIsLoadingComments(false);
@@ -147,58 +150,84 @@ const PostCard = ({ post }: PostCardProps) => {
   if (!post.creator) return null;
 
   return (
-    <div className='post-card'>
+    <div className='bg-dark-2 rounded-xl overflow-hidden border border-dark-4 w-full max-w-[600px] mx-auto'>
       {/* Header: User Info */}
-      <div className='flex items-center justify-between py-2.5'>
-        <div className='flex items-center gap-3'>
-          <Link to={`/profile/${post.creator.$id}`}>
-            <img
-              src={
-                post?.creator?.imageUrl ||
-                '/assets/icons/profile-placeholder.svg'
-              }
-              alt='creator'
-              className='w-8 h-8 rounded-full object-cover'
-            />
-          </Link>
+      <div className='flex items-center justify-between p-4 border-b border-dark-4'>
+        <Link
+          to={`/profile/${post.creator.$id}`}
+          className='flex items-center gap-3'
+        >
+          <img
+            src={
+              post.creator.imageUrl || '/assets/icons/profile-placeholder.svg'
+            }
+            alt='creator'
+            className='w-10 h-10 rounded-full object-cover'
+          />
 
           <div className='flex flex-col'>
-            <p className='base-medium text-light-1'>{post.creator.name}</p>
-            <div className='flex items-center gap-2 text-light-3 text-sm'>
-              <p className='subtle-semibold'>
+            <p className='font-semibold text-light-1'>{post.creator.name}</p>
+            <div className='flex items-center gap-1'>
+              <p className='text-light-3 text-xs'>
                 {formatDateString(post.$createdAt)}
               </p>
               {post.location && (
                 <>
-                  <span>-</span>
-                  <p className='subtle-semibold'>{post.location}</p>
+                  <span className='text-light-3 text-xs'>•</span>
+                  <div className='flex items-center gap-1 text-light-3 text-xs'>
+                    <MapPin size={10} />
+                    <span>{post.location}</span>
+                  </div>
                 </>
               )}
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Edit Post Button - Only shown to post creator */}
         {user.id === post.creator.$id && (
           <Link
             to={`/update-post/${post.$id}`}
-            className='hover:bg-dark-4 p-2 rounded-full transition-colors'
+            className='p-2 rounded-full hover:bg-dark-3 transition-colors'
           >
             <img
               src='/assets/icons/edit.svg'
               alt='edit'
-              width={20}
-              height={20}
+              width={18}
+              height={18}
             />
           </Link>
         )}
       </div>
 
-      {/* Post Content */}
+      {/* Caption & Tags */}
+      {post.caption && (
+        <div className='px-4 py-3'>
+          <div className='flex items-start gap-2'>
+            <TranslateButton text={post.caption} />
+          </div>
+
+          {/* Tags */}
+          {post.tags?.length > 0 && (
+            <div className='flex flex-wrap gap-1 mt-2'>
+              {post.tags.map((tag: string) => (
+                <Link
+                  key={tag}
+                  to={`/explore?tag=${tag}`}
+                  className='text-primary-500 text-xs px-2 py-1 rounded-full bg-primary-500/10 hover:bg-primary-500/20 transition-colors'
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Post Image */}
       <Link to={`/posts/${post.$id}`}>
-        {/* Post Image (if exists) */}
         {post.imageUrl && (
-          <div className='relative aspect-square rounded-xl overflow-hidden my-3'>
+          <div className='aspect-square overflow-hidden border-y border-dark-4'>
             <img
               src={post.imageUrl}
               alt='post image'
@@ -209,51 +238,66 @@ const PostCard = ({ post }: PostCardProps) => {
       </Link>
 
       {/* Post Stats */}
-      <PostStats post={post} userId={user.id} />
+      <div className='p-4'>
+        <PostStats post={post} userId={user.id} />
 
-      {/* Caption & Tags */}
-      <div className='mt-3 space-y-2'>
-        <div className='flex gap-2'>
-          <p className='text-light-1 font-medium'>{post.creator.name}</p>
-          <TranslateButton text={post.caption} />
-        </div>
-
-        {/* Comment Preview - Show only 1 comment */}
+        {/* Comment Preview */}
         {commentCount > 0 && (
-          <div className='mt-2'>
+          <div className='mt-3 pt-3 border-t border-dark-4'>
             <Link
               to={`/posts/${post.$id}`}
-              className='text-light-3 text-sm hover:text-light-2'
+              className='text-light-3 text-sm hover:text-light-2 inline-flex items-center gap-1'
             >
+              <img
+                src='/assets/icons/comment.svg'
+                alt='comment'
+                width={16}
+                height={16}
+              />
               {commentCount > 1
                 ? `View all ${commentCount} comments`
                 : 'View 1 comment'}
             </Link>
+
             {!isLoadingComments && comments.length > 0 && (
-              <div className='mt-1 space-y-1'>
+              <div className='mt-2 space-y-1'>
                 {comments.map((comment) => (
-                  <div key={comment.$id} className='flex flex-col'>
-                    <div className='flex gap-2'>
-                      <p className='text-light-1 text-sm font-medium'>
-                        {comment.user?.name || 'User'}
-                      </p>
+                  <div key={comment.$id} className='flex items-start gap-2'>
+                    <Link
+                      to={`/profile/${comment.userId}`}
+                      className='flex-shrink-0'
+                    >
+                      <img
+                        src={
+                          comment.user?.imageUrl ||
+                          '/assets/icons/profile-placeholder.svg'
+                        }
+                        alt='user avatar'
+                        className='w-6 h-6 rounded-full object-cover'
+                      />
+                    </Link>
 
-                      {/* Only show text content if it exists */}
-                      {comment.content && (
-                        <p className='text-light-2 text-sm line-clamp-1'>
-                          {comment.content}
-                        </p>
-                      )}
-                    </div>
+                    <div className='flex-1'>
+                      <div className='flex items-start gap-1'>
+                        <Link
+                          to={`/profile/${comment.userId}`}
+                          className='font-medium text-light-1 text-xs'
+                        >
+                          {comment.user?.name || 'User'}
+                        </Link>
 
-                    {/* Show GIF preview if comment has a GIF */}
-                    {comment.gifUrl && (
-                      <div className='mt-1 ml-8'>
-                        <div className='flex items-center gap-2'>
-                          <span className='text-primary-500 text-xs'>
-                            [GIF]
-                          </span>
-                          <div className='h-8 w-8 rounded overflow-hidden bg-dark-3'>
+                        {/* Comment text */}
+                        {comment.content && (
+                          <p className='text-light-2 text-xs'>
+                            {comment.content}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* GIF preview for comment */}
+                      {comment.gifUrl && (
+                        <div className='mt-1'>
+                          <div className='h-12 w-16 rounded-md overflow-hidden bg-dark-4'>
                             <img
                               src={comment.gifUrl}
                               alt='GIF comment'
@@ -261,26 +305,12 @@ const PostCard = ({ post }: PostCardProps) => {
                             />
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Tags */}
-        {post.tags?.length > 0 && (
-          <div className='flex flex-wrap gap-1'>
-            {post.tags.map((tag: string) => (
-              <span
-                key={tag}
-                className='text-primary-500 text-sm hover:underline cursor-pointer'
-              >
-                #{tag}
-              </span>
-            ))}
           </div>
         )}
       </div>

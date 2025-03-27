@@ -7,47 +7,76 @@ import {
   useSavePost,
   useDeleteSavedPost,
   useGetCurrentUser,
+  useGetPostComments,
 } from '@/lib/react-query/queries';
+import { motion } from 'framer-motion';
 
 type PostStatsProps = {
   post: Models.Document;
   userId: string;
-  isGridView?: boolean; // Add this prop to adjust layout for grid vs detailed view
+  isGridView?: boolean;
 };
 
 const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
   // Initialize states and navigation
   const navigate = useNavigate();
   const [likes, setLikes] = useState<string[]>(
-    post.likes.map((user: Models.Document) => user.$id)
+    Array.isArray(post.likes)
+      ? post.likes.map((user: any) =>
+          typeof user === 'object' ? user.$id : user
+        )
+      : []
   );
   const [isSaved, setIsSaved] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.commentCount || 0);
+  const [isLikeAnimating, setIsLikeAnimating] = useState(false);
 
   // Get mutations and current user data
   const { mutate: likePost } = useLikePost();
   const { mutate: savePost } = useSavePost();
   const { mutate: deleteSavePost } = useDeleteSavedPost();
   const { data: currentUser } = useGetCurrentUser();
+  const { data: commentsData } = useGetPostComments(post.$id);
+
+  // Update comment count when comments data changes
+  useEffect(() => {
+    if (commentsData) {
+      // Handle the case where commentsData might not have 'total' property
+      const count =
+        'total' in commentsData
+          ? commentsData.total
+          : commentsData.documents?.length || 0;
+
+      setCommentCount(count);
+    }
+  }, [commentsData]);
 
   // Check if post is saved by current user
   useEffect(() => {
-    setIsSaved(
-      !!currentUser?.save.find(
-        (record: Models.Document) => record.post.$id === post.$id
-      )
+    if (!currentUser?.save) return;
+
+    const savedRecord = currentUser.save.find(
+      (record: Models.Document) =>
+        record.post?.$id === post.$id || record.post === post.$id
     );
-  }, [currentUser]);
+
+    setIsSaved(!!savedRecord);
+  }, [currentUser, post.$id]);
 
   // Handle liking/unliking a post
-  const handleLikePost = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleLikePost = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     let likesArray = [...likes];
-    if (likesArray.includes(userId)) {
-      likesArray = likesArray.filter((Id) => Id !== userId);
+    const hasLiked = likesArray.includes(userId);
+
+    if (hasLiked) {
+      likesArray = likesArray.filter((id) => id !== userId);
     } else {
       likesArray.push(userId);
+      setIsLikeAnimating(true);
+      setTimeout(() => setIsLikeAnimating(false), 1000);
     }
 
     setLikes(likesArray);
@@ -55,14 +84,16 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
   };
 
   // Handle saving/unsaving a post
-  const handleSavePost = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSavePost = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (isSaved && currentUser?.save) {
       const savedRecord = currentUser.save.find(
-        (record: Models.Document) => record.post.$id === post.$id
+        (record: Models.Document) =>
+          record.post?.$id === post.$id || record.post === post.$id
       );
+
       if (savedRecord) {
         setIsSaved(false);
         deleteSavePost(savedRecord.$id);
@@ -74,17 +105,50 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
   };
 
   // Navigate to post details for commenting
-  const handleCommentClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCommentClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     navigate(`/posts/${post.$id}`);
   };
 
+  // Handle share functionality
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Create the URL for this post
+    const postUrl = `${window.location.origin}/posts/${post.$id}`;
+
+    // Try to use the Web Share API if available
+    if (navigator.share) {
+      navigator
+        .share({
+          title: 'Check out this post on Horizon',
+          text: post.caption || 'Shared from Horizon',
+          url: postUrl,
+        })
+        .catch((err) => {
+          console.error('Error sharing:', err);
+          // Fallback to clipboard
+          copyToClipboard(postUrl);
+        });
+    } else {
+      // Fallback to clipboard
+      copyToClipboard(postUrl);
+    }
+  };
+
+  // Helper to copy to clipboard
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    // You could add a toast notification here
+  };
+
   // Grid view - use a more compact layout
   if (isGridView) {
     return (
-      <div className='flex-center gap-1'>
-        <button onClick={handleLikePost} className='flex-center'>
+      <div className='absolute inset-0 bg-gradient-to-t from-black/60 to-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-6 px-4'>
+        <div className='flex items-center gap-1 text-white'>
           <img
             src={
               checkIsLiked(likes, userId)
@@ -94,94 +158,133 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
             alt='like'
             width={20}
             height={20}
+            className='invert'
           />
-        </button>
-
-        <button onClick={handleCommentClick} className='flex-center'>
+          <span className='text-sm font-medium'>{likes.length}</span>
+        </div>
+        <div className='flex items-center gap-1 text-white'>
           <img
             src='/assets/icons/comment.svg'
             alt='comment'
             width={20}
             height={20}
+            className='invert'
           />
-        </button>
-
-        <button onClick={handleSavePost} className='flex-center'>
-          <img
-            src={isSaved ? '/assets/icons/saved.svg' : '/assets/icons/save.svg'}
-            alt='save'
-            width={20}
-            height={20}
-          />
-        </button>
+          <span className='text-sm font-medium'>{commentCount}</span>
+        </div>
       </div>
     );
   }
 
+  // Format like count for display
+  const formatCount = (count: number) => {
+    if (count > 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count > 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count;
+  };
+
+  // Get liked users text
+  const getLikedByText = () => {
+    if (likes.length === 0) return null;
+
+    if (likes.includes(userId)) {
+      if (likes.length === 1) {
+        return 'You liked this post';
+      } else {
+        return `You and ${likes.length - 1} ${likes.length === 2 ? 'other' : 'others'}`;
+      }
+    } else {
+      return `${likes.length} ${likes.length === 1 ? 'like' : 'likes'}`;
+    }
+  };
+
   // Regular detailed view
   return (
-    <div className='flex flex-col gap-2'>
-      <div className='flex gap-4 items-center'>
-        {/* Like Button */}
-        <button
-          onClick={handleLikePost}
-          className='flex items-center gap-2 hover:opacity-80 transition-opacity'
-        >
-          <img
-            src={
-              checkIsLiked(likes, userId)
-                ? '/assets/icons/liked.svg'
-                : '/assets/icons/like.svg'
-            }
-            alt='like'
-            width={24}
-            height={24}
-          />
-        </button>
+    <div className='space-y-2'>
+      <div className='flex items-center justify-between'>
+        <div className='flex items-center gap-4'>
+          {/* Like Button */}
+          <button
+            onClick={handleLikePost}
+            className='flex items-center justify-center group relative'
+          >
+            {isLikeAnimating && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0.7 }}
+                animate={{ scale: 1.5, opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className='absolute inset-0 bg-primary-500 rounded-full'
+              />
+            )}
+            <motion.img
+              whileTap={{ scale: 1.2 }}
+              src={
+                checkIsLiked(likes, userId)
+                  ? '/assets/icons/liked.svg'
+                  : '/assets/icons/like.svg'
+              }
+              alt='like'
+              width={24}
+              height={24}
+              className={checkIsLiked(likes, userId) ? 'scale-110' : ''}
+            />
+            <span className='ml-1 text-sm text-light-2'>
+              {formatCount(likes.length)}
+            </span>
+          </button>
 
-        {/* Comment Button */}
-        <button
-          onClick={handleCommentClick}
-          className='flex items-center gap-2 hover:opacity-80 transition-opacity'
-        >
-          <img
-            src='/assets/icons/comment.svg'
-            alt='comment'
-            width={24}
-            height={24}
-          />
-        </button>
+          {/* Comment Button */}
+          <button
+            onClick={handleCommentClick}
+            className='flex items-center group'
+          >
+            <motion.img
+              whileTap={{ scale: 1.2 }}
+              src='/assets/icons/comment.svg'
+              alt='comment'
+              width={24}
+              height={24}
+            />
+            <span className='ml-1 text-sm text-light-2'>
+              {formatCount(commentCount)}
+            </span>
+          </button>
+
+          {/* Share Button */}
+          <motion.button
+            onClick={handleShareClick}
+            className='group'
+            whileTap={{ scale: 1.2 }}
+          >
+            <img
+              src='/assets/icons/share.svg'
+              alt='share'
+              width={24}
+              height={24}
+            />
+          </motion.button>
+        </div>
 
         {/* Save Button */}
-        <button
+        <motion.button
           onClick={handleSavePost}
-          className='hover:opacity-80 transition-opacity ml-auto'
+          className='group'
+          whileTap={{ scale: 1.2 }}
         >
           <img
             src={isSaved ? '/assets/icons/saved.svg' : '/assets/icons/save.svg'}
             alt='save'
             width={24}
             height={24}
+            className={isSaved ? 'scale-110' : ''}
           />
-        </button>
+        </motion.button>
       </div>
 
-      {/* Stats Display */}
-      <div className='flex gap-4'>
-        {/* Like Count */}
-        {likes.length > 0 && (
-          <p className='text-light-2 text-sm'>
-            {likes.length} {likes.length === 1 ? 'like' : 'likes'}
-          </p>
-        )}
-        {/* Comment Count */}
-        {post.comments?.length > 0 && (
-          <p className='text-light-2 text-sm'>
-            {post.comments.length}{' '}
-            {post.comments.length === 1 ? 'comment' : 'comments'}
-          </p>
-        )}
-      </div>
+      {/* Liked by summary */}
+      {likes.length > 0 && (
+        <p className='text-sm text-light-2 font-medium'>{getLikedByText()}</p>
+      )}
     </div>
   );
 };
