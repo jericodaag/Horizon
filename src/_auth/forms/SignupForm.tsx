@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Mail, Lock, User, UserPlus, KeyRound, AtSign } from 'lucide-react';
 
 interface SignupFormProps {
   onLoadingChange?: (isLoading: boolean) => void;
@@ -136,14 +137,20 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
             name='name'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2'>Name</FormLabel>
+                <FormLabel className='text-light-2 flex items-center gap-2'>
+                  <User className='h-4 w-4' />
+                  Name
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type='text'
-                    className='shad-input bg-dark-3'
-                    placeholder='Enter your name'
-                    {...field}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type='text'
+                      className='shad-input bg-dark-3 pl-10'
+                      placeholder='Enter your name'
+                      {...field}
+                    />
+                    <User className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -155,14 +162,20 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
             name='username'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2'>Username</FormLabel>
+                <FormLabel className='text-light-2 flex items-center gap-2'>
+                  <AtSign className='h-4 w-4' />
+                  Username
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type='text'
-                    className='shad-input bg-dark-3'
-                    placeholder='Choose a username'
-                    {...field}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type='text'
+                      className='shad-input bg-dark-3 pl-10'
+                      placeholder='Choose a username'
+                      {...field}
+                    />
+                    <AtSign className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -174,14 +187,20 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
             name='email'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2'>Email</FormLabel>
+                <FormLabel className='text-light-2 flex items-center gap-2'>
+                  <Mail className='h-4 w-4' />
+                  Email
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type='email'
-                    className='shad-input bg-dark-3'
-                    placeholder='example@email.com'
-                    {...field}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type='email'
+                      className='shad-input bg-dark-3 pl-10'
+                      placeholder='example@email.com'
+                      {...field}
+                    />
+                    <Mail className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -193,14 +212,20 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
             name='password'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2'>Password</FormLabel>
+                <FormLabel className='text-light-2 flex items-center gap-2'>
+                  <Lock className='h-4 w-4' />
+                  Password
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type='password'
-                    className='shad-input bg-dark-3'
-                    placeholder='At least 8 characters'
-                    {...field}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type='password'
+                      className='shad-input bg-dark-3 pl-10'
+                      placeholder='At least 8 characters'
+                      {...field}
+                    />
+                    <KeyRound className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -213,9 +238,10 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
           >
             <Button
               type='submit'
-              className='bg-primary-500 hover:bg-primary-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8'
+              className='bg-violet-500 hover:bg-violet-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8 flex items-center justify-center gap-2'
               disabled={isLoading}
             >
+              <UserPlus className='h-5 w-5' />
               Sign up
             </Button>
           </motion.div>

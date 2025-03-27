@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Mail, Lock, LogIn, KeyRound } from 'lucide-react';
 
 interface SigninFormProps {
   onLoadingChange?: (isLoading: boolean) => void;
@@ -173,14 +174,20 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             name='email'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2'>Email</FormLabel>
+                <FormLabel className='text-light-2 flex items-center gap-2'>
+                  <Mail className='h-4 w-4' />
+                  Email
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type='email'
-                    className='shad-input bg-dark-3'
-                    placeholder='example@email.com'
-                    {...field}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type='email'
+                      className='shad-input bg-dark-3 pl-10'
+                      placeholder='example@email.com'
+                      {...field}
+                    />
+                    <Mail className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -193,14 +200,20 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             name='password'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2'>Password</FormLabel>
+                <FormLabel className='text-light-2 flex items-center gap-2'>
+                  <Lock className='h-4 w-4' />
+                  Password
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type='password'
-                    className='shad-input bg-dark-3'
-                    placeholder='At least 8 characters'
-                    {...field}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type='password'
+                      className='shad-input bg-dark-3 pl-10'
+                      placeholder='At least 8 characters'
+                      {...field}
+                    />
+                    <KeyRound className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -214,9 +227,10 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
           >
             <Button
               type='submit'
-              className='bg-primary-500 hover:bg-primary-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8'
+              className='bg-violet-500 hover:bg-violet-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8 flex items-center justify-center gap-2'
               disabled={isLoading || isRateLimited}
             >
+              <LogIn className='h-5 w-5' />
               {isRateLimited ? 'Please wait...' : 'Sign in'}
             </Button>
           </motion.div>

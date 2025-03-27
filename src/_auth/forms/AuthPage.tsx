@@ -53,17 +53,17 @@ const AuthPage: React.FC = () => {
       {/* Back button */}
       <motion.button
         onClick={handleBackToLanding}
-        className='fixed top-6 left-6 z-20 flex items-center gap-2 text-light-1 hover:text-primary-500 transition-colors'
+        className='fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 text-light-1 hover:text-primary-500 transition-colors bg-dark-2/70 backdrop-blur-sm p-2 rounded-lg'
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <ArrowLeft className='w-5 h-5' />
-        <span className='font-medium'>Back to Home</span>
+        <ArrowLeft className='w-4 h-4 md:w-5 md:h-5' />
+        <span className='text-sm md:text-base font-medium'>Back to home</span>
       </motion.button>
 
-      <div className='w-full flex justify-center items-center'>
-        <div className='w-full max-w-6xl h-[800px] flex bg-dark-2 rounded-2xl overflow-hidden shadow-2xl'>
+      <div className='w-full flex justify-center items-center pt-12 md:pt-0'>
+        <div className='w-full max-w-6xl h-auto md:h-[800px] flex bg-dark-2 rounded-2xl overflow-hidden shadow-2xl'>
           {/* Left side: Image carousel (hidden upon switched to mobile) */}
           <div className='relative hidden lg:block w-1/2 overflow-hidden'>
             <AnimatePresence mode='wait'>
@@ -105,7 +105,7 @@ const AuthPage: React.FC = () => {
           </div>
 
           {/* Right side: Form section */}
-          <div className='w-full lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden'>
+          <div className='w-full lg:w-1/2 p-6 md:p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden'>
             {/* Loading overlay - appears during authentication operations */}
             {isLoading && (
               <div className='absolute inset-0 bg-dark-2/80 backdrop-blur-sm z-30 flex items-center justify-center'>
