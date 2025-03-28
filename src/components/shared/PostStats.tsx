@@ -10,6 +10,7 @@ import {
   useGetPostComments,
 } from '@/lib/react-query/queries';
 import { motion } from 'framer-motion';
+import ShareModal from './ShareModal';
 
 type PostStatsProps = {
   post: Models.Document;
@@ -23,8 +24,8 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
   const [likes, setLikes] = useState<string[]>(
     Array.isArray(post.likes)
       ? post.likes.map((user: any) =>
-          typeof user === 'object' ? user.$id : user
-        )
+        typeof user === 'object' ? user.$id : user
+      )
       : []
   );
   const [isSaved, setIsSaved] = useState(false);
@@ -111,71 +112,6 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
     navigate(`/posts/${post.$id}`);
   };
 
-  // Handle share functionality
-  const handleShareClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Create the URL for this post
-    const postUrl = `${window.location.origin}/posts/${post.$id}`;
-
-    // Try to use the Web Share API if available
-    if (navigator.share) {
-      navigator
-        .share({
-          title: 'Check out this post on Horizon',
-          text: post.caption || 'Shared from Horizon',
-          url: postUrl,
-        })
-        .catch((err) => {
-          console.error('Error sharing:', err);
-          // Fallback to clipboard
-          copyToClipboard(postUrl);
-        });
-    } else {
-      // Fallback to clipboard
-      copyToClipboard(postUrl);
-    }
-  };
-
-  // Helper to copy to clipboard
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // You could add a toast notification here
-  };
-
-  // Grid view - use a more compact layout
-  if (isGridView) {
-    return (
-      <div className='absolute inset-0 bg-gradient-to-t from-black/60 to-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-6 px-4'>
-        <div className='flex items-center gap-1 text-white'>
-          <img
-            src={
-              checkIsLiked(likes, userId)
-                ? '/assets/icons/liked.svg'
-                : '/assets/icons/like.svg'
-            }
-            alt='like'
-            width={20}
-            height={20}
-            className='invert'
-          />
-          <span className='text-sm font-medium'>{likes.length}</span>
-        </div>
-        <div className='flex items-center gap-1 text-white'>
-          <img
-            src='/assets/icons/comment.svg'
-            alt='comment'
-            width={20}
-            height={20}
-            className='invert'
-          />
-          <span className='text-sm font-medium'>{commentCount}</span>
-        </div>
-      </div>
-    );
-  }
-
   // Format like count for display
   const formatCount = (count: number) => {
     if (count > 1000000) return `${(count / 1000000).toFixed(1)}M`;
@@ -197,6 +133,61 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
       return `${likes.length} ${likes.length === 1 ? 'like' : 'likes'}`;
     }
   };
+
+  // Grid view - use a more compact layout
+  if (isGridView) {
+    return (
+      <div className='absolute inset-0 bg-gradient-to-t from-black/70 to-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-6 px-4'>
+        <div className='flex items-center gap-1 text-white'>
+          <button
+            onClick={handleLikePost}
+            className='flex items-center gap-1 hover:scale-110 transition-transform'
+          >
+            <img
+              src={
+                checkIsLiked(likes, userId)
+                  ? '/assets/icons/liked.svg'
+                  : '/assets/icons/like.svg'
+              }
+              alt='like'
+              width={20}
+              height={20}
+            />
+            <span className='text-sm font-medium'>{likes.length}</span>
+          </button>
+        </div>
+
+        <div className='flex items-center gap-1 text-white'>
+          <button
+            onClick={handleCommentClick}
+            className='flex items-center gap-1 hover:scale-110 transition-transform'
+          >
+            <img
+              src='/assets/icons/comment.svg'
+              alt='comment'
+              width={20}
+              height={20}
+            />
+            <span className='text-sm font-medium'>{commentCount}</span>
+          </button>
+        </div>
+
+        <div className='flex items-center gap-1 text-white'>
+          <button
+            onClick={handleSavePost}
+            className='hover:scale-110 transition-transform'
+          >
+            <img
+              src={isSaved ? '/assets/icons/saved.svg' : '/assets/icons/save.svg'}
+              alt='save'
+              width={20}
+              height={20}
+            />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Regular detailed view
   return (
@@ -251,18 +242,7 @@ const PostStats = ({ post, userId, isGridView = false }: PostStatsProps) => {
           </button>
 
           {/* Share Button */}
-          <motion.button
-            onClick={handleShareClick}
-            className='group'
-            whileTap={{ scale: 1.2 }}
-          >
-            <img
-              src='/assets/icons/share.svg'
-              alt='share'
-              width={24}
-              height={24}
-            />
-          </motion.button>
+          <ShareModal postId={post.$id} />
         </div>
 
         {/* Save Button */}

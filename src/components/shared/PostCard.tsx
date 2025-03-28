@@ -173,7 +173,7 @@ const PostCard = ({ post }: PostCardProps) => {
               </p>
               {post.location && (
                 <>
-                  <span className='text-light-3 text-xs'>•</span>
+                  <span className='text-light-3 text-xs'>-</span>
                   <div className='flex items-center gap-1 text-light-3 text-xs'>
                     <MapPin size={10} />
                     <span>{post.location}</span>

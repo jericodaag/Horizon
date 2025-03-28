@@ -82,7 +82,7 @@ const PostDetails = () => {
   };
 
   return (
-    <div className='post_details-container'>
+    <div className='post_details-container pt-0 pb-0 mb-4' style={{ gap: "0.5rem", minHeight: isMobile ? '100vh' : 'auto' }}>
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
@@ -91,7 +91,7 @@ const PostDetails = () => {
       />
 
       {/* Back button - visible on desktop */}
-      <div className='hidden md:flex max-w-5xl w-full'>
+      <div className='hidden md:flex max-w-5xl w-full mb-4'>
         <Button
           onClick={handleBackClick}
           variant='ghost'
@@ -134,20 +134,20 @@ const PostDetails = () => {
         <>
           {/* Mobile View */}
           {isMobile && (
-            <div className='mobile-post-card'>
-              {/* Post Image - Full-width square on mobile */}
-              <div className='mobile-post-image'>
+            <div className='mobile-post-card pb-16'>
+              {/* Post Image - Optimized for mobile with proper spacing */}
+              <div className='w-full aspect-square overflow-hidden'>
                 {post.imageUrl && (
                   <img
                     src={post.imageUrl}
                     alt='post image'
-                    className='mobile-img'
+                    className='w-full h-full object-cover'
                   />
                 )}
               </div>
 
               {/* Post Creator Info */}
-              <div className='post-creator-info'>
+              <div className='post-creator-info px-3 mb-2'>
                 <Link
                   to={`/profile/${post?.creator.$id}`}
                   className='flex items-center gap-3'
@@ -209,9 +209,9 @@ const PostDetails = () => {
               </div>
 
               {/* Post Caption and Tags */}
-              <div className='post-content'>
+              <div className='post-content px-3 mb-2'>
                 <TranslateButton text={post?.caption} showAlways={false} />
-                <ul className='flex flex-wrap gap-1 mt-2'>
+                <ul className='flex flex-wrap gap-1 mt-1'>
                   {post?.tags.map((tag, index) => (
                     <li
                       key={`${tag}${index}`}
@@ -224,18 +224,23 @@ const PostDetails = () => {
               </div>
 
               {/* Post Stats */}
-              <div className='w-full px-3 mt-2 mb-2 post-stats'>
+              <div className='w-full px-3 mb-2'>
                 <PostStats post={post} userId={user.id} />
               </div>
 
-              <hr className='border-t border-dark-4/60 w-full' />
+              <hr className='border-t border-dark-4/60 w-full mb-2' />
 
-              {/* Comments Section - Optimized size */}
-              <div className='mobile-comments-container custom-scrollbar'>
-                {post && id && <CommentSection
-                  postId={id || ''}
-                  postCreatorId={post?.creator.$id || ''}
-                />}
+              {/* Comments Section - With minimal height */}
+              <div className='px-3 pb-0'>
+                <h4 className="text-sm font-medium text-light-2 mb-1">Comments</h4>
+                <div className="max-h-[100px] overflow-y-auto hide-scrollbar">
+                  {post && id && (
+                    <CommentSection
+                      postId={id || ''}
+                      postCreatorId={post?.creator.$id || ''}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -244,13 +249,15 @@ const PostDetails = () => {
           {!isMobile && (
             <div className='post_details-card'>
               {/* Left side - Post Image */}
-              <div className='post-image-side'>
+              <div className='post-image-side h-full'>
                 {post.imageUrl && (
-                  <img
-                    src={post.imageUrl}
-                    alt='post image'
-                    className='post_details-img'
-                  />
+                  <div className="h-full w-full flex items-center justify-center overflow-hidden border-r border-dark-4">
+                    <img
+                      src={post.imageUrl}
+                      alt='post image'
+                      className='w-full h-full object-cover'
+                    />
+                  </div>
                 )}
               </div>
 
@@ -346,10 +353,12 @@ const PostDetails = () => {
 
                 {/* Comments Section - Optimized size */}
                 <div className='comments-container custom-scrollbar'>
-                  {post && id && <CommentSection
-                    postId={id || ''}
-                    postCreatorId={post?.creator.$id || ''}
-                  />}
+                  {post && id && (
+                    <CommentSection
+                      postId={id || ''}
+                      postCreatorId={post?.creator.$id || ''}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -358,16 +367,18 @@ const PostDetails = () => {
       )}
 
       {/* Related Posts Section - Only on desktop */}
-      <div className='related-posts-section w-full max-w-5xl mt-8'>
-        <hr className='border w-full border-dark-4/80 mb-8' />
+      {!isMobile && (
+        <div className='related-posts-section w-full max-w-5xl mt-8'>
+          <hr className='border w-full border-dark-4/80 mb-8' />
 
-        <h3 className='body-bold md:h3-bold w-full mb-8'>More Related Posts</h3>
-        {isUserPostLoading || !relatedPosts ? (
-          <Loader />
-        ) : (
-          <GridPostList posts={relatedPosts} />
-        )}
-      </div>
+          <h3 className='body-bold md:h3-bold w-full mb-8'>More Related Posts</h3>
+          {isUserPostLoading || !relatedPosts ? (
+            <Loader />
+          ) : (
+            <GridPostList posts={relatedPosts} />
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   useGetRecentPosts,
   useGetUsers,
-  useGetTopCreators,
 } from '@/lib/react-query/queries';
 import { Models } from 'appwrite';
 import PostCard from '@/components/shared/PostCard';
@@ -17,44 +16,16 @@ import {
   Hash,
   Clock,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useUserContext } from '@/context/AuthContext';
 import FollowButton from '@/components/shared/FollowButton';
-import { ICreatorWithFollowers } from '@/types';
-import { formatDistanceToNow } from 'date-fns';
-
-// Helper function to safely access properties
-const getProperty = <T, K extends string>(obj: T, key: K): any => {
-  if (!obj) return null;
-  return (obj as any)[key] || null;
-};
-
-// Transform creator data to ensure required properties exist
-const transformCreator = (creator: Models.Document): ICreatorWithFollowers => {
-  return {
-    id: creator.$id,
-    $id: creator.$id,
-    name: getProperty(creator, 'name') || 'User',
-    username: getProperty(creator, 'username') || 'user',
-    email: getProperty(creator, 'email') || '',
-    imageUrl:
-      getProperty(creator, 'imageUrl') ||
-      '/assets/icons/profile-placeholder.svg',
-    bio: getProperty(creator, 'bio') || '',
-    followerCount: getProperty(creator, 'followerCount') || 0,
-  };
-};
+import { multiFormatDateString } from '@/lib/utils';
 
 const Home = () => {
-  const navigate = useNavigate();
   const { user } = useUserContext();
   const { data: posts, isPending: isPostLoading } = useGetRecentPosts();
-  const { data: rawCreators = [] } = useGetTopCreators();
   const { data: allUsers, isLoading: isAllUsersLoading } = useGetUsers(10);
-
-  // Transform creators to ensure they have all required properties
-  const creators = rawCreators.map(transformCreator);
 
   // State management
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -62,6 +33,7 @@ const Home = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<Models.Document[]>([]);
 
   // Infinite scroll with intersection observer
   const { ref: loadMoreRef, inView } = useInView();
@@ -76,11 +48,21 @@ const Home = () => {
     { tag: 'gaming', postCount: 529 },
   ];
 
-  // Filter out current user from suggested users
-  const suggestedUsers =
-    allUsers?.documents
-      .filter((suggestedUser) => suggestedUser.$id !== user.id)
-      .slice(0, 5) || [];
+  // Prepare suggested users - randomly shuffled
+  useEffect(() => {
+    if (allUsers?.documents) {
+      // Filter out current user
+      const filtered = allUsers.documents.filter(
+        (suggestedUser) => suggestedUser.$id !== user.id
+      );
+
+      // Randomly shuffle the users
+      const shuffled = [...filtered].sort(() => 0.5 - Math.random());
+
+      // Get first 5 users after shuffling
+      setSuggestedUsers(shuffled.slice(0, 5));
+    }
+  }, [allUsers, user.id]);
 
   // Prepare recent activities data from posts
   useEffect(() => {
@@ -99,9 +81,7 @@ const Home = () => {
           imageUrl:
             post.creator.imageUrl || '/assets/icons/profile-placeholder.svg',
           action: 'posted a new photo',
-          time: formatDistanceToNow(new Date(post.$createdAt), {
-            addSuffix: true,
-          }),
+          time: multiFormatDateString(post.$createdAt),
           postId: post.$id,
         };
       });
@@ -164,10 +144,10 @@ const Home = () => {
   };
 
   return (
-    <div className='flex-1 relative'>
-      <div className='grid grid-cols-1 lg:grid-cols-7 gap-6 px-4 pt-4 pb-20 max-w-screen-xl mx-auto'>
+    <div className='flex-1 h-screen'>
+      <div className='grid grid-cols-1 lg:grid-cols-7 h-full'>
         {/* Activity Feed - Left Side */}
-        <div className='lg:col-span-2 hidden lg:block space-y-4'>
+        <div className='lg:col-span-2 hidden lg:block space-y-4 p-4 h-screen overflow-y-auto hide-scrollbar sticky top-0 left-0'>
           <div className='bg-dark-2 rounded-2xl p-4 border border-dark-4'>
             <h2 className='text-light-1 font-bold mb-4 flex justify-between items-center'>
               <div className='flex items-center gap-2'>
@@ -230,91 +210,60 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Main Feed - Center */}
-        <div className='lg:col-span-3 space-y-4'>
-          {/* Create Post Button - Mobile */}
-          <div className='flex mb-4 gap-4 items-center justify-between'>
-            <h2 className='text-xl font-bold text-light-1'>Home Feed</h2>
-          </div>
+        {/* Main Feed - Center - Scrollable Content with Hidden Scrollbar */}
+        <div className='lg:col-span-3 h-screen pt-4 px-4 overflow-hidden'>
+          <div className="w-full h-full overflow-y-auto hide-scrollbar pr-1">
+            {/* Header */}
+            <div className='flex mb-6 gap-4 items-center justify-between'>
+              <h2 className='text-xl font-bold text-light-1'>Home Feed</h2>
+            </div>
 
-          <div className='lg:hidden'>
-            <Button
-              onClick={() => navigate('/create-post')}
-              className='w-full bg-primary-500 hover:bg-primary-600 text-white rounded-xl p-3 flex items-center justify-center gap-2 mb-4'
-            >
-              <PlusCircle size={18} />
-              <span>Create New Post</span>
-            </Button>
-          </div>
+            {/* Main Content */}
+            <div className='space-y-6'>
+              {/* Post Feed */}
+              {isPostLoading ? (
+                <PostCardSkeleton />
+              ) : (
+                <AnimatePresence mode='popLayout'>
+                  {displayedPosts.map((post) => (
+                    <motion.div
+                      key={post.$id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4 }}
+                      className='mb-6 last:mb-0'
+                    >
+                      <PostCard post={post} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
 
-          {/* Main Content */}
-          <div className='space-y-6'>
-            {/* Post Feed */}
-            {isPostLoading && displayedPosts.length === 0 ? (
-              <PostCardSkeleton />
-            ) : (
-              <AnimatePresence mode='popLayout'>
-                {displayedPosts.map((post) => (
-                  <motion.div
-                    key={post.$id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4 }}
-                    className='mb-6'
-                  >
-                    <PostCard post={post} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            )}
+              {/* Loading More Indicator */}
+              {hasMore && !isPostLoading && (
+                <div ref={loadMoreRef} className='flex justify-center pt-2'>
+                  <div className='w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin' />
+                </div>
+              )}
 
-            {/* Loading More Indicator */}
-            {hasMore && !isPostLoading && (
-              <div ref={loadMoreRef} className='flex justify-center py-4'>
-                <div className='w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin' />
-              </div>
-            )}
-
-            {/* End of Feed Message */}
-            {!hasMore && displayedPosts.length > 0 && (
-              <div className='text-center py-8 bg-dark-2 rounded-2xl border border-dark-4 px-4'>
-                <h3 className='font-bold text-light-1 mb-2'>
-                  You're All Caught Up
-                </h3>
-                <p className='text-light-3 text-sm'>
-                  You've seen all posts in your feed.
-                </p>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!isPostLoading && displayedPosts.length === 0 && (
-              <div className='flex flex-col items-center justify-center py-10 px-4 bg-dark-2 rounded-2xl border border-dark-4'>
-                <img
-                  src='/assets/icons/gallery-add.svg'
-                  alt='No posts'
-                  className='w-16 h-16 mb-4 opacity-50'
-                />
-                <h3 className='font-bold text-xl text-light-1 mb-2'>
-                  No Posts Yet
-                </h3>
-                <p className='text-light-3 text-center mb-4'>
-                  Follow some creators or be the first to post!
-                </p>
-                <Button
-                  onClick={() => navigate('/create-post')}
-                  className='bg-primary-500 hover:bg-primary-600'
-                >
-                  Create Post
-                </Button>
-              </div>
-            )}
+              {/* End of Feed Message */}
+              {!hasMore && displayedPosts.length > 0 && (
+                <div className='text-center py-4 bg-dark-2 rounded-2xl border border-dark-4 px-4 mt-2'>
+                  <h3 className='font-bold text-light-1 mb-2'>
+                    You're All Caught Up
+                  </h3>
+                  <p className='text-light-3 text-sm'>
+                    You've seen all posts in your feed.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Suggestions - Right Side */}
-        <div className='lg:col-span-2 hidden lg:block space-y-4'>
+        <div className='lg:col-span-2 hidden lg:block space-y-4 p-4 h-screen overflow-y-auto hide-scrollbar sticky top-0 right-0'>
           <div className='bg-dark-2 rounded-2xl p-4 border border-dark-4'>
             <h2 className='text-light-1 font-bold mb-4 flex justify-between items-center'>
               <div className='flex items-center gap-2'>
@@ -362,7 +311,7 @@ const Home = () => {
           </div>
 
           {/* Create Post Button - Desktop */}
-          <div className='hidden lg:block sticky top-4'>
+          <div className='sticky top-4'>
             <Link to='/create-post'>
               <Button className='w-full bg-gradient-to-r from-primary-500 to-purple-500 hover:opacity-90 text-white p-6 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 border-none'>
                 <PlusCircle size={20} />
@@ -447,7 +396,7 @@ const TopicTag = ({ tag, count }: { tag: string; count: number }) => {
       className='bg-dark-3 hover:bg-dark-4 transition-colors px-3 py-1.5 rounded-full cursor-pointer flex items-center gap-1'
     >
       <Hash size={14} className='text-primary-500' />
-      <span className='text-primary-500 text-sm'>#{tag}</span>
+      <span className='text-primary-500 text-sm'>{tag}</span>
       <span className='text-light-3 text-xs'>{count}</span>
     </Link>
   );
