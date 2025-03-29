@@ -8,11 +8,11 @@ import { useMessagingRealtime } from '@/hooks/useMessagingRealtime';
 import { useSocket } from '@/context/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader, ArrowLeft, Send, Image, X } from 'lucide-react';
+import { Loader, ArrowLeft, Send, Image, X, Phone, Video } from 'lucide-react';
 import { uploadFile, getFilePreview } from '@/lib/appwrite/api';
-import { formatDistanceToNow } from 'date-fns';
 import { IMessage, IUser, INewMessage } from '@/types';
 import OnlineStatusIndicator from './OnlineStatusIndicator';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface MessageChatProps {
   conversation: IUser;
@@ -20,28 +20,26 @@ interface MessageChatProps {
   onBack: () => void;
 }
 
-interface MessageBubbleProps {
-  message: IMessage;
-  isOwnMessage: boolean;
-  isRead: boolean;
-}
-
 const MessageChat = ({
   conversation,
   currentUserId,
   onBack,
 }: MessageChatProps) => {
+  // State management code remains the same...
   const [newMessage, setNewMessage] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [socketMessages, setSocketMessages] = useState<IMessage[]>([]);
-  const [processingMessageIds] = useState(new Set<string>());
+  const [processingMessageIds, setProcessingMessageIds] = useState(
+    new Set<string>()
+  );
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
   const conversationId = conversation.id;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastMessageLengthRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     socket,
@@ -257,6 +255,9 @@ const MessageChat = ({
 
   const removeAttachment = () => {
     setAttachment(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSendMessage = async () => {
@@ -267,7 +268,11 @@ const MessageChat = ({
     setNewMessage('');
 
     const tempId = `temp-${Date.now()}`;
-    processingMessageIds.add(tempId);
+    setProcessingMessageIds((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(tempId);
+      return newSet;
+    });
 
     const socketMessageData = {
       id: tempId,
@@ -322,6 +327,9 @@ const MessageChat = ({
       } finally {
         setAttachment(null);
         setIsUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     }
 
@@ -345,11 +353,52 @@ const MessageChat = ({
     }
   };
 
+  // Determine if we should group messages by same sender
+  const getMessageGroups = () => {
+    // Don't group messages, treat each as individual for proper display
+    return combinedMessages.map((message) => [message]);
+  };
+
+  const messageGroups = useMemo(() => getMessageGroups(), [combinedMessages]);
+
+  // Find date separators for the chat
+  const dateSeparators = useMemo(() => {
+    const separators: Record<string, string> = {};
+
+    if (combinedMessages.length === 0) return separators;
+
+    combinedMessages.forEach((message) => {
+      const date = new Date(message.createdAt);
+      const dateString = date.toDateString();
+
+      // Add a friendly date format (Today, Yesterday, or date)
+      const today = new Date().toDateString();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayString = yesterday.toDateString();
+
+      if (dateString === today) {
+        separators[dateString] = 'Today';
+      } else if (dateString === yesterdayString) {
+        separators[dateString] = 'Yesterday';
+      } else {
+        separators[dateString] = new Intl.DateTimeFormat('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        }).format(date);
+      }
+    });
+
+    return separators;
+  }, [combinedMessages]);
+
   return (
     <div className='flex flex-col h-full'>
-      <div className='flex items-center p-4 border-b border-dark-4 bg-dark-2'>
+      {/* Chat Header with Glassmorphism Effect */}
+      <div className='sticky top-0 z-10 flex items-center p-4 border-b border-dark-4 bg-dark-2 bg-opacity-80 backdrop-blur-sm'>
         <button
-          className='md:hidden mr-3 p-1 hover:bg-dark-3 rounded-full transition-colors'
+          className='md:hidden mr-3 p-2 hover:bg-dark-3 rounded-full transition-all duration-200'
           onClick={onBack}
           aria-label='Back'
         >
@@ -362,19 +411,23 @@ const MessageChat = ({
               conversation.imageUrl || '/assets/icons/profile-placeholder.svg'
             }
             alt={conversation.name}
-            className='w-10 h-10 rounded-full object-cover border border-dark-4'
+            className='w-10 h-10 rounded-full object-cover border-2 border-dark-4 ring-2 ring-offset-2 ring-offset-dark-2 ring-primary-500'
             onError={(e) => {
               e.currentTarget.src = '/assets/icons/profile-placeholder.svg';
             }}
           />
 
-          <div className='absolute bottom-0 right-0 border-2 border-dark-2 rounded-full'>
-            <OnlineStatusIndicator userId={conversationId} />
+          <div className='absolute -bottom-1 -right-1 border-2 border-dark-2 rounded-full'>
+            <OnlineStatusIndicator
+              userId={conversationId}
+              size='md'
+              showAnimation={true}
+            />
           </div>
         </div>
 
         <div className='ml-3 overflow-hidden'>
-          <h4 className='body-bold text-light-1 truncate'>
+          <h4 className='font-semibold text-light-1 truncate'>
             {conversation.name}
           </h4>
           <div className='flex items-center'>
@@ -389,14 +442,63 @@ const MessageChat = ({
             </span>
           </div>
         </div>
+
+        {/* Action buttons */}
+        <div className='ml-auto flex items-center gap-1'>
+          <Button
+            variant='ghost'
+            size='icon'
+            className='text-light-3 hover:text-light-1 hover:bg-dark-3 rounded-full'
+          >
+            <Phone size={18} />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon'
+            className='text-light-3 hover:text-light-1 hover:bg-dark-3 rounded-full'
+          >
+            <Video size={18} />
+          </Button>
+        </div>
       </div>
 
+      {/* Messages Area with subtle pattern background */}
       <div
         ref={messagesContainerRef}
-        className='flex-1 p-4 overflow-y-auto bg-dark-2 custom-scrollbar'
+        className='flex-1 p-4 overflow-y-auto bg-dark-2 custom-scrollbar relative'
         style={{ height: 'calc(100vh - 340px)', minHeight: '250px' }}
         onLoad={() => scrollToBottom()}
       >
+        {/* Subtle pattern background */}
+        <div className='absolute inset-0 opacity-5 pointer-events-none'>
+          <svg width='100%' height='100%' className='absolute inset-0'>
+            <pattern
+              id='pattern-circles'
+              x='0'
+              y='0'
+              width='40'
+              height='40'
+              patternUnits='userSpaceOnUse'
+            >
+              <circle
+                id='pattern-circle'
+                cx='20'
+                cy='20'
+                r='1'
+                fill='#888'
+              ></circle>
+            </pattern>
+            <rect
+              id='rect'
+              x='0'
+              y='0'
+              width='100%'
+              height='100%'
+              fill='url(#pattern-circles)'
+            ></rect>
+          </svg>
+        </div>
+
         {isLoadingMessages ? (
           <div className='flex-center w-full h-full'>
             <Loader className='text-primary-500 animate-spin' />
@@ -407,46 +509,223 @@ const MessageChat = ({
             <div className='w-16 h-1 bg-dark-4 rounded-full mt-2'></div>
           </div>
         ) : (
-          <div className='flex flex-col gap-3'>
-            {combinedMessages.map((message) => {
-              if (!message || !message.sender || !message.receiver) return null;
-
-              const isOwnMessage = message.sender.$id === currentUserId;
-              const isRead =
-                isOwnMessage && (message.isRead || !!readReceipts[message.$id]);
+          <div className='flex flex-col gap-1 relative z-1'>
+            {/* Group messages by date */}
+            {Object.entries(dateSeparators).map(([dateString, label], idx) => {
+              // Only show date separator if it's the first message or date changes
+              const shouldRenderDate =
+                idx === 0 ||
+                new Date(
+                  combinedMessages[idx - 1]?.createdAt
+                ).toDateString() !== dateString;
 
               return (
-                <MessageBubble
-                  key={message.$id}
-                  message={message}
-                  isOwnMessage={isOwnMessage}
-                  isRead={isRead}
-                />
+                shouldRenderDate && (
+                  <div key={dateString} className='flex items-center my-4'>
+                    <div className='flex-1 h-px bg-dark-4'></div>
+                    <span className='px-3 text-xs font-medium text-light-3'>
+                      {label}
+                    </span>
+                    <div className='flex-1 h-px bg-dark-4'></div>
+                  </div>
+                )
+              );
+            })}
+
+            {/* Render messages in groups */}
+            {messageGroups.map((group, groupIndex) => {
+              const isOwnMessage = group[0].sender.$id === currentUserId;
+
+              return (
+                <div key={`group-${groupIndex}`} className='mb-1'>
+                  <div
+                    className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {/* Avatar - only show for received messages */}
+                    {!isOwnMessage && (
+                      <img
+                        src={
+                          conversation.imageUrl ||
+                          '/assets/icons/profile-placeholder.svg'
+                        }
+                        alt={conversation.name}
+                        className='w-8 h-8 rounded-full object-cover mt-1 mr-2 border border-dark-4'
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            '/assets/icons/profile-placeholder.svg';
+                        }}
+                      />
+                    )}
+
+                    <div className='flex flex-col space-y-1 max-w-[75%]'>
+                      {group.map((message) => {
+                        const isRead =
+                          message.isRead || readReceipts[message.$id];
+                        const isOptimistic = message._isOptimistic;
+                        const hasError = message._isError;
+
+                        const bubbleColor = isOwnMessage
+                          ? hasError
+                            ? 'bg-red-800 text-light-1'
+                            : 'bg-primary-500 text-light-1'
+                          : 'bg-dark-3 text-light-1';
+
+                        const bubbleStyle = isOwnMessage
+                          ? 'rounded-2xl rounded-tr-md'
+                          : 'rounded-2xl rounded-tl-md';
+
+                        return (
+                          <motion.div
+                            key={message.$id}
+                            className={`px-4 py-2 ${bubbleStyle} ${bubbleColor} shadow-sm`}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            {/* Attachment content if available */}
+                            {message.attachmentUrl &&
+                              message.attachmentType === 'image' && (
+                                <div className='mb-2 rounded-lg overflow-hidden'>
+                                  <img
+                                    src={message.attachmentUrl}
+                                    alt='Attachment'
+                                    className='max-h-60 w-full object-contain rounded-lg'
+                                    loading='lazy'
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+
+                            {/* Message text content */}
+                            {message.content && (
+                              <div className='text-sm whitespace-normal break-words'>
+                                {message.content}
+                                {isOptimistic && !hasError && (
+                                  <span className='inline-block ml-1 opacity-70 text-xs'>
+                                    {' '}
+                                    (sending...)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Footer with timestamp and read status */}
+                            <div className='flex items-center justify-end gap-1 mt-1'>
+                              <span
+                                className={`text-xs ${isOwnMessage ? 'text-light-2 opacity-80' : 'text-light-3'}`}
+                              >
+                                {new Date(message.createdAt).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  }
+                                )}
+                              </span>
+
+                              {/* Read indicators (only for sent messages) */}
+                              {isOwnMessage && (
+                                <span className='ml-1'>
+                                  {isOptimistic ? (
+                                    <span className='inline-block w-3 h-3 rounded-full bg-gray-400 animate-pulse'></span>
+                                  ) : hasError ? (
+                                    <span className='text-red-500 text-xs'>
+                                      !
+                                    </span>
+                                  ) : isRead ? (
+                                    <svg
+                                      className='w-3 h-3 text-blue-400'
+                                      fill='none'
+                                      strokeLinecap='round'
+                                      strokeLinejoin='round'
+                                      strokeWidth='2'
+                                      viewBox='0 0 24 24'
+                                      stroke='currentColor'
+                                    >
+                                      <path d='M5 13l4 4L19 7'></path>
+                                    </svg>
+                                  ) : (
+                                    <svg
+                                      className='w-3 h-3 text-light-3'
+                                      fill='none'
+                                      strokeLinecap='round'
+                                      strokeLinejoin='round'
+                                      strokeWidth='2'
+                                      viewBox='0 0 24 24'
+                                      stroke='currentColor'
+                                    >
+                                      <path d='M5 13l4 4L19 7'></path>
+                                    </svg>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               );
             })}
 
             <div className='h-2'></div>
             <div ref={messagesEndRef} />
 
-            {isTyping && (
-              <div className='flex justify-start mb-1'>
-                <div className='bg-dark-3 text-light-1 rounded-2xl rounded-tl-none px-4 py-2'>
-                  <div className='typing-indicator'>
-                    <span></span>
-                    <span></span>
-                    <span></span>
+            {/* Typing indicator */}
+            <AnimatePresence>
+              {isTyping && (
+                <motion.div
+                  className='flex justify-start mb-1'
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                >
+                  <div className='bg-dark-3 text-light-1 rounded-2xl rounded-tl-none px-4 py-2 shadow-md flex items-center'>
+                    <div className='flex space-x-1 items-center'>
+                      <motion.div
+                        className='w-2 h-2 rounded-full bg-light-3'
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{
+                          duration: 0.8,
+                          repeat: Infinity,
+                          delay: 0,
+                        }}
+                      />
+                      <motion.div
+                        className='w-2 h-2 rounded-full bg-light-3'
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{
+                          duration: 0.8,
+                          repeat: Infinity,
+                          delay: 0.2,
+                        }}
+                      />
+                      <motion.div
+                        className='w-2 h-2 rounded-full bg-light-3'
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{
+                          duration: 0.8,
+                          repeat: Infinity,
+                          delay: 0.4,
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
 
-      <div className='p-4 border-t border-dark-4 bg-dark-2'>
+      {/* Input Area with Glassmorphism effect */}
+      <div className='p-4 border-t border-dark-4 bg-dark-2 bg-opacity-90 backdrop-blur-sm'>
         {attachment && (
           <div className='mb-3 relative inline-block'>
-            <div className='relative rounded-lg overflow-hidden border border-dark-4'>
+            <div className='relative rounded-lg overflow-hidden border border-dark-4 shadow-md'>
               {attachment.type.startsWith('image/') ? (
                 <img
                   src={URL.createObjectURL(attachment)}
@@ -462,7 +741,7 @@ const MessageChat = ({
               )}
             </div>
             <button
-              className='absolute -top-2 -right-2 bg-dark-4 rounded-full p-1 hover:bg-dark-3 transition-colors'
+              className='absolute -top-2 -right-2 bg-dark-4 rounded-full p-1 hover:bg-dark-3 transition-colors shadow-md'
               onClick={removeAttachment}
               aria-label='Remove attachment'
             >
@@ -471,9 +750,10 @@ const MessageChat = ({
           </div>
         )}
 
-        <div className='flex items-center gap-3'>
+        <div className='flex items-center gap-2'>
           <label className='cursor-pointer p-2 hover:bg-dark-3 rounded-full transition-colors'>
             <input
+              ref={fileInputRef}
               type='file'
               className='hidden'
               onChange={handleFileChange}
@@ -483,25 +763,26 @@ const MessageChat = ({
             <Image size={20} className='text-light-3 hover:text-light-1' />
           </label>
 
-          <Input
-            ref={inputRef}
-            type='text'
-            placeholder='Type a message...'
-            className='bg-dark-3 border-none focus-visible:ring-1 focus-visible:ring-primary-500 py-6 text-light-1'
-            value={newMessage}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            disabled={isSending || isUploading}
-          />
+          <div className='relative flex-1'>
+            <Input
+              ref={inputRef}
+              type='text'
+              placeholder='Type a message...'
+              className='bg-dark-3 border-none focus-visible:ring-1 focus-visible:ring-primary-500 rounded-xl py-6 text-light-1 shadow-inner pl-4 pr-4'
+              value={newMessage}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              disabled={isSending || isUploading}
+            />
+          </div>
 
           <Button
             variant='ghost'
-            size='icon'
-            className={`p-2 rounded-full ${
-              isSending || isUploading || (!newMessage.trim() && !attachment)
-                ? 'text-light-3'
-                : 'text-primary-500 hover:text-primary-600 hover:bg-dark-3'
-            }`}
+            className={`p-3 rounded-full ${
+              newMessage.trim() || attachment
+                ? 'bg-primary-500 text-white hover:bg-primary-600'
+                : 'bg-dark-3 text-light-3'
+            } transition-colors`}
             onClick={handleSendMessage}
             disabled={
               isSending || isUploading || (!newMessage.trim() && !attachment)
@@ -518,81 +799,5 @@ const MessageChat = ({
     </div>
   );
 };
-
-const MessageBubble = memo(
-  ({ message, isOwnMessage }: MessageBubbleProps) => {
-    const timeAgo = useMemo(() => {
-      try {
-        return formatDistanceToNow(new Date(message.createdAt), {
-          addSuffix: true,
-        });
-      } catch (error) {
-        return 'just now';
-      }
-    }, [message.createdAt]);
-
-    const isOptimistic = message._isOptimistic;
-    const hasError = message._isError;
-
-    return (
-      <div
-        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-1 message-bubble`}
-      >
-        <div
-          className={`max-w-[75%] rounded-2xl px-4 py-3 ${
-            isOwnMessage
-              ? hasError
-                ? 'bg-red-800 text-light-1 rounded-tr-none'
-                : 'bg-primary-500 text-light-1 rounded-tr-none'
-              : 'bg-dark-3 text-light-1 rounded-tl-none'
-          }`}
-        >
-          {message.attachmentUrl && message.attachmentType === 'image' && (
-            <div className='mb-2 rounded-lg overflow-hidden'>
-              <img
-                src={message.attachmentUrl}
-                alt='Attachment'
-                className='max-h-60 w-full object-contain rounded-lg'
-                loading='lazy'
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-          )}
-
-          {message.content && (
-            <p className='text-sm whitespace-pre-wrap break-words'>
-              {message.content}
-              {isOptimistic && !hasError && (
-                <span className='inline-block ml-1 opacity-70 text-xs'>
-                  {' '}
-                  (sending...)
-                </span>
-              )}
-            </p>
-          )}
-
-          <p
-            className={`text-xs mt-1 ${isOwnMessage ? 'text-light-2 opacity-80' : 'text-light-3'}`}
-          >
-            {timeAgo}
-          </p>
-        </div>
-      </div>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.message.$id === nextProps.message.$id &&
-      prevProps.isOwnMessage === nextProps.isOwnMessage &&
-      prevProps.message.isRead === nextProps.message.isRead &&
-      prevProps.message._isOptimistic === nextProps.message._isOptimistic &&
-      prevProps.message._isError === nextProps.message._isError
-    );
-  }
-);
-
-MessageBubble.displayName = 'MessageBubble';
 
 export default memo(MessageChat);

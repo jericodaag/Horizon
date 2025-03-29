@@ -4,45 +4,30 @@ import {
   useGetPosts,
   useSearchPosts,
   useGetRecentPosts,
-  useGetSavedPosts
+  useGetSavedPosts,
 } from '@/lib/react-query/queries';
 import { Input } from '@/components/ui/input';
 import Loader from '@/components/shared/Loader';
 import GridPostList from '@/components/shared/GridPostList';
 import useDebounce from '@/hooks/useDebounce';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Bookmark,
-  Flame,
-  Clock,
-  Hash,
-  Search as SearchIcon
-} from 'lucide-react';
+import { Bookmark, Flame, Clock, Search as SearchIcon } from 'lucide-react';
 import { Models } from 'appwrite';
 import { useUserContext } from '@/context/AuthContext';
-
-export type SearchResultProps = {
-  isSearchFetching: boolean;
-  searchedPosts: any;
-};
 
 const Explore = () => {
   const { user } = useUserContext();
   const { ref, inView } = useInView();
   const { data: allPosts, fetchNextPage, hasNextPage } = useGetPosts();
-  const { data: recentPosts, isPending: isRecentPostsLoading } = useGetRecentPosts();
-  const { data: savedPosts, isPending: isSavedPostsLoading } = useGetSavedPosts(user.id);
+  const { data: recentPosts, isPending: isRecentPostsLoading } =
+    useGetRecentPosts();
+  const { data: savedPosts, isPending: isSavedPostsLoading } = useGetSavedPosts(
+    user.id
+  );
 
   const [searchValue, setSearchValue] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [popularPosts, setPopularPosts] = useState<Models.Document[]>([]);
-  const trendingTags = [
-    { tag: 'photography', posts: 124 },
-    { tag: 'travel', posts: 98 },
-    { tag: 'design', posts: 87 },
-    { tag: 'nature', posts: 76 },
-    { tag: 'food', posts: 65 }
-  ];
 
   const debouncedSearch = useDebounce(searchValue, 500);
   const { data: searchedPosts, isFetching: isSearchFetching } =
@@ -74,12 +59,6 @@ const Explore = () => {
     setSearchValue('');
   }, [activeTab]);
 
-  // Handle click on trending tag
-  const handleTagClick = (tag: string) => {
-    setSearchValue(tag);
-    setActiveTab('all'); // Switch to all tab when searching by tag
-  };
-
   if (!allPosts && activeTab === 'all')
     return (
       <div className='flex-center w-full h-full'>
@@ -104,11 +83,13 @@ const Explore = () => {
       ) : (
         <div className='flex-center w-full flex-col py-10'>
           <img
-            src="/assets/icons/search.svg"
-            alt="No search results"
-            className="w-14 h-14 mb-4 opacity-30"
+            src='/assets/icons/search.svg'
+            alt='No search results'
+            className='w-14 h-14 mb-4 opacity-30'
           />
-          <p className='text-light-4 mt-5 text-center w-full'>No results found for "{searchValue}"</p>
+          <p className='text-light-4 mt-5 text-center w-full'>
+            No results found for "{searchValue}"
+          </p>
         </div>
       );
     }
@@ -130,9 +111,9 @@ const Explore = () => {
         return isSavedPostsLoading ? (
           <Loader />
         ) : !savedPosts?.length ? (
-          <div className="flex-center w-full h-[200px] flex-col gap-4">
-            <Bookmark size={48} className="text-light-3" />
-            <p className="text-light-4 text-center">No saved posts yet</p>
+          <div className='flex-center w-full h-[200px] flex-col gap-4'>
+            <Bookmark size={48} className='text-light-3' />
+            <p className='text-light-4 text-center'>No saved posts yet</p>
           </div>
         ) : (
           <GridPostList posts={savedPosts} />
@@ -162,11 +143,11 @@ const Explore = () => {
             <div className='flex items-center gap-1 px-4 w-full rounded-lg bg-dark-4 relative'>
               <SearchIcon
                 size={20}
-                className="text-light-3 flex-shrink-0 absolute left-4"
+                className='text-light-3 flex-shrink-0 absolute left-4'
               />
               <Input
                 type='text'
-                placeholder='Search posts or tags...'
+                placeholder='Search posts...'
                 className='explore-search pl-10 pr-10 py-3 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0'
                 value={searchValue}
                 onChange={(e) => {
@@ -177,42 +158,28 @@ const Explore = () => {
               {searchValue && (
                 <button
                   onClick={() => setSearchValue('')}
-                  className="absolute right-4 text-light-3 hover:text-light-1"
-                  aria-label="Clear search"
+                  className='absolute right-4 text-light-3 hover:text-light-1'
+                  aria-label='Clear search'
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="15" y1="9" x2="9" y2="15"></line>
-                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='18'
+                    height='18'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <circle cx='12' cy='12' r='10'></circle>
+                    <line x1='15' y1='9' x2='9' y2='15'></line>
+                    <line x1='9' y1='9' x2='15' y2='15'></line>
                   </svg>
                 </button>
               )}
             </div>
           </div>
-
-          {/* Trending Tags - Only show when not searching */}
-          {!shouldShowSearchResults && (
-            <div className='w-full'>
-              <div className='flex items-center gap-2 mb-4'>
-                <Hash size={18} className='text-primary-500' />
-                <h3 className='body-bold'>Trending Tags</h3>
-              </div>
-
-              <div className='flex flex-wrap gap-2 mb-4'>
-                {trendingTags.map((tag) => (
-                  <button
-                    key={tag.tag}
-                    onClick={() => handleTagClick(tag.tag)}
-                    className='bg-dark-3 hover:bg-dark-4 transition-colors px-3 py-2 rounded-full flex items-center gap-1 border border-dark-4'
-                  >
-                    <Hash size={14} className='text-primary-500' />
-                    <span className='text-light-2 text-sm font-medium'>{tag.tag}</span>
-                    <span className='text-light-3 text-xs ml-1'>({tag.posts})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Browse Posts Section - Fixed position regardless of search */}
           <div className='w-full'>
@@ -220,37 +187,37 @@ const Explore = () => {
               <h3 className='body-bold md:h3-bold'>Browse Posts</h3>
 
               <Tabs
-                defaultValue="all"
+                defaultValue='all'
                 value={activeTab}
                 onValueChange={setActiveTab}
-                className="w-full sm:w-auto"
+                className='w-full sm:w-auto'
               >
                 <TabsList className='bg-dark-3 p-1 rounded-full h-auto w-full sm:w-auto flex flex-nowrap overflow-x-auto hide-scrollbar'>
                   <TabsTrigger
-                    value="all"
+                    value='all'
                     className='rounded-full data-[state=active]:bg-primary-500 data-[state=active]:text-light-1 flex-1 sm:flex-none min-w-16'
                   >
                     All
                   </TabsTrigger>
                   <TabsTrigger
-                    value="popular"
+                    value='popular'
                     className='rounded-full data-[state=active]:bg-primary-500 data-[state=active]:text-light-1 flex-1 sm:flex-none min-w-24'
                   >
-                    <Flame className="w-4 h-4 mr-1" />
+                    <Flame className='w-4 h-4 mr-1' />
                     Popular
                   </TabsTrigger>
                   <TabsTrigger
-                    value="latest"
+                    value='latest'
                     className='rounded-full data-[state=active]:bg-primary-500 data-[state=active]:text-light-1 flex-1 sm:flex-none min-w-20'
                   >
-                    <Clock className="w-4 h-4 mr-1" />
+                    <Clock className='w-4 h-4 mr-1' />
                     Latest
                   </TabsTrigger>
                   <TabsTrigger
-                    value="saved"
+                    value='saved'
                     className='rounded-full data-[state=active]:bg-primary-500 data-[state=active]:text-light-1 flex-1 sm:flex-none min-w-20'
                   >
-                    <Bookmark className="w-4 h-4 mr-1" />
+                    <Bookmark className='w-4 h-4 mr-1' />
                     Saved
                   </TabsTrigger>
                 </TabsList>
@@ -258,9 +225,7 @@ const Explore = () => {
             </div>
 
             {/* Content Area */}
-            <div className='w-full'>
-              {renderCurrentTabContent()}
-            </div>
+            <div className='w-full'>{renderCurrentTabContent()}</div>
           </div>
 
           {/* Loading indicator for infinite scroll */}

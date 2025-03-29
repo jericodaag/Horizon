@@ -1,8 +1,5 @@
-import { useState, useEffect } from 'react';
-import {
-  useGetRecentPosts,
-  useGetUsers,
-} from '@/lib/react-query/queries';
+import { useState, useEffect, useRef } from 'react';
+import { useGetRecentPosts, useGetUsers } from '@/lib/react-query/queries';
 import { Models } from 'appwrite';
 import PostCard from '@/components/shared/PostCard';
 import PostCardSkeleton from '@/components/shared/PostCardSkeleton';
@@ -26,6 +23,11 @@ const Home = () => {
   const { user } = useUserContext();
   const { data: posts, isPending: isPostLoading } = useGetRecentPosts();
   const { data: allUsers, isLoading: isAllUsersLoading } = useGetUsers(10);
+
+  // Refs for scroll synchronization
+  const mainContentRef = useRef<HTMLDivElement>(null);
+  const leftSidebarRef = useRef<HTMLDivElement>(null);
+  const rightSidebarRef = useRef<HTMLDivElement>(null);
 
   // State management
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -135,6 +137,57 @@ const Home = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Set up faster scrolling for the sidebars
+  useEffect(() => {
+    const mainContent = mainContentRef.current;
+    const leftSidebar = leftSidebarRef.current;
+    const rightSidebar = rightSidebarRef.current;
+
+    if (!mainContent || !leftSidebar || !rightSidebar) return;
+
+    // Handle wheel events in left sidebar
+    const handleLeftSidebarWheel = (e: WheelEvent) => {
+      // Speed multiplier for faster scrolling
+      const speedMultiplier = 2.5;
+
+      // Apply scrolling to main content with increased speed
+      mainContent.scrollBy({
+        top: e.deltaY * speedMultiplier,
+      });
+
+      // Prevent default scroll behavior in sidebar
+      e.preventDefault();
+    };
+
+    // Handle wheel events in right sidebar
+    const handleRightSidebarWheel = (e: WheelEvent) => {
+      // Speed multiplier for faster scrolling
+      const speedMultiplier = 2.5;
+
+      // Apply scrolling to main content with increased speed
+      mainContent.scrollBy({
+        top: e.deltaY * speedMultiplier,
+      });
+
+      // Prevent default scroll behavior in sidebar
+      e.preventDefault();
+    };
+
+    // Add event listeners directly to sidebar elements
+    leftSidebar.addEventListener('wheel', handleLeftSidebarWheel, {
+      passive: false,
+    });
+    rightSidebar.addEventListener('wheel', handleRightSidebarWheel, {
+      passive: false,
+    });
+
+    // Cleanup
+    return () => {
+      leftSidebar.removeEventListener('wheel', handleLeftSidebarWheel);
+      rightSidebar.removeEventListener('wheel', handleRightSidebarWheel);
+    };
+  }, []);
+
   // Smooth scroll function to return to top of page
   const scrollToTop = () => {
     window.scrollTo({
@@ -147,7 +200,10 @@ const Home = () => {
     <div className='flex-1 h-screen'>
       <div className='grid grid-cols-1 lg:grid-cols-7 h-full'>
         {/* Activity Feed - Left Side */}
-        <div className='lg:col-span-2 hidden lg:block space-y-4 p-4 h-screen overflow-y-auto hide-scrollbar sticky top-0 left-0'>
+        <div
+          ref={leftSidebarRef}
+          className='lg:col-span-2 hidden lg:block space-y-4 p-4 h-screen overflow-y-auto hide-scrollbar sticky top-0 left-0'
+        >
           <div className='bg-dark-2 rounded-2xl p-4 border border-dark-4'>
             <h2 className='text-light-1 font-bold mb-4 flex justify-between items-center'>
               <div className='flex items-center gap-2'>
@@ -212,7 +268,10 @@ const Home = () => {
 
         {/* Main Feed - Center - Scrollable Content with Hidden Scrollbar */}
         <div className='lg:col-span-3 h-screen pt-4 px-4 overflow-hidden'>
-          <div className="w-full h-full overflow-y-auto hide-scrollbar pr-1">
+          <div
+            ref={mainContentRef}
+            className='w-full h-full overflow-y-auto hide-scrollbar pr-1'
+          >
             {/* Header */}
             <div className='flex mb-6 gap-4 items-center justify-between'>
               <h2 className='text-xl font-bold text-light-1'>Home Feed</h2>
@@ -263,7 +322,10 @@ const Home = () => {
         </div>
 
         {/* Suggestions - Right Side */}
-        <div className='lg:col-span-2 hidden lg:block space-y-4 p-4 h-screen overflow-y-auto hide-scrollbar sticky top-0 right-0'>
+        <div
+          ref={rightSidebarRef}
+          className='lg:col-span-2 hidden lg:block space-y-4 p-4 h-screen overflow-y-auto hide-scrollbar sticky top-0 right-0'
+        >
           <div className='bg-dark-2 rounded-2xl p-4 border border-dark-4'>
             <h2 className='text-light-1 font-bold mb-4 flex justify-between items-center'>
               <div className='flex items-center gap-2'>
@@ -322,7 +384,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Scroll to top button */}
+      {/* Original Scroll to Top Button */}
       <AnimatePresence>
         {showScrollTop && (
           <motion.button
