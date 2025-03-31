@@ -152,10 +152,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     if (isAuthenticated && user.id) {
       const newSocket = io(SOCKET_URL, {
-        transports: ['websocket'],
-        reconnectionAttempts: 5,
+        transports: ['polling'],
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        timeout: 10000
+        timeout: 20000,
+        forceNew: true
       });
 
       setSocket(newSocket);

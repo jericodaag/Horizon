@@ -5,14 +5,21 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: ['https://horizon-eight-lake.vercel.app', 'http://localhost:5173'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  })
+);
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: ['https://horizon-eight-lake.vercel.app', 'http://localhost:5173'],
     methods: ['GET', 'POST'],
     credentials: true,
+    allowedHeaders: ['*'],
   },
 });
 
