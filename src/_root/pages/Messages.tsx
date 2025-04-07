@@ -15,7 +15,6 @@ import { IUser } from '@/types';
 import { getConversation } from '@/lib/appwrite/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import OnlineStatusIndicator from '@/components/shared/OnlineStatusIndicator';
-import NotificationBadge from '@/components/shared/NotificationBadge';
 
 // Dialog components
 import {
