@@ -3,14 +3,18 @@ import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { useSignOutAccount } from '@/lib/react-query/queries';
 import { useUserContext } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 import { sidebarLinks } from '@/constants';
 import { INavLink } from '@/types';
 import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const LeftSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useUserContext();
+  const { totalUnreadMessages } = useSocket();
+
   const {
     mutate: signOut,
     isSuccess,
@@ -58,14 +62,15 @@ const LeftSidebar = () => {
           <ul className="space-y-2">
             {sidebarLinks.map((link: INavLink) => {
               const isActive = pathname === link.route;
+              const isMessages = link.route === '/messages';
 
               return (
                 <li key={link.label}>
                   <NavLink
                     to={link.route}
                     className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive
-                        ? 'bg-primary-500 text-light-1 font-medium'
-                        : 'text-light-2 hover:bg-dark-3'
+                      ? 'bg-primary-500 text-light-1 font-medium'
+                      : 'text-light-2 hover:bg-dark-3'
                       }`}
                   >
                     <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'text-light-1' : 'text-light-3'}`}>
@@ -76,6 +81,17 @@ const LeftSidebar = () => {
                       />
                     </div>
                     <span>{link.label}</span>
+
+                    {/* Message notification badge */}
+                    {isMessages && totalUnreadMessages > 0 && (
+                      <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="flex-shrink-0 ml-auto bg-primary-500 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center"
+                      >
+                        {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                      </motion.div>
+                    )}
                   </NavLink>
                 </li>
               );

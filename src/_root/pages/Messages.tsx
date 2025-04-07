@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUserContext } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 import {
   useGetUserConversations,
   useGetUsers,
@@ -14,6 +15,7 @@ import { IUser } from '@/types';
 import { getConversation } from '@/lib/appwrite/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import OnlineStatusIndicator from '@/components/shared/OnlineStatusIndicator';
+import NotificationBadge from '@/components/shared/NotificationBadge';
 
 // Dialog components
 import {
@@ -32,6 +34,9 @@ export default function Messages() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const initialConversation = location.state?.initialConversation as any;
+
+  // Socket state for notifications
+  const { totalUnreadMessages, clearNotifications } = useSocket();
 
   // Dialog state
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
@@ -59,8 +64,13 @@ export default function Messages() {
         queryKey: [QUERY_KEYS.GET_CONVERSATION, user.id, userForChat.id],
         queryFn: () => getConversation(user.id, userForChat.id),
       });
+
+      // Clear notifications for this user immediately when directed from notification
+      if (userForChat.id) {
+        clearNotifications(userForChat.id);
+      }
     }
-  }, [initialConversation, selectedConversation, user.id, queryClient]);
+  }, [initialConversation, selectedConversation, user.id, queryClient, clearNotifications]);
 
   // Helper function to convert conversation user to IUser format
   const convertToIUser = useCallback((conversationUser: any): IUser => {
@@ -80,8 +90,11 @@ export default function Messages() {
       const userForChat = convertToIUser(conversationUser);
       setSelectedConversation(userForChat);
       setShowChat(true);
+
+      // Clear notifications for this user when conversation is opened
+      clearNotifications(userForChat.id);
     },
-    [convertToIUser]
+    [convertToIUser, clearNotifications]
   );
 
   // Handle back button in mobile view
@@ -116,7 +129,12 @@ export default function Messages() {
     <div className='flex flex-1 items-center justify-center px-3 py-6 md:p-8 lg:p-10'>
       <div className='messages-container w-full max-w-6xl'>
         <div className='flex items-center justify-between w-full mb-5'>
-          <h2 className='h3-bold md:h2-bold text-light-1'>Messages</h2>
+          <h2 className='h3-bold md:h2-bold text-light-1'>
+            Messages
+            {totalUnreadMessages > 0 && (
+              <span className="ml-2 text-primary-500">({totalUnreadMessages})</span>
+            )}
+          </h2>
 
           <Button
             variant='ghost'

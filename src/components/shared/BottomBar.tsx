@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { bottombarLinks } from "@/constants";
 import { motion } from "framer-motion";
+import { useSocket } from "@/context/SocketContext";
 
 const Bottombar = () => {
     const { pathname } = useLocation();
+    const { totalUnreadMessages } = useSocket();
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50">
@@ -14,6 +16,8 @@ const Bottombar = () => {
                 {bottombarLinks.map((link) => {
                     const isActive = pathname === link.route;
                     const isCreatePost = link.route === '/create-post';
+                    const isMessages = link.route === '/messages';
+                    const showBadge = isMessages && totalUnreadMessages > 0;
 
                     if (isCreatePost) {
                         return (
@@ -42,7 +46,7 @@ const Bottombar = () => {
                             key={`bottombar-${link.label}`}
                             to={link.route}
                             className={`${isActive ? "rounded-xl bg-primary-500/20" : ""} 
-                                flex-center flex-col gap-1 p-2 transition`}
+                                flex-center flex-col gap-1 p-2 transition relative`}
                         >
                             <motion.div
                                 whileTap={{ scale: 0.9 }}
@@ -55,6 +59,17 @@ const Bottombar = () => {
                                     height={18}
                                     className={isActive ? "invert-white" : "opacity-70"}
                                 />
+
+                                {/* Notification badge */}
+                                {showBadge && (
+                                    <motion.div
+                                        initial={{ scale: 0.5, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        className="absolute -top-1 -right-1 bg-primary-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
+                                    >
+                                        {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                                    </motion.div>
+                                )}
                             </motion.div>
 
                             <p className={`text-[10px] ${isActive ? "text-primary-500 font-medium" : "text-light-2"}`}>

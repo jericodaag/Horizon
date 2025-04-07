@@ -3,6 +3,8 @@ import { io, Socket } from 'socket.io-client';
 import { useUserContext } from './AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
+import { toast } from '@/components/ui/use-toast'; // Import toast functionality
+import { useNavigate } from 'react-router-dom';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
@@ -11,6 +13,7 @@ interface SocketContextType {
   onlineUsers: string[];
   isConnected: boolean;
   notificationCount: { [key: string]: number };
+  totalUnreadMessages: number; // New: total count for badge
   clearNotifications: (conversationId: string) => void;
   latestMessages: { [userId: string]: any };
   trackSentMessage: (senderId: string, receiverId: string, content: string) => void;
@@ -25,6 +28,7 @@ const SocketContext = createContext<SocketContextType>({
   onlineUsers: [],
   isConnected: false,
   notificationCount: {},
+  totalUnreadMessages: 0, // New: total count for badge
   clearNotifications: () => { },
   latestMessages: {},
   trackSentMessage: () => { },
@@ -44,6 +48,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [readReceipts, setReadReceipts] = useState<{ [messageId: string]: boolean }>({});
   const { user, isAuthenticated } = useUserContext();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  // Calculate total unread messages for the badge
+  const totalUnreadMessages = Object.values(notificationCount).reduce(
+    (sum, count) => sum + count,
+    0
+  );
 
   const typingTimeoutRef = React.useRef<{ [key: string]: NodeJS.Timeout }>({});
   const reconnectTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -88,7 +99,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   }, [queryClient, user.id]);
 
-  const trackSentMessage = useCallback((senderId: string, receiverId: string, content: string) => {
+  const trackSentMessage = useCallback((receiverId: string, content: string) => {
     const timestamp = new Date().toISOString();
 
     setLatestMessages(prev => ({
@@ -149,6 +160,22 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   }, [socket, isConnected]);
 
+  // Show toast notification for new messages
+  const showMessageNotification = useCallback((senderId: string, _content: string) => {
+    toast({
+      title: "New message",
+      description: "Someone sent you a message",
+      action: (
+        <button
+          onClick={() => navigate(`/messages`, { state: { initialConversation: { id: senderId } } })}
+          className="bg-violet-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-violet-600 transition"
+        >
+          View
+        </button>
+      ),
+    });
+  }, [navigate]);
+
   useEffect(() => {
     if (isAuthenticated && user.id) {
       const newSocket = io(SOCKET_URL, {
@@ -171,7 +198,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       });
 
-      newSocket.on('connect_error', (err) => {
+      newSocket.on('connect_error', (_err) => {
         setIsConnected(false);
       });
 
@@ -225,6 +252,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             ...prev,
             [data.senderId]: (prev[data.senderId] || 0) + 1
           }));
+
+          // Show notification for new message if it's not from current user
+          showMessageNotification(data.senderId, data.content);
         }
 
         const messageUserId = data.senderId === user.id ? data.receiverId : data.senderId;
@@ -257,7 +287,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsConnected(false);
       };
     }
-  }, [isAuthenticated, user.id, updateConversationOrder]);
+  }, [isAuthenticated, user.id, updateConversationOrder, showMessageNotification]);
 
   return (
     <SocketContext.Provider value={{
@@ -265,6 +295,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       onlineUsers,
       isConnected,
       notificationCount,
+      totalUnreadMessages, // Add the total count
       clearNotifications,
       latestMessages,
       trackSentMessage,
