@@ -3,8 +3,9 @@ import { io, Socket } from 'socket.io-client';
 import { useUserContext } from './AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
-import { toast } from '@/components/ui/use-toast'; // Import toast functionality
+import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { NotificationType } from '@/types';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
@@ -13,8 +14,10 @@ interface SocketContextType {
   onlineUsers: string[];
   isConnected: boolean;
   notificationCount: { [key: string]: number };
-  totalUnreadMessages: number; // New: total count for badge
+  totalUnreadMessages: number;
+  totalUnreadNotifications: number;
   clearNotifications: (conversationId: string) => void;
+  clearAllNotifications: () => void;
   latestMessages: { [userId: string]: any };
   trackSentMessage: (senderId: string, receiverId: string, content: string) => void;
   typingUsers: { [key: string]: boolean };
@@ -28,8 +31,10 @@ const SocketContext = createContext<SocketContextType>({
   onlineUsers: [],
   isConnected: false,
   notificationCount: {},
-  totalUnreadMessages: 0, // New: total count for badge
+  totalUnreadMessages: 0,
+  totalUnreadNotifications: 0,
   clearNotifications: () => { },
+  clearAllNotifications: () => { },
   latestMessages: {},
   trackSentMessage: () => { },
   typingUsers: {},
@@ -43,6 +48,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [notificationCount, setNotificationCount] = useState<{ [key: string]: number }>({});
+  const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
   const [latestMessages, setLatestMessages] = useState<{ [userId: string]: any }>({});
   const [typingUsers, setTypingUsers] = useState<{ [key: string]: boolean }>({});
   const [readReceipts, setReadReceipts] = useState<{ [messageId: string]: boolean }>({});
@@ -50,11 +56,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // Calculate total unread messages for the badge
   const totalUnreadMessages = Object.values(notificationCount).reduce(
     (sum, count) => sum + count,
     0
   );
+
+  const totalUnreadNotifications = unreadNotifications;
 
   const typingTimeoutRef = React.useRef<{ [key: string]: NodeJS.Timeout }>({});
   const reconnectTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -65,6 +72,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       [conversationId]: 0
     }));
   }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setUnreadNotifications(0);
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.GET_USER_NOTIFICATIONS, user.id],
+    });
+  }, [queryClient, user.id]);
 
   const updateConversationOrder = useCallback((partnerId: string, content: string, timestamp: string) => {
     if (!user.id) return;
@@ -176,6 +190,34 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   }, [navigate]);
 
+  const showNotificationToast = useCallback((type: NotificationType, actorName: string) => {
+    let message = "";
+    switch (type) {
+      case 'like':
+        message = `${actorName} liked your post`;
+        break;
+      case 'comment':
+        message = `${actorName} commented on your post`;
+        break;
+      case 'follow':
+        message = `${actorName} started following you`;
+        break;
+    }
+
+    toast({
+      title: "New notification",
+      description: message,
+      action: (
+        <button
+          onClick={() => navigate('/notifications')}
+          className="bg-violet-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-violet-600 transition"
+        >
+          View
+        </button>
+      ),
+    });
+  }, [navigate]);
+
   useEffect(() => {
     if (isAuthenticated && user.id) {
       const newSocket = io(SOCKET_URL, {
@@ -253,7 +295,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             [data.senderId]: (prev[data.senderId] || 0) + 1
           }));
 
-          // Show notification for new message if it's not from current user
           showMessageNotification(data.senderId, data.content);
         }
 
@@ -273,6 +314,24 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         );
       });
 
+      newSocket.on('notification', (data) => {
+        if (data.userId === user.id) {
+          console.log('Notification received, current count:', unreadNotifications);
+
+          setUnreadNotifications(prev => {
+            const newCount = prev + 1;
+            console.log('New notification count:', newCount);
+            return newCount;
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: [QUERY_KEYS.GET_USER_NOTIFICATIONS, user.id],
+          });
+
+          showNotificationToast(data.type, data.actorName);
+        }
+      });
+
       return () => {
         Object.values(typingTimeoutRef.current).forEach(timeout => clearTimeout(timeout));
         typingTimeoutRef.current = {};
@@ -287,7 +346,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsConnected(false);
       };
     }
-  }, [isAuthenticated, user.id, updateConversationOrder, showMessageNotification]);
+  }, [isAuthenticated, user.id, updateConversationOrder, showMessageNotification, showNotificationToast, queryClient]);
 
   return (
     <SocketContext.Provider value={{
@@ -295,8 +354,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       onlineUsers,
       isConnected,
       notificationCount,
-      totalUnreadMessages, // Add the total count
+      totalUnreadMessages,
+      totalUnreadNotifications,
       clearNotifications,
+      clearAllNotifications,
       latestMessages,
       trackSentMessage,
       typingUsers,

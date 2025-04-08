@@ -1,8 +1,14 @@
+// Sidebar Links
 export const sidebarLinks = [
   {
     imgURL: '/assets/icons/home.svg',
     route: '/home',
     label: 'Home',
+  },
+  {
+    imgURL: '/assets/icons/notification.svg',
+    route: '/notifications',
+    label: 'Notifications',
   },
   {
     imgURL: '/assets/icons/wallpaper.svg',
@@ -20,7 +26,7 @@ export const sidebarLinks = [
     label: 'Saved',
   },
   {
-    imgURL: '/assets/icons/message.svg', // Live Message
+    imgURL: '/assets/icons/message.svg',
     route: '/messages',
     label: 'Messages',
   },
@@ -31,6 +37,7 @@ export const sidebarLinks = [
   },
 ];
 
+// Bottombar Links
 export const bottombarLinks = [
   {
     imgURL: '/assets/icons/home.svg',
@@ -48,13 +55,13 @@ export const bottombarLinks = [
     label: 'Create',
   },
   {
-    imgURL: '/assets/icons/message.svg', // Mobile Live Message
+    imgURL: '/assets/icons/message.svg',
     route: '/messages',
     label: 'Messages',
   },
   {
-    imgURL: '/assets/icons/bookmark.svg',
-    route: '/saved',
-    label: 'Saved',
+    imgURL: '/assets/icons/notification.svg',
+    route: '/notifications',
+    label: 'Notifications',
   },
 ];

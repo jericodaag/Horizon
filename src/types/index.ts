@@ -7,8 +7,8 @@ export type IComment = {
   content: string;
   createdAt: string;
   likes: string[];
-  gifUrl?: string; // New field for GIF URL
-  gifId?: string; // New field for GIF ID
+  gifUrl?: string;
+  gifId?: string;
   user?: {
     $id: string;
     name: string;
@@ -21,8 +21,8 @@ export type INewComment = {
   userId: string;
   postId: string;
   content: string;
-  gifUrl?: string; // New field for GIF URL
-  gifId?: string; // New field for GIF ID
+  gifUrl?: string;
+  gifId?: string;
 };
 
 export type IContextType = {
@@ -60,8 +60,8 @@ export type INewPost = {
   location?: string;
   tags?: string;
   comments?: IComment[];
-  gifUrl?: string; // New field for GIF URL
-  gifId?: string; // New field for GIF ID
+  gifUrl?: string;
+  gifId?: string;
 };
 
 export type IUpdatePost = {
@@ -73,8 +73,8 @@ export type IUpdatePost = {
   location?: string;
   tags?: string;
   comments?: IComment[];
-  gifUrl?: string; // New field for GIF URL
-  gifId?: string; // New field for GIF ID
+  gifUrl?: string;
+  gifId?: string;
 };
 
 export type IUser = {
@@ -84,7 +84,6 @@ export type IUser = {
   email: string;
   imageUrl: string;
   bio: string;
-  // New cover photo properties
   coverImageUrl?: string;
   coverPosition?: string;
 };
@@ -105,7 +104,6 @@ export interface ICreatorWithFollowers {
   imageUrl: string;
   bio: string;
   followerCount: number;
-  // New cover photo properties
   coverImageUrl?: string;
   coverPosition?: string;
 }
@@ -118,11 +116,10 @@ export interface IPost extends Omit<INewPost, 'tags'> {
   tags: string[];
   comments: IComment[];
   save?: boolean;
-  gifUrl?: string; // New field for GIF URL
-  gifId?: string; // New field for GIF ID
+  gifUrl?: string;
+  gifId?: string;
 }
 
-// Message types
 export type IMessage = {
   $id: string;
   sender: {
@@ -142,7 +139,6 @@ export type IMessage = {
   isRead: boolean;
   attachmentUrl?: string | null;
   attachmentType?: string | null;
-  // Add these properties for optimistic UI
   _isOptimistic?: boolean;
   _isError?: boolean;
 };
@@ -164,7 +160,6 @@ export type IConversation = {
     imageUrl?: string;
     bio?: string;
     email?: string;
-    // New cover photo properties
     coverImageUrl?: string;
     coverPosition?: string;
   };
@@ -172,7 +167,6 @@ export type IConversation = {
   unreadCount: number;
 };
 
-// Socket.io related types
 export interface IUserStatus {
   userId: string;
   status: 'online' | 'offline';
@@ -183,3 +177,35 @@ export interface IOnlineUsers {
   users: string[];
   timestamp: string;
 }
+
+export type NotificationType = 'like' | 'comment' | 'follow';
+
+export interface INotification {
+  $id: string;
+  userId: string;
+  actorId: string;
+  type: NotificationType;
+  postId?: string;
+  commentId?: string;
+  read: boolean;
+  createdAt: string;
+  actor?: {
+    $id: string;
+    name: string;
+    username: string;
+    imageUrl: string;
+  };
+  post?: {
+    $id: string;
+    imageUrl: string;
+    caption: string;
+  };
+}
+
+export type INewNotification = {
+  userId: string;
+  actorId: string;
+  type: NotificationType;
+  postId?: string;
+  commentId?: string;
+};

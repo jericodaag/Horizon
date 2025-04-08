@@ -35,7 +35,6 @@ io.on('connection', (socket) => {
 
   socket.on('identify', (userId) => {
     if (!userId) return;
-
     onlineUsers.set(userId, socket.id);
     socket.userId = userId;
 
@@ -58,7 +57,6 @@ io.on('connection', (socket) => {
     console.log('Message received:', data);
     io.emit('receive_message', data);
 
-    // Clear typing indicator when a message is sent
     if (typingUsers.has(`${data.senderId}-${data.receiverId}`)) {
       typingUsers.delete(`${data.senderId}-${data.receiverId}`);
       io.emit('typing_update', {
@@ -76,16 +74,13 @@ io.on('connection', (socket) => {
 
   socket.on('typing', (data) => {
     const typingKey = `${data.senderId}-${data.receiverId}`;
-
     if (data.isTyping) {
       typingUsers.set(typingKey, Date.now());
     } else {
       typingUsers.delete(typingKey);
     }
-
     io.emit('typing_update', data);
 
-    // Auto-clear typing indicator after inactivity
     if (data.isTyping) {
       setTimeout(() => {
         const lastTyped = typingUsers.get(typingKey);
@@ -101,11 +96,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('send_notification', (data) => {
+    console.log('Notification sent:', data);
+    io.emit('notification', data);
+  });
+
   socket.on('disconnect', () => {
     if (socket.userId) {
       onlineUsers.delete(socket.userId);
 
-      // Clear typing indicators for this user
       for (const [key, _] of typingUsers) {
         if (key.startsWith(`${socket.userId}-`)) {
           typingUsers.delete(key);

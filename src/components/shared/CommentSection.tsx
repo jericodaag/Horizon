@@ -9,10 +9,11 @@ import { QUERY_KEYS } from '@/lib/react-query/queryKeys';
 import { Button } from '@/components/ui/button';
 import { Loader, X, SmilePlus } from 'lucide-react';
 import { IComment } from '@/types';
-import { ID, Query } from 'appwrite';
+import { Query } from 'appwrite';
 import GiphyPicker from './GiphyPicker';
 import TranslateComment from './TranslateComment';
 import DeleteConfirmationModal from '@/components/shared/DeleteConfirmationModal';
+import { useCreateComment } from '@/lib/react-query/queries';
 
 type CommentSectionProps = {
   postId: string;
@@ -30,19 +31,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
-  // Delete modal state
+  const { mutate: createComment } = useCreateComment();
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
 
-  // GIF states
   const [showGiphyPicker, setShowGiphyPicker] = useState(false);
   const [selectedGif, setSelectedGif] = useState({ url: '', id: '' });
 
-  // Check if user can delete a comment (post owner or comment author)
   const canDeleteComment = (comment: IComment) => {
     return user.id === comment.userId || user.id === postCreatorId;
   };
-  // Extract user ID safely
+
   const getUserId = (userIdData: any): string => {
     if (!userIdData) return '';
 
@@ -55,18 +55,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     return String(userIdData);
   };
 
-  // Handler for GIF selection
   const handleGifSelect = (gifUrl: string, gifId: string) => {
     setSelectedGif({ url: gifUrl, id: gifId });
     setShowGiphyPicker(false);
   };
 
-  // Fetch comments and user data
   const fetchComments = async (): Promise<void> => {
     try {
       setIsLoading(true);
 
-      // Get comments for this post
       const commentsData = await databases.listDocuments(
         appwriteConfig.databaseId,
         appwriteConfig.commentsCollectionId,
@@ -79,7 +76,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         return;
       }
 
-      // Process comments
       const processedComments = await Promise.all(
         commentsData.documents.map(async (document: Models.Document) => {
           try {
@@ -111,7 +107,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                   },
                 } as IComment;
               } catch (err) {
-                // Fallback to placeholder if user fetch fails
                 return {
                   $id: document.$id,
                   userId: actualUserId,
@@ -131,7 +126,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                 } as IComment;
               }
             } else {
-              // Invalid user ID, use placeholder
               return {
                 $id: document.$id,
                 userId: 'unknown',
@@ -156,7 +150,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         })
       );
 
-      // Filter out any null comments (processing errors)
       const validComments = processedComments.filter(
         (comment): comment is IComment => comment !== null
       );
@@ -168,52 +161,36 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     if (postId) {
       fetchComments();
     }
   }, [postId]);
 
-  // Submit a new comment
   const handleSubmitComment = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Need either text or GIF to submit a comment
     if (!commentText.trim() && !selectedGif.url) return;
 
     try {
       setIsSubmitting(true);
 
-      // Ensure user.id is a string
-      const userId = String(user.id);
+      createComment({
+        postId,
+        userId: user.id,
+        content: commentText.trim(),
+        gifUrl: selectedGif.url || undefined,
+        gifId: selectedGif.id || undefined
+      });
 
-      // Create the comment
-      await databases.createDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.commentsCollectionId,
-        ID.unique(),
-        {
-          postId,
-          content: commentText.trim(),
-          userId,
-          createdAt: new Date().toISOString(),
-          likes: [],
-          gifUrl: selectedGif.url || null,
-          gifId: selectedGif.id || null,
-        }
-      );
-
-      // Clear input and refresh comments
       setCommentText('');
       setSelectedGif({ url: '', id: '' });
-      fetchComments();
 
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
-      });
+      setTimeout(() => {
+        fetchComments();
+      }, 500);
+
     } catch (error) {
       console.error('Error creating comment:', error);
     } finally {
@@ -221,7 +198,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     }
   };
 
-  // Delete a comment
   const handleDeleteComment = async (commentId: string): Promise<void> => {
     try {
       await databases.deleteDocument(
@@ -230,10 +206,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         commentId
       );
 
-      // Refresh the comments list
       fetchComments();
 
-      // Invalidate relevant queries
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
       });
@@ -242,13 +216,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     }
   };
 
-  // Open delete confirmation modal
   const openDeleteModal = (commentId: string) => {
     setCommentToDelete(commentId);
     setIsDeleteModalOpen(true);
   };
 
-  // Handle confirm delete
   const handleConfirmDelete = () => {
     if (commentToDelete) {
       handleDeleteComment(commentToDelete);
@@ -256,14 +228,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     }
   };
 
-  // Like/Unlike a comment
   const handleLikeComment = async (comment: IComment) => {
     try {
       const likesArray = [...comment.likes];
       const userLikedComment = likesArray.includes(user.id);
 
       if (userLikedComment) {
-        // Unlike: Remove user ID from likes array
         const filteredLikes = likesArray.filter((id) => id !== user.id);
 
         await databases.updateDocument(
@@ -273,14 +243,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({
           { likes: filteredLikes }
         );
 
-        // Update local state
         setComments((prevComments) =>
           prevComments.map((c) =>
             c.$id === comment.$id ? { ...c, likes: filteredLikes } : c
           )
         );
       } else {
-        // Like: Add user ID to likes array
         likesArray.push(user.id);
 
         await databases.updateDocument(
@@ -290,7 +258,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
           { likes: likesArray }
         );
 
-        // Update local state
         setComments((prevComments) =>
           prevComments.map((c) =>
             c.$id === comment.$id ? { ...c, likes: likesArray } : c
@@ -298,7 +265,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         );
       }
 
-      // Invalidate queries
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
       });
@@ -443,11 +409,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                   <button
                     type='button'
                     onClick={() => handleLikeComment(comment)}
-                    className={`text-xs ${
-                      comment.likes.includes(user.id)
-                        ? 'text-primary-500 font-medium'
-                        : 'text-light-3 hover:text-light-1'
-                    }`}
+                    className={`text-xs ${comment.likes.includes(user.id)
+                      ? 'text-primary-500 font-medium'
+                      : 'text-light-3 hover:text-light-1'
+                      }`}
                   >
                     {comment.likes.includes(user.id) ? 'Liked' : 'Like'}
                     {comment.likes.length > 0 && (

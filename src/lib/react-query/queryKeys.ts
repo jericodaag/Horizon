@@ -27,4 +27,8 @@ export enum QUERY_KEYS {
   // MESSAGE KEYS
   GET_CONVERSATION = 'getConversation',
   GET_USER_CONVERSATIONS = 'getUserConversations',
+
+  // NOTIFICATION KEYS
+  GET_USER_NOTIFICATIONS = 'getUserNotifications',
+  MARK_NOTIFICATIONS_READ = 'markNotificationsRead',
 }

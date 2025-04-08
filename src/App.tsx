@@ -15,6 +15,7 @@ import {
   Profile,
   Saved,
   UpdateProfile,
+  Notifications
 } from './_root/pages';
 import { Toaster } from '@/components/ui/toaster';
 import Messages from './_root/pages/Messages';
@@ -23,7 +24,6 @@ import Loader from '@/components/shared/Loader';
 const App = () => {
   const { isAuthenticated, isLoading } = useUserContext();
 
-  // Show loading screen while authentication state is being determined
   if (isLoading) {
     return (
       <div className='flex items-center justify-center w-full h-screen bg-dark-1'>
@@ -70,6 +70,7 @@ const App = () => {
           <Route path='/profile/:id/*' element={<Profile />} />
           <Route path='/update-profile/:id' element={<UpdateProfile />} />
           <Route path='/messages' element={<Messages />} />
+          <Route path='/notifications' element={<Notifications />} />
         </Route>
 
         {/* Catch all unknown routes and redirect to landing */}

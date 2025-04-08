@@ -40,6 +40,10 @@ import {
   getUserConversations,
   markMessagesAsRead,
   getLikedPosts,
+  createNotification,
+  deleteNotification,
+  markNotificationsAsRead,
+  getUserNotifications,
 } from '@/lib/appwrite/api';
 import {
   INewPost,
@@ -52,6 +56,8 @@ import {
 } from '@/types';
 import { Models } from 'appwrite';
 import { appwriteConfig, databases } from '../appwrite/config';
+import { useSocket } from '@/context/SocketContext';
+import { useUserContext } from '@/context/AuthContext';
 
 // ============================================================
 // AUTH QUERIES
@@ -167,6 +173,9 @@ export const useDeletePost = () => {
 
 export const useLikePost = () => {
   const queryClient = useQueryClient();
+  const { socket } = useSocket();
+  const { user } = useUserContext();
+
   return useMutation({
     mutationFn: ({
       postId,
@@ -175,7 +184,7 @@ export const useLikePost = () => {
       postId: string;
       likesArray: string[];
     }) => likePost(postId, likesArray),
-    onSuccess: (data) => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_POST_BY_ID, data?.$id],
       });
@@ -191,6 +200,32 @@ export const useLikePost = () => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_LIKED_POSTS],
       });
+
+      const isLiking = variables.likesArray.includes(user.id);
+
+      if (isLiking && data?.creator && data.creator.$id !== user.id) {
+        try {
+          const newNotification = await createNotification({
+            userId: data.creator.$id,
+            actorId: user.id,
+            type: 'like',
+            postId: data.$id,
+          });
+
+          if (socket && newNotification) {
+            socket.emit('send_notification', {
+              type: 'like',
+              userId: data.creator.$id,
+              actorId: user.id,
+              actorName: user.name,
+              postId: data.$id,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        } catch (error) {
+          console.error('Failed to create like notification:', error);
+        }
+      }
     },
   });
 };
@@ -289,10 +324,11 @@ export const useUpdateUser = () => {
   });
 };
 
-// following
-// Add these new queries to your queries.ts file
 export const useFollowUser = () => {
   const queryClient = useQueryClient();
+  const { socket } = useSocket();
+  const { user } = useUserContext();
+
   return useMutation({
     mutationFn: ({
       followerId,
@@ -301,13 +337,36 @@ export const useFollowUser = () => {
       followerId: string;
       followingId: string;
     }) => followUser(followerId, followingId),
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_USER_FOLLOWERS],
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_USER_FOLLOWING],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_CURRENT_USER],
+      });
+
+      try {
+        const newNotification = await createNotification({
+          userId: variables.followingId,
+          actorId: variables.followerId,
+          type: 'follow',
+        });
+
+        if (socket && newNotification) {
+          socket.emit('send_notification', {
+            type: 'follow',
+            userId: variables.followingId,
+            actorId: user.id,
+            actorName: user.name,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        console.error('Failed to create follow notification:', error);
+      }
     },
   });
 };
@@ -359,7 +418,6 @@ export const useIsFollowing = (followerId: string, followingId: string) => {
   });
 };
 
-// Get Top creators
 export const useGetTopCreators = (limit: number = 6) => {
   return useQuery({
     queryKey: [QUERY_KEYS.GET_TOP_CREATORS],
@@ -368,14 +426,12 @@ export const useGetTopCreators = (limit: number = 6) => {
   });
 };
 
-// Get Comments
 export const useGetPostComments = (postId: string) => {
   return useQuery({
     queryKey: [QUERY_KEYS.GET_POST_COMMENTS, postId],
     queryFn: async () => {
       if (!postId) return { documents: [] };
 
-      // Get comments
       const comments = await databases.listDocuments(
         appwriteConfig.databaseId,
         appwriteConfig.commentsCollectionId,
@@ -388,17 +444,67 @@ export const useGetPostComments = (postId: string) => {
   });
 };
 
-// Create a comment (with support for GIFs)
 export const useCreateComment = () => {
   const queryClient = useQueryClient();
+  const { socket } = useSocket();
+  const { user } = useUserContext();
 
   return useMutation({
     mutationFn: (comment: INewComment) => createComment(comment),
-    onSuccess: (_, variables) => {
-      // Invalidate and refetch
+    onSuccess: async (comment, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_POST_COMMENTS, variables.postId],
       });
+
+      try {
+        // First, get the post data directly from Appwrite
+        const post = await databases.getDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.postCollectionId,
+          variables.postId
+        );
+
+        console.log('Post details for comment notification:', post);
+
+        // Extract the creator ID correctly based on the database structure
+        const creatorId =
+          typeof post.creator === 'object' ? post.creator.$id : post.creator;
+
+        // Skip notification if commenting on own post
+        if (creatorId === user.id) {
+          console.log(
+            'User commenting on their own post - no notification needed'
+          );
+          return;
+        }
+
+        // Create notification
+        const newNotification = await createNotification({
+          userId: creatorId,
+          actorId: user.id,
+          type: 'comment',
+          postId: variables.postId,
+          commentId: comment.$id,
+        });
+
+        console.log('Notification created:', newNotification);
+
+        // Emit socket event with all necessary fields including commentId
+        if (socket && newNotification) {
+          socket.emit('send_notification', {
+            type: 'comment',
+            userId: creatorId,
+            actorId: user.id,
+            actorName: user.name,
+            postId: variables.postId,
+            commentId: comment.$id,
+            timestamp: new Date().toISOString(),
+          });
+          console.log('Socket notification emitted for comment');
+        }
+      } catch (error) {
+        console.error('Failed to create comment notification:', error);
+      }
     },
   });
 };
@@ -460,9 +566,7 @@ export const useSendMessage = () => {
   return useMutation({
     mutationFn: (messageData: INewMessage) => sendMessage(messageData),
 
-    // Optimistic update
     onMutate: async (newMessage) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({
         queryKey: [
           QUERY_KEYS.GET_CONVERSATION,
@@ -471,14 +575,12 @@ export const useSendMessage = () => {
         ],
       });
 
-      // Get previous data for potential rollback
       const previousConversation = queryClient.getQueryData([
         QUERY_KEYS.GET_CONVERSATION,
         newMessage.senderId,
         newMessage.receiverId,
       ]);
 
-      // Create optimistic message
       const optimisticMessage = {
         $id: 'temp-' + Date.now(),
         sender: { $id: newMessage.senderId },
@@ -491,7 +593,6 @@ export const useSendMessage = () => {
         _isOptimistic: true,
       };
 
-      // Update conversation with optimistic message
       queryClient.setQueryData(
         [
           QUERY_KEYS.GET_CONVERSATION,
@@ -510,7 +611,6 @@ export const useSendMessage = () => {
       return { previousConversation };
     },
 
-    // On error, roll back to previous state
     onError: (_err, newMessage, context) => {
       if (context) {
         queryClient.setQueryData(
@@ -524,7 +624,6 @@ export const useSendMessage = () => {
       }
     },
 
-    // On success, update with actual message
     onSuccess: (actualMessage, variables) => {
       queryClient.setQueryData(
         [QUERY_KEYS.GET_CONVERSATION, variables.senderId, variables.receiverId],
@@ -545,9 +644,6 @@ export const useSendMessage = () => {
   });
 };
 
-/**
- * Hook for fetching conversations list
- */
 export const useGetUserConversations = (userId?: string) => {
   return useQuery<IConversation[]>({
     queryKey: [QUERY_KEYS.GET_USER_CONVERSATIONS, userId],
@@ -556,34 +652,27 @@ export const useGetUserConversations = (userId?: string) => {
       return data || [];
     },
     enabled: !!userId,
-    staleTime: 10000, // Consider data fresh for 10 seconds
-    refetchOnWindowFocus: false, // Don't refetch on window focus since we use real-time
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
   });
 };
 
-/**
- * Hook for fetching a specific conversation
- */
 export const useGetConversation = (userOneId?: string, userTwoId?: string) => {
   return useQuery({
     queryKey: [QUERY_KEYS.GET_CONVERSATION, userOneId, userTwoId],
     queryFn: () => getConversation(userOneId || '', userTwoId || ''),
     enabled: !!userOneId && !!userTwoId,
-    staleTime: 10000, // Data is fresh for 10 seconds
-    refetchOnWindowFocus: false, // Don't refetch on window focus since we use real-time
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
   });
 };
 
-/**
- * Hook for marking messages as read
- */
 export const useMarkMessagesAsRead = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (params: any) => markMessagesAsRead(params),
 
-    // Optimistic update
     onMutate: async (params) => {
       await queryClient.cancelQueries({
         queryKey: [
@@ -593,14 +682,12 @@ export const useMarkMessagesAsRead = () => {
         ],
       });
 
-      // Store previous state
       const previousConversation = queryClient.getQueryData([
         QUERY_KEYS.GET_CONVERSATION,
         params.userId,
         params.conversationPartnerId,
       ]);
 
-      // Optimistically update messages as read
       queryClient.setQueryData(
         [
           QUERY_KEYS.GET_CONVERSATION,
@@ -626,7 +713,6 @@ export const useMarkMessagesAsRead = () => {
         }
       );
 
-      // Update unread count in conversations list
       queryClient.setQueryData(
         [QUERY_KEYS.GET_USER_CONVERSATIONS, params.userId],
         (old: IConversation[] | undefined) => {
@@ -648,6 +734,46 @@ export const useMarkMessagesAsRead = () => {
       );
 
       return { previousConversation };
+    },
+  });
+};
+
+// ============================================================
+// NOTIFICATION QUERIES
+// ============================================================
+
+export const useGetUserNotifications = (userId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_USER_NOTIFICATIONS, userId],
+    queryFn: () => getUserNotifications(userId || ''),
+    enabled: !!userId,
+    staleTime: 10000,
+    refetchOnWindowFocus: true,
+  });
+};
+
+export const useMarkNotificationsAsRead = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => markNotificationsAsRead(userId),
+    onSuccess: (_, userId) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_NOTIFICATIONS, userId],
+      });
+    },
+  });
+};
+
+export const useDeleteNotification = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) => deleteNotification(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_USER_NOTIFICATIONS],
+      });
     },
   });
 };

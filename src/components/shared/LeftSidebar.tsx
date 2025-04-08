@@ -13,7 +13,7 @@ const LeftSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useUserContext();
-  const { totalUnreadMessages } = useSocket();
+  const { totalUnreadMessages, totalUnreadNotifications } = useSocket();
 
   const {
     mutate: signOut,
@@ -63,6 +63,7 @@ const LeftSidebar = () => {
             {sidebarLinks.map((link: INavLink) => {
               const isActive = pathname === link.route;
               const isMessages = link.route === '/messages';
+              const isNotifications = link.route === '/notifications';
 
               return (
                 <li key={link.label}>
@@ -90,6 +91,17 @@ const LeftSidebar = () => {
                         className="flex-shrink-0 ml-auto bg-primary-500 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center"
                       >
                         {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                      </motion.div>
+                    )}
+
+                    {/* Notifications badge */}
+                    {isNotifications && totalUnreadNotifications > 0 && (
+                      <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="flex-shrink-0 ml-auto bg-primary-500 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center"
+                      >
+                        {totalUnreadNotifications > 9 ? '9+' : totalUnreadNotifications}
                       </motion.div>
                     )}
                   </NavLink>

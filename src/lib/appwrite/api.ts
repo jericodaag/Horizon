@@ -8,6 +8,7 @@ import {
   IUpdateUser,
   INewComment,
   INewMessage,
+  INewNotification,
 } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../react-query/queryKeys';
@@ -941,7 +942,10 @@ export async function getTopCreators(limit: number = 6) {
   }
 }
 
-// ======================
+// ============================================================
+// GET USER COMMENT
+// ============================================================
+
 export async function createComment(comment: INewComment) {
   try {
     // Create the comment
@@ -1256,6 +1260,183 @@ export async function markMessagesAsRead(params: MarkMessagesAsReadParams) {
     };
   } catch (error) {
     console.error('Error marking messages as read:', error);
+    throw error;
+  }
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+export async function createNotification(notification: INewNotification) {
+  try {
+    const newNotification = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.notificationsCollectionId,
+      ID.unique(),
+      {
+        userId: notification.userId,
+        actorId: notification.actorId,
+        type: notification.type,
+        postId: notification.postId || null,
+        commentId: notification.commentId || null,
+        read: false,
+        createdAt: new Date().toISOString(),
+      }
+    );
+
+    return newNotification;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+}
+
+// Get notifications for a user
+export async function getUserNotifications(userId: string) {
+  try {
+    // Get notifications
+    const notifications = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.notificationsCollectionId,
+      [
+        Query.equal('userId', userId),
+        Query.orderDesc('$createdAt'),
+        Query.limit(50),
+      ]
+    );
+
+    if (!notifications || notifications.documents.length === 0) {
+      return { documents: [] };
+    }
+
+    // Get all actor IDs (users who created the notifications)
+    const actorIds = [
+      ...new Set(
+        notifications.documents.map((notification) => notification.actorId)
+      ),
+    ];
+
+    // Get all post IDs referenced in notifications
+    const postIds = [
+      ...new Set(
+        notifications.documents
+          .filter((notification) => notification.postId)
+          .map((notification) => notification.postId)
+      ),
+    ].filter(Boolean);
+
+    // Fetch all actors in parallel
+    const actorsPromise = Promise.all(
+      actorIds.map((actorId) =>
+        databases.getDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.userCollectionId,
+          actorId
+        )
+      )
+    );
+
+    // Fetch all posts in parallel
+    const postsPromise =
+      postIds.length > 0
+        ? Promise.all(
+            postIds.map((postId) =>
+              databases.getDocument(
+                appwriteConfig.databaseId,
+                appwriteConfig.postCollectionId,
+                postId
+              )
+            )
+          )
+        : Promise.resolve([]);
+
+    // Wait for all data to be fetched
+    const [actors, posts] = await Promise.all([actorsPromise, postsPromise]);
+
+    // Create lookup maps for quick access
+    const actorMap = actors.reduce((map, actor) => {
+      map[actor.$id] = actor;
+      return map;
+    }, {});
+
+    const postMap = posts.reduce((map, post) => {
+      map[post.$id] = post;
+      return map;
+    }, {});
+
+    // Enhance notifications with related data
+    const enhancedNotifications = notifications.documents.map(
+      (notification) => ({
+        ...notification,
+        actor: actorMap[notification.actorId],
+        post: notification.postId ? postMap[notification.postId] : null,
+      })
+    );
+
+    return {
+      ...notifications,
+      documents: enhancedNotifications,
+    };
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    throw error;
+  }
+}
+
+// Mark notifications as read
+export async function markNotificationsAsRead(userId: string) {
+  try {
+    // Find unread notifications
+    const unreadNotifications = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.notificationsCollectionId,
+      [
+        Query.equal('userId', userId),
+        Query.equal('read', false),
+        Query.limit(100),
+      ]
+    );
+
+    // If no unread notifications, return early
+    if (unreadNotifications.documents.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // Create update promises for all notifications
+    const updatePromises = unreadNotifications.documents.map((notification) =>
+      databases.updateDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.notificationsCollectionId,
+        notification.$id,
+        { read: true }
+      )
+    );
+
+    // Execute all updates in parallel
+    await Promise.all(updatePromises);
+
+    return {
+      success: true,
+      count: unreadNotifications.documents.length,
+    };
+  } catch (error) {
+    console.error('Error marking notifications as read:', error);
+    throw error;
+  }
+}
+
+// Delete a notification
+export async function deleteNotification(notificationId: string) {
+  try {
+    await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.notificationsCollectionId,
+      notificationId
+    );
+    return { status: 'ok' };
+  } catch (error) {
+    console.error('Error deleting notification:', error);
     throw error;
   }
 }

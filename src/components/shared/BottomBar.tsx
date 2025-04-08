@@ -5,11 +5,10 @@ import { useSocket } from "@/context/SocketContext";
 
 const Bottombar = () => {
     const { pathname } = useLocation();
-    const { totalUnreadMessages } = useSocket();
+    const { totalUnreadMessages, totalUnreadNotifications } = useSocket();
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50">
-            {/* Improved background with smoother edges and better blur */}
             <div className="absolute inset-0 bg-dark-2/90 backdrop-blur-lg border-t border-dark-4 rounded-t-xl"></div>
 
             <section className="bottom-bar relative flex items-center justify-around py-3 px-2">
@@ -17,7 +16,9 @@ const Bottombar = () => {
                     const isActive = pathname === link.route;
                     const isCreatePost = link.route === '/create-post';
                     const isMessages = link.route === '/messages';
-                    const showBadge = isMessages && totalUnreadMessages > 0;
+                    const isNotifications = link.route === '/notifications';
+                    const showMessageBadge = isMessages && totalUnreadMessages > 0;
+                    const showNotificationBadge = isNotifications && totalUnreadNotifications > 0;
 
                     if (isCreatePost) {
                         return (
@@ -60,14 +61,25 @@ const Bottombar = () => {
                                     className={isActive ? "invert-white" : "opacity-70"}
                                 />
 
-                                {/* Notification badge */}
-                                {showBadge && (
+                                {/* Message notification badge */}
+                                {showMessageBadge && (
                                     <motion.div
                                         initial={{ scale: 0.5, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         className="absolute -top-1 -right-1 bg-primary-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
                                     >
                                         {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                                    </motion.div>
+                                )}
+
+                                {/* Notification badge */}
+                                {showNotificationBadge && (
+                                    <motion.div
+                                        initial={{ scale: 0.5, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        className="absolute -top-1 -right-1 bg-primary-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
+                                    >
+                                        {totalUnreadNotifications > 9 ? '9+' : totalUnreadNotifications}
                                     </motion.div>
                                 )}
                             </motion.div>
