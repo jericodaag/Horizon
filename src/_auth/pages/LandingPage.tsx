@@ -1442,15 +1442,6 @@ const LandingPage: React.FC = () => {
                 </motion.button>
               </div>
 
-              <motion.p
-                className="mt-4 text-white/60 text-sm"
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-              >
-                Start Building Your Platform
-              </motion.p>
             </motion.div>
           </div>
         </div>
