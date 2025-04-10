@@ -48,13 +48,17 @@ module.exports = {
           from: { height: 0 },
           to: { height: 'var(--radix-accordion-content-height)' },
         },
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-100%)' },
+        },
         'accordion-up': {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: 0 },
         },
         scroll: {
           to: {
-            transform: 'translate(calc(-50% - 0.5rem))',
+            transform: 'translateX(calc(-50%))',
           },
         },
         blink: {
@@ -107,7 +111,8 @@ module.exports = {
         spin: 'spin 2s linear infinite',
         ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
         'subtle-float': 'subtle-float 10s ease-in-out infinite',
-        orbit: 'orbit var(--duration, 20s) linear infinite',
+        marquee: 'marquee 25s linear infinite',
+        'marquee-slow': 'marquee 45s linear infinite',
       },
     },
   },
