@@ -153,20 +153,20 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
 
   return (
     <Form {...form}>
-      <div className='w-full flex flex-col gap-6'>
+      <div className='w-full flex flex-col gap-4 sm:gap-6'>
         {/* Form header */}
-        <div className='flex flex-col gap-2'>
-          <h2 className='text-3xl font-bold'>Welcome Back 👋</h2>
-          <p className='text-light-3'>
+        <div className='flex flex-col gap-1 sm:gap-2'>
+          <h2 className='text-2xl sm:text-3xl font-bold text-light-1'>Welcome Back 👋</h2>
+          <p className='text-sm sm:text-base text-light-3'>
             Step into a new world of connections and possibilities.
-            <br />
+            <br className='hidden sm:block' />
             Sign in and start your journey today!
           </p>
         </div>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className='flex flex-col gap-5'
+          className='flex flex-col gap-4 sm:gap-5'
         >
           {/* Email field with validation */}
           <FormField
@@ -174,22 +174,22 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             name='email'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2 flex items-center gap-2'>
-                  <Mail className='h-4 w-4' />
+                <FormLabel className='text-light-2 flex items-center gap-2 text-sm sm:text-base'>
+                  <Mail className='h-3 w-3 sm:h-4 sm:w-4' />
                   Email
                 </FormLabel>
                 <FormControl>
                   <div className='relative'>
                     <Input
                       type='email'
-                      className='shad-input bg-dark-3 pl-10'
+                      className='shad-input bg-dark-3 pl-8 sm:pl-10 text-sm sm:text-base py-1.5 sm:py-2'
                       placeholder='example@email.com'
                       {...field}
                     />
-                    <Mail className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                    <Mail className='absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-4 w-4 sm:h-5 sm:w-5' />
                   </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className='text-red text-xs sm:text-sm' />
               </FormItem>
             )}
           />
@@ -200,22 +200,31 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
             name='password'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-light-2 flex items-center gap-2'>
-                  <Lock className='h-4 w-4' />
-                  Password
-                </FormLabel>
+                <div className='flex justify-between items-center'>
+                  <FormLabel className='text-light-2 flex items-center gap-2 text-sm sm:text-base'>
+                    <Lock className='h-3 w-3 sm:h-4 sm:w-4' />
+                    Password
+                  </FormLabel>
+                  <button
+                    type='button'
+                    className='text-xs sm:text-sm text-primary-500 hover:text-primary-600 font-medium'
+                    onClick={() => navigate('/reset-password')}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <FormControl>
                   <div className='relative'>
                     <Input
                       type='password'
-                      className='shad-input bg-dark-3 pl-10'
+                      className='shad-input bg-dark-3 pl-8 sm:pl-10 text-sm sm:text-base py-1.5 sm:py-2'
                       placeholder='At least 8 characters'
                       {...field}
                     />
-                    <KeyRound className='absolute left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-5 w-5' />
+                    <KeyRound className='absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-light-3 h-4 w-4 sm:h-5 sm:w-5' />
                   </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className='text-red text-xs sm:text-sm' />
               </FormItem>
             )}
           />
@@ -224,28 +233,30 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
           <motion.div
             whileHover={{ scale: isLoading || isRateLimited ? 1 : 1.01 }}
             whileTap={{ scale: isLoading || isRateLimited ? 1 : 0.99 }}
+            className='pt-1 sm:pt-2 relative group'
           >
             <Button
               type='submit'
-              className='bg-violet-500 hover:bg-violet-600 text-light-1 w-full py-6 px-4 rounded-lg !mt-8 flex items-center justify-center gap-2'
+              className='w-full py-4 sm:py-6 px-4 rounded-lg flex items-center justify-center gap-2 relative z-10 text-light-1 overflow-hidden text-sm sm:text-base'
               disabled={isLoading || isRateLimited}
             >
-              <LogIn className='h-5 w-5' />
-              {isRateLimited ? 'Please wait...' : 'Sign in'}
+              <span className='absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-100 group-hover:opacity-90 transition-opacity'></span>
+              <LogIn className='h-4 w-4 sm:h-5 sm:w-5 relative z-10' />
+              <span className='relative z-10'>
+                {isRateLimited ? 'Please wait...' : 'Sign in'}
+              </span>
             </Button>
           </motion.div>
 
-          {/* Password reset link (not required) */}
-          <p className='text-light-2 text-center text-sm mt-2'>
-            Forgot your password?{' '}
-            <button
-              type='button'
-              className='text-primary-500 hover:underline'
-              onClick={() => navigate('/reset-password')}
-            >
-              Reset it here
-            </button>
-          </p>
+          {/* Sign in divider */}
+          <div className='relative mt-2 sm:mt-4'>
+            <div className='absolute inset-0 flex items-center'>
+              <div className='w-full border-t border-dark-4'></div>
+            </div>
+            <div className='relative flex justify-center text-xs sm:text-sm'>
+              <span className='px-2 bg-black text-light-3'>or</span>
+            </div>
+          </div>
         </form>
       </div>
     </Form>
