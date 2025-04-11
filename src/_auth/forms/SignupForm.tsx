@@ -37,36 +37,30 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
   const { mutateAsync: signInAccount, isPending: isSigningIn } =
     useSignInAccount();
 
-  // Track local loading state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'terms' | 'privacy'>('terms');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTermsError, setShowTermsError] = useState(false);
 
-  // Handle opening modals
   const handleOpenModal = (type: 'terms' | 'privacy') => {
     setModalType(type);
     setIsModalOpen(true);
   };
 
-  // Handle modal close
   const handleCloseModal = () => {
     setIsModalOpen(false);
   };
 
-  // Combined loading state
   const isLoading =
     isUserLoading || isCreatingAccount || isSigningIn || isSubmitting;
 
-  // Update parent component loading state
   useEffect(() => {
     if (onLoadingChange) {
       onLoadingChange(isLoading);
     }
   }, [isLoading, onLoadingChange]);
 
-  // Clear terms error when user checks the box
   useEffect(() => {
     if (agreedToTerms) {
       setShowTermsError(false);
@@ -84,7 +78,6 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
   });
 
   async function onSubmit(values: z.infer<typeof SignupValidation>) {
-    // Only check if the checkbox is checked, no need to verify if they viewed the terms
     if (!agreedToTerms) {
       setShowTermsError(true);
       toast({
@@ -96,12 +89,12 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
     }
 
     try {
-      setIsSubmitting(true); // Start local loading
+      setIsSubmitting(true);
 
       const newUser = await createUserAccount(values);
 
       if (!newUser) {
-        setIsSubmitting(false); // Stop local loading
+        setIsSubmitting(false);
         return toast({
           title: 'Sign up failed',
           description: 'Please try again later.',
@@ -115,7 +108,7 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
       });
 
       if (!session) {
-        setIsSubmitting(false); // Stop local loading
+        setIsSubmitting(false);
         return toast({
           title: 'Sign in failed',
           description:
@@ -128,10 +121,9 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
 
       if (isLoggedIn) {
         form.reset();
-        // Don't stop loading since we're navigating away
         navigate('/home');
       } else {
-        setIsSubmitting(false); // Stop local loading
+        setIsSubmitting(false);
         toast({
           title: 'Authentication failed',
           description: 'Please try signing in manually.',
@@ -139,7 +131,7 @@ const SignupForm = ({ onLoadingChange }: SignupFormProps) => {
         });
       }
     } catch (error: any) {
-      setIsSubmitting(false); // Stop local loading
+      setIsSubmitting(false);
 
       toast({
         title: 'Sign up failed',

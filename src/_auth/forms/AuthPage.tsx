@@ -9,60 +9,52 @@ import Loader from '@/components/shared/Loader';
 // Testimonial data for carousel
 const testimonials = [
   {
-    quote: "Sharing moments has never been easier. Connect with friends and family in a space designed for authentic expression.",
-    author: "Marcus Chen",
-    title: "User Experience Lead",
-    subtitle: "Digital Nomad"
+    quote: "The platform's intuitive design makes sharing my creative journey seamless and engaging for my audience.",
+    author: "Rico Mendez",
+    title: "Content Creator",
+    subtitle: "Visual Storyteller"
   },
   {
     quote: "We move 10x faster than our peers and stay consistent. While they're bogged down with design debt, we're releasing new features.",
-    author: "Sophie Hall",
+    author: "Leona Miller",
     title: "Founder, Catalog",
     subtitle: "Web Design Agency"
   },
   {
-    quote: "The platform's intuitive design makes sharing my creative journey seamless and engaging for my audience.",
-    author: "Elena Rivera",
-    title: "Content Creator",
-    subtitle: "Visual Storyteller"
+    quote: "Sharing moments has never been easier. Connect with friends and family in a space designed for authentic expression.",
+    author: "Alex Torres",
+    title: "Vlogger",
+    subtitle: "Digital Nomad"
   }
 ];
 
 const AuthPage: React.FC = () => {
-  // Get current location and navigate function from React Router
   const location = useLocation();
 
-  // Determine if we're on the sign-in page based on the URL
   const [isSignIn, setIsSignIn] = useState(location.pathname === '/sign-in');
   const navigate = useNavigate();
 
-  // State for image carousel and loading UI
   const [currentImage, setCurrentImage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
-  // Update loading message based on current auth mode
   useEffect(() => {
     setLoadingMessage(isSignIn ? 'Signing in...' : 'Creating account...');
   }, [isSignIn]);
 
-  // Handler to switch between sign-in and sign-up forms
   const handleFormSwitch = (isSignInForm: boolean) => {
     setIsSignIn(isSignInForm);
     navigate(isSignInForm ? '/sign-in' : '/sign-up');
   };
 
-  // Navigate back to landing page
   const handleBackToLanding = () => {
     navigate('/');
   };
 
-  // Allow child components to update loading state
   const handleLoadingChange = (loading: boolean) => {
     setIsLoading(loading);
   };
 
-  // Handle carousel navigation
   const nextSlide = () => {
     setCurrentImage((prev) => (prev % 3) + 1);
   };

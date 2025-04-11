@@ -31,24 +31,19 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
   const { mutateAsync: signInAccount, isPending: isSigningIn } =
     useSignInAccount();
 
-  // State for managing form submission
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Add rate limiting state to prevent brute force attacks
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [attemptCount, setAttemptCount] = useState(0);
 
-  // Combine all loading states for UI feedback
   const isLoading = isUserLoading || isSigningIn || isSubmitting;
 
-  // Notify parent component of loading state changes
   useEffect(() => {
     if (onLoadingChange) {
       onLoadingChange(isLoading);
     }
   }, [isLoading, onLoadingChange]);
 
-  // Initialize form with validation schema
   const form = useForm<z.infer<typeof SigninValidation>>({
     resolver: zodResolver(SigninValidation),
     defaultValues: {
@@ -57,9 +52,7 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
     },
   });
 
-  // Form submission handler
   async function onSubmit(values: z.infer<typeof SigninValidation>) {
-    // Check if user is rate limited
     if (isRateLimited) {
       toast({
         title: 'Please wait',
@@ -69,7 +62,6 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
       return;
     }
 
-    // Track login attempts for rate limiting
     setAttemptCount((prev) => prev + 1);
     if (attemptCount >= 3) {
       setIsRateLimited(true);
@@ -86,9 +78,8 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
     }
 
     try {
-      setIsSubmitting(true); // Start loading indicator
+      setIsSubmitting(true);
 
-      // Attempt to sign in with provided credentials
       const session = await signInAccount({
         email: values.email,
         password: values.password,
@@ -103,12 +94,10 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
         });
       }
 
-      // Verify user authentication state
       const isLoggedIn = await checkAuthUser();
 
       if (isLoggedIn) {
         form.reset();
-        // Keep loading indicator on during navigation
         navigate('/home');
       } else {
         setIsSubmitting(false);
@@ -121,7 +110,6 @@ const SigninForm = ({ onLoadingChange }: SigninFormProps) => {
     } catch (error: any) {
       setIsSubmitting(false);
 
-      // Handle different types of authentication errors
       if (error.message?.includes('Rate limit')) {
         setIsRateLimited(true);
         setTimeout(() => {
