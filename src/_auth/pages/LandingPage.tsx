@@ -691,25 +691,12 @@ const LandingPage: React.FC = () => {
                   <div className="absolute inset-0 z-10 pointer-events-none">
                     {/* Notch */}
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1/3 h-6 bg-black rounded-b-xl"></div>
-
-                    {/* Status bar */}
-                    <div className="absolute top-0 inset-x-0 h-8 flex items-center justify-between px-6">
-                      <div className="text-xs text-white/80">12:00</div>
-                      <div className="flex items-center space-x-1">
-                        <div className="w-4 h-4">
-                        </div>
-                        <div className="w-4 h-4">
-                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                   {/* App Content */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-black via-black/95 to-black/90 overflow-hidden flex flex-col">
+                  <div className="absolute inset-0 bg-gradient-to-b from-black via-black/95 to-black/90 flex flex-col h-full">
                     {/* Status Bar */}
-                    <div className="absolute top-0 inset-x-0 h-8 flex items-center justify-between px-6">
+                    <div className="absolute top-0 inset-x-0 h-7 flex items-center justify-between px-6">
                       <div className="text-xs text-white/80">12:00</div>
                       <div className="flex items-center space-x-2">
                         {/* WiFi Icon */}
@@ -720,14 +707,14 @@ const LandingPage: React.FC = () => {
                     </div>
 
                     {/* App Header */}
-                    <div className="pt-10 px-4 flex-shrink-0">
+                    <div className="pt-9 px-4 flex-shrink-0">
                       <div className="flex justify-between items-center">
                         <div className="text-xl font-bold">HORIZON</div>
                         <div className="flex gap-4">
                           <div className="w-6 h-6">
                             <img
                               src="/assets/icons/liked.svg"
-                              alt="Heart"
+                              alt="Notification"
                               className="w-full h-full text-white/90"
                             />
                           </div>
@@ -741,8 +728,8 @@ const LandingPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Stories - smaller size to fit all without scrolling */}
-                      <div className="mt-4">
+                      {/* Stories */}
+                      <div className="mt-3">
                         <div className="flex justify-between">
                           {/* Your story */}
                           <div className="flex flex-col items-center">
@@ -777,14 +764,15 @@ const LandingPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Posts - with hidden scrollbar */}
-                    <div className="flex-grow overflow-y-auto scrollbar-hide border-t border-white/10">
-                      <div className="p-4">
+                    {/* Posts Section - Single post with expanded image */}
+                    <div className="border-t border-white/10 mt-3 flex-grow flex flex-col overflow-hidden">
+                      {/* Single Post */}
+                      <div className="p-3 flex flex-col h-full">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 overflow-hidden">
                             <img
                               src="/assets/avatars/avatar.jpg"
-                              alt="eco_daag"
+                              alt="eco_dev"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -801,7 +789,8 @@ const LandingPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="mt-2 aspect-square rounded-md bg-black/30 overflow-hidden flex items-center justify-center">
+                        {/* Post image - significantly larger to fill space */}
+                        <div className="mt-2 flex-grow rounded-md bg-black/30 overflow-hidden">
                           <img
                             src="/assets/images/post1.jpg"
                             alt="Post image"
@@ -809,6 +798,7 @@ const LandingPage: React.FC = () => {
                           />
                         </div>
 
+                        {/* Post interactions */}
                         <div className="mt-2">
                           <div className="flex justify-between items-center">
                             <div className="flex gap-3">
@@ -834,13 +824,13 @@ const LandingPage: React.FC = () => {
                               className="w-5 h-5 text-white/80"
                             />
                           </div>
-                          <div className="mt-1 text-sm font-medium">1,482 likes</div>
-                          <div className="mt-1 text-sm">
+                          <div className="mt-0.5 text-xs font-medium">1,482 likes</div>
+                          <div className="mt-0.5 text-xs">
                             <span className="font-medium">eco_dev</span>
                             <span className="text-white/80"> Exploring the beautiful streets of Tokyo #travel #japan</span>
                           </div>
-                          <div className="mt-1 text-xs text-white/60">View all 42 comments</div>
-                          <div className="mt-1 text-xs text-white/50">2 HOURS AGO</div>
+                          <div className="mt-0.5 text-xs text-white/60">View all 42 comments</div>
+                          <div className="mt-0.5 text-xs text-white/50">2 HOURS AGO</div>
                         </div>
                       </div>
                     </div>
