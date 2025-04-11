@@ -4,6 +4,7 @@ import { Loader, Hash, TrendingUp } from 'lucide-react';
 import FollowButton from './FollowButton';
 import { Models } from 'appwrite';
 import { ICreatorWithFollowers } from '@/types';
+import { useTheme } from '@/context/ThemeContext';
 
 const transformCreator = (doc: Models.Document): ICreatorWithFollowers => ({
   id: doc.$id,
@@ -53,20 +54,25 @@ const TrendingCard = ({
 }: {
   tag: string;
   postCount: number;
-}) => (
-  <div className='group flex items-center justify-between py-2 px-3 hover:bg-dark-3 transition-colors cursor-pointer rounded-lg'>
-    <div className='flex items-center gap-3 min-w-0'>
-      <div className='w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center flex-shrink-0'>
-        <Hash className='w-4 h-4 text-primary-500' />
+}) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <div className='group flex items-center justify-between py-2 px-3 hover:bg-dark-3 transition-colors cursor-pointer rounded-lg'>
+      <div className='flex items-center gap-3 min-w-0'>
+        <div className='w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-dark-4'>
+          <Hash className='w-4 h-4 text-primary-500' />
+        </div>
+        <div className='min-w-0'>
+          <p className='text-sm font-medium text-light-1 truncate'>#{tag}</p>
+          <p className='text-xs text-light-3'>{postCount} posts</p>
+        </div>
       </div>
-      <div className='min-w-0'>
-        <p className='text-sm font-medium text-light-1 truncate'>#{tag}</p>
-        <p className='text-xs text-light-3'>{postCount} posts</p>
-      </div>
+      <TrendingUp className='w-4 h-4 text-light-3 flex-shrink-0 group-hover:text-primary-500 transition-colors' />
     </div>
-    <TrendingUp className='w-4 h-4 text-light-3 flex-shrink-0' />
-  </div>
-);
+  );
+};
 
 const RightSidebar = () => {
   const { data: rawCreators = [], isLoading: isUserLoading } =

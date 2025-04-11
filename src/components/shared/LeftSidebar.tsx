@@ -8,12 +8,15 @@ import { sidebarLinks } from '@/constants';
 import { INavLink } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 const LeftSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useUserContext();
   const { totalUnreadMessages, totalUnreadNotifications } = useSocket();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const {
     mutate: signOut,
@@ -28,11 +31,11 @@ const LeftSidebar = () => {
   return (
     <nav className="leftsidebar bg-dark-2 border-r border-dark-4">
       <div className="flex flex-col h-screen py-8 px-4">
-        {/* Logo */}
+        {/* Logo - Changes based on theme */}
         <div className="mb-10">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/assets/images/logo.svg"
+              src={isDark ? "/assets/images/logo.svg" : "/assets/images/logo-dark.svg"}
               alt="Horizon"
               width={170}
               height={36}
@@ -65,6 +68,11 @@ const LeftSidebar = () => {
               const isMessages = link.route === '/messages';
               const isNotifications = link.route === '/notifications';
 
+              // Get the correct icon path based on theme
+              const iconPath = isDark
+                ? link.imgURL
+                : link.imgURL.replace('.svg', '-dark.svg');
+
               return (
                 <li key={link.label}>
                   <NavLink
@@ -76,7 +84,7 @@ const LeftSidebar = () => {
                   >
                     <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'text-light-1' : 'text-light-3'}`}>
                       <img
-                        src={link.imgURL}
+                        src={iconPath}
                         alt={link.label}
                         className={`w-5 h-5 ${isActive ? 'invert-white' : ''}`}
                       />
@@ -126,7 +134,7 @@ const LeftSidebar = () => {
           ) : (
             <>
               <img
-                src="/assets/icons/logout.svg"
+                src={isDark ? "/assets/icons/logout.svg" : "/assets/icons/logout-dark.svg"}
                 alt="logout"
                 className="w-5 h-5"
               />

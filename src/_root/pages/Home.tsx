@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { useUserContext } from '@/context/AuthContext';
 import FollowButton from '@/components/shared/FollowButton';
 import { multiFormatDateString } from '@/lib/utils';
+import ModeToggle from '@/components/shared/ModeToggle';
 
 const Home = () => {
   const { user } = useUserContext();
@@ -275,6 +276,7 @@ const Home = () => {
             {/* Header */}
             <div className='flex mb-6 gap-4 items-center justify-between'>
               <h2 className='text-xl font-bold text-light-1'>Home Feed</h2>
+              <ModeToggle />
             </div>
 
             {/* Main Content */}
