@@ -941,6 +941,130 @@ a {
   display: none;
 }
 
+/* Landing Page*/
+
+/* In globals.css */
+::-webkit-scrollbar {
+  width: 8px;
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optimized animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out forwards;
+}
+
+/* Simplified 3D effect */
+.card-3d {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.card-3d-content {
+  transition: transform 0.2s ease-out;
+  will-change: transform;
+}
+
+.card-3d:hover .card-3d-content {
+  transform: translateZ(20px);
+}
+
+/* Improved hover effects with hardware acceleration */
+.hover-glow:hover {
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+  transition: box-shadow 0.3s ease;
+  will-change: box-shadow;
+}
+
+/* Glass effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient borders */
+.gradient-border {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 2px;
+  background: linear-gradient(to right, #8b5cf6, #6366f1, #ec4899);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* 3D Card Float Animation */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.float-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Staggered Animation Delays */
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+
+/* Frosted Glass Effect */
+.frosted-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
 /* ===== COMPREHENSIVE LIGHT MODE IMPLEMENTATION ===== */
 
 /* === Base theme colors === */
@@ -1212,19 +1336,19 @@ a {
 .light img[src*='/assets/icons/save.svg'],
 .light img[src*='/assets/icons/share.svg'],
 .light img[src*='/assets/icons/posts.svg'] {
-  filter: brightness(0.2) !important; /* Makes icons dark in light mode */
+  filter: brightness(0.2) !important;
 }
 
 /* Keep colored icons as is */
 .light img[src*='/assets/icons/liked.svg'],
 .light img[src*='/assets/icons/saved.svg'] {
-  filter: none !important; /* Keep original colors for special icons */
+  filter: none !important;
 }
 
 /* Keep grid view icons white */
 .light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/'],
 .light .grid-post_user img[src*='/assets/icons/'] {
-  filter: brightness(1) invert(1) !important; /* Keep icons white in grid overlay */
+  filter: brightness(1) invert(1) !important;
 }
 
 /* === FORM ELEMENTS === */
@@ -1312,7 +1436,6 @@ a {
 }
 
 /* === HOVER STATES === */
-/* Standard hover states for non-sidebar elements */
 .light .hover\:bg-dark-3:hover,
 .light .hover\:bg-dark-4:hover,
 .light button:hover:not(.bg-primary-500):not(.leftsidebar button) {
@@ -1327,12 +1450,12 @@ a {
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='follow'] {
   border: 1px solid #dbdbdb !important;
-  background-color: #f0f0f5 !important; /* Light gray */
-  color: #262626 !important; /* Dark text */
+  background-color: #f0f0f5 !important;
+  color: #262626 !important;
   transition: all 300ms !important;
-  width: 2rem !important; /* w-8 */
-  height: 2rem !important; /* h-8 */
-  border-radius: 9999px !important; /* rounded-full */
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: 9999px !important;
 }
 
 /* Following state - Darker gray for contrast */
@@ -1341,12 +1464,12 @@ a {
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following'] {
   border: 1px solid #666666 !important;
-  background-color: #666666 !important; /* Darker gray */
-  color: #ffffff !important; /* White text */
+  background-color: #666666 !important;
+  color: #ffffff !important;
   transition: all 300ms !important;
-  width: 2rem !important; /* w-8 */
-  height: 2rem !important; /* h-8 */
-  border-radius: 9999px !important; /* rounded-full */
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: 9999px !important;
 }
 
 /* Hover state for Follow button */
@@ -1356,7 +1479,7 @@ a {
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='follow']:hover {
-  background-color: #e0e0e0 !important; /* Slightly darker on hover */
+  background-color: #e0e0e0 !important;
   color: #262626 !important;
   border-color: #cccccc !important;
 }
@@ -1368,15 +1491,15 @@ a {
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following']:hover {
-  background-color: #ffeeee !important; /* Light red background */
-  color: #ef4444 !important; /* Red text indicating warning/unfollow */
-  border-color: #ffcaca !important; /* Soft red border */
+  background-color: #ffeeee !important;
+  color: #ef4444 !important;
+  border-color: #ffcaca !important;
 }
 
 /* SVG icon styling */
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 button svg {
   pointer-events: none !important;
-  width: 1rem !important; /* size-4 */
+  width: 1rem !important;
   height: 1rem !important;
   flex-shrink: 0 !important;
 }
@@ -1390,7 +1513,7 @@ a {
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following']
   svg {
-  filter: brightness(1) invert(1) !important; /* Make icon white on gray bg */
+  filter: brightness(1) invert(1) !important;
 }
 
 /* Following hover state icons */
@@ -1402,7 +1525,7 @@ a {
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following']:hover
   svg {
-  filter: none !important; /* Return to normal on hover state */
+  filter: none !important;
 }
 
 /* Focus and disabled states */
