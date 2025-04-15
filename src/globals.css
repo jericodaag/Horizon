@@ -1065,9 +1065,7 @@ html {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-/* ===== COMPREHENSIVE LIGHT MODE IMPLEMENTATION ===== */
-
-/* === Base theme colors === */
+/* ===== LIGHT AND DARK THEME ===== */
 .light body {
   background-color: #ffffff;
   color: #262626;
@@ -1100,40 +1098,37 @@ html {
 }
 
 .light .border-dark-4 {
-  border-color: #dbdbdb;
+  border-color: #e0e0e0;
 }
 
-/* === LEFT SIDEBAR MATCHING RIGHT SIDEBAR === */
 .light .leftsidebar {
-  background-color: #fafafa !important;
-  border-right-color: #dbdbdb !important;
-  box-shadow: none !important;
+  background-color: #fafafa;
+  border-right-color: #dbdbdb;
+  box-shadow: none;
+  background-image: none;
 }
 
 .light .leftsidebar .text-light-3.text-xs.uppercase {
-  color: #555770 !important;
+  color: #555770;
   font-weight: 600;
 }
 
 .light .leftsidebar-link:not(.bg-primary-500) {
-  color: #3a3a3a !important;
+  color: #3a3a3a;
 }
-
 .light .leftsidebar-link:hover:not(.bg-primary-500) {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+  background-color: rgba(0, 0, 0, 0.05);
 }
-
 .light .leftsidebar-link.bg-primary-500 {
-  background-color: #877eff !important;
-  color: #ffffff !important;
+  background-color: #877eff;
+  color: #ffffff;
 }
 
 .light .leftsidebar-link img:not(.invert-white) {
-  filter: brightness(0.2) !important;
+  filter: brightness(0.2);
 }
-
 .light .leftsidebar-link.bg-primary-500 img {
-  filter: brightness(1) invert(1) !important;
+  filter: brightness(1) invert(1);
 }
 
 .light .leftsidebar button.w-full.py-3.px-3.rounded-xl {
@@ -1141,16 +1136,10 @@ html {
   border-color: #dbdbdb;
   color: #3a3a3a;
 }
-
 .light .leftsidebar button.w-full.py-3.px-3.rounded-xl:hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.light .leftsidebar {
-  background-image: none !important;
-}
-
-/* === RIGHT SIDEBAR & TOP/BOTTOM BARS === */
 .light aside.bg-dark-2 {
   background-color: #fafafa;
   border-left-color: #dbdbdb;
@@ -1163,45 +1152,46 @@ html {
 }
 
 .light .bottom-bar {
-  background-color: #ffffff !important;
+  background-color: #ffffff;
 }
-
 .light .bottom-bar .absolute.inset-0 {
-  background-color: #ffffff !important;
+  background-color: #ffffff;
   backdrop-filter: blur(8px);
   border-top-color: #dbdbdb;
 }
 
-/* === CARDS AND CONTAINERS === */
 .light .post-card,
 .light .bg-dark-2.rounded-2xl,
 .light .bg-dark-2.rounded-xl {
   background-color: #ffffff;
   border-color: #dbdbdb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease-in-out;
 }
 
 .light
   .bg-dark-2.rounded-xl.border.border-dark-4.overflow-hidden.hover\:shadow-lg,
 .light .bg-dark-2.rounded-xl.border.border-dark-4.overflow-hidden {
-  background-color: #ffffff !important;
-  border-color: #dbdbdb !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  background-color: #ffffff;
+  border-color: #dbdbdb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.light .post-card:hover,
+.light .bg-dark-2.rounded-xl.overflow-hidden.border.border-dark-4:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .light .hover\:shadow-primary-500\/5:hover {
-  box-shadow: 0 4px 12px rgba(135, 126, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(135, 126, 255, 0.1);
 }
 
-/* === GRID POST LIST FIXES === */
 .light .grid-post_link {
   border-color: #dbdbdb;
 }
-
 .light .grid-container li {
   z-index: 1;
 }
-
 .light .grid-container li:hover {
   z-index: 2;
 }
@@ -1209,150 +1199,67 @@ html {
 .light .absolute.inset-0.bg-gradient-to-t.from-black\/70.to-black\/40,
 .light
   .opacity-0.hover\:opacity-100.absolute.inset-0.bg-gradient-to-t.from-black\/70.to-black\/40 {
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.7),
-    rgba(0, 0, 0, 0.2)
-  ) !important;
-  z-index: 10 !important;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.2));
+  z-index: 10;
 }
 
 .light .grid-post_user {
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.7),
-    transparent
-  ) !important;
-  z-index: 20 !important;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  z-index: 20;
 }
 
-/* Keep text white in dark overlays */
 .light .grid-post_user .text-light-1,
 .light .grid-post_user .text-light-2,
 .light .grid-post_user .text-light-3,
 .light .grid-post_user .text-xs,
 .light .absolute.inset-0 .text-white {
-  color: #ffffff !important;
+  color: #ffffff;
 }
 
-/* Fix tag styling in grid posts */
 .light .text-xs.px-1\.5.py-0\.5.rounded-full.bg-dark-3 {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 .light .bg-primary-500.text-white {
-  background-color: #877eff !important;
-  color: #ffffff !important;
+  background-color: #877eff;
+  color: #ffffff;
 }
 
-/* Fix GridPostList hover transition */
 .light .h-full.w-full.object-cover.transition-all.hover\:scale-105 {
-  transition: transform 0.3s ease-in-out !important;
-  z-index: 5 !important;
+  transition: transform 0.3s ease-in-out;
+  z-index: 5;
 }
 
 .light .opacity-0.hover\:opacity-100.transition-opacity {
-  transition: opacity 0.2s ease-in-out !important;
-  z-index: 10 !important;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 10;
 }
 
-/* === ALL USERS FIXES === */
-/* Fix cover photo in user cards - IMPORTANT FIX */
 .light .h-24.bg-gradient-to-r.from-primary-500\/20.to-purple-500\/20 {
-  background: linear-gradient(to right, #f0e7ff, #f5f0ff) !important;
-  border-bottom: 1px solid #e8dfff !important;
+  background: linear-gradient(to right, #f0e7ff, #f5f0ff);
+  border-bottom: 1px solid #e8dfff;
 }
 
-/* Critical fix for actual cover photos */
 .light div[style*='background-image'] {
-  background-color: transparent !important;
-  background-blend-mode: normal !important;
+  background-color: transparent;
+  background-blend-mode: normal;
 }
 
-/* Fix for user stats badge */
 .light .absolute.top-2.right-3 .bg-dark-1\/70 {
-  background-color: rgba(255, 255, 255, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.8);
   border: 1px solid #dbdbdb;
 }
 
 .light .absolute.top-2.right-3 .text-light-2 {
-  color: #262626 !important;
+  color: #262626;
 }
 
-/* Fix profile image border */
 .light .border-4.border-dark-2 {
   border-color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* === TAB STYLING === */
-/* Tab containers */
-.light .TabsList,
-.light .bg-dark-3.p-1.rounded-full,
-.light .bg-dark-3.p-1.rounded-full.h-auto {
-  background-color: #f0f0f5 !important;
-  border: 1px solid #dbdbdb !important;
-}
-
-/* Inactive tabs */
-.light .TabsTrigger:not([data-state='active']),
-.light .rounded-full:not([data-state='active']) {
-  color: #555770 !important;
-}
-
-/* Only apply hover to inactive tabs */
-.light .TabsTrigger:not([data-state='active']):hover,
-.light .rounded-full:not([data-state='active']):hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
-}
-
-/* Don't apply hover to active tabs */
-.light .TabsTrigger[data-state='active']:hover,
-.light .rounded-full[data-state='active']:hover,
-.light .data-\[state\=active\]\:bg-primary-500:hover {
-  background-color: #ffffff !important;
-}
-
-/* Active tab styles */
-.light .TabsTrigger[data-state='active'],
-.light .rounded-full[data-state='active'],
-.light .data-\[state\=active\]\:bg-primary-500 {
-  background-color: #ffffff !important;
-  color: #262626 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* === POST STATS === */
-/* Fix text colors */
-.light .ml-1.text-sm.text-light-2,
-.light .text-sm.text-light-2.font-medium {
-  color: #3a3a3a !important;
-}
-
-/* Fix icon colors for regular view */
-.light img[src*='/assets/icons/like.svg'],
-.light img[src*='/assets/icons/comment.svg'],
-.light img[src*='/assets/icons/save.svg'],
-.light img[src*='/assets/icons/share.svg'],
-.light img[src*='/assets/icons/posts.svg'] {
-  filter: brightness(0.2) !important;
-}
-
-/* Keep colored icons as is */
-.light img[src*='/assets/icons/liked.svg'],
-.light img[src*='/assets/icons/saved.svg'] {
-  filter: none !important;
-}
-
-/* Keep grid view icons white */
-.light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/'],
-.light .grid-post_user img[src*='/assets/icons/'] {
-  filter: brightness(1) invert(1) !important;
-}
-
-/* === FORM ELEMENTS === */
-/* Input fields */
 .light input,
 .light textarea,
 .light .explore-search {
@@ -1367,8 +1274,6 @@ html {
   color: #8e8ea9;
 }
 
-/* === DROPDOWN FIXES === */
-/* Fix dropdown in AllUsers */
 .light .absolute.top-full.right-0.mt-1.w-36.bg-dark-2.border.border-dark-4 {
   background-color: #ffffff;
   border-color: #dbdbdb;
@@ -1378,13 +1283,10 @@ html {
 .light .w-full.text-left.px-3.py-2.hover\:bg-dark-3 {
   color: #262626;
 }
-
 .light .w-full.text-left.px-3.py-2.hover\:bg-dark-3:hover {
-  background-color: #f0f0f5 !important;
+  background-color: #f0f0f5;
 }
 
-/* === BUTTONS AND ACTIONS === */
-/* Fix button styling in cards */
 .light .flex-1.mr-2,
 .light .h-9.w-9.rounded-full.border-dark-4 {
   background-color: #f0f0f5;
@@ -1397,114 +1299,97 @@ html {
   background-color: #e8e8f0;
 }
 
-/* === ANIMATION FIXES === */
-/* Fix like animation */
 .light .absolute.inset-0.bg-primary-500.rounded-full {
-  background-color: rgba(135, 126, 255, 0.5) !important;
+  background-color: rgba(135, 126, 255, 0.5);
 }
 
-/* === EMPTY STATES === */
 .light
   .flex.flex-col.items-center.justify-center.py-12.px-4.bg-dark-2.rounded-xl.border.border-dark-4 {
-  background-color: #ffffff !important;
-  border-color: #dbdbdb !important;
+  background-color: #ffffff;
+  border-color: #dbdbdb;
 }
 
 .light .bg-dark-3.p-4.rounded-full.mb-4 {
-  background-color: #f0f0f5 !important;
+  background-color: #f0f0f5;
 }
-
-/* === SHIMMER LOADING STATES === */
 .light .bg-dark-3.animate-pulse {
-  background-color: #f0f0f5 !important;
+  background-color: #f0f0f5;
 }
 
-/* === NOTIFICATIONS === */
 .light
   .ml-auto.bg-primary-500.text-white.text-xs.font-medium.rounded-full.w-5.h-5.flex.items-center.justify-center {
-  background-color: #877eff !important;
-  color: #ffffff !important;
+  background-color: #877eff;
+  color: #ffffff;
 }
 
-/* === MODALS === */
 .light .fixed.inset-0.z-50.bg-dark-1\/80 {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(0, 0, 0, 0.6);
 }
-
 .light .absolute.inset-0.overflow-y-auto.p-4 {
-  background-color: #ffffff !important;
+  background-color: #ffffff;
 }
 
-/* === HOVER STATES === */
 .light .hover\:bg-dark-3:hover,
 .light .hover\:bg-dark-4:hover,
 .light button:hover:not(.bg-primary-500):not(.leftsidebar button) {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* === STANDARD FOLLOW/UNFOLLOW BUTTON STYLING === */
-
-/* Initial state (Follow) - Light gray background */
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 button.follow-button,
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='follow'] {
-  border: 1px solid #dbdbdb !important;
-  background-color: #f0f0f5 !important;
-  color: #262626 !important;
-  transition: all 300ms !important;
-  width: 2rem !important;
-  height: 2rem !important;
-  border-radius: 9999px !important;
+  border: 1px solid #dbdbdb;
+  background-color: #f0f0f5;
+  color: #262626;
+  transition: all 300ms;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
 }
 
-/* Following state - Darker gray for contrast */
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 button.following-button,
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following'] {
-  border: 1px solid #666666 !important;
-  background-color: #666666 !important;
-  color: #ffffff !important;
-  transition: all 300ms !important;
-  width: 2rem !important;
-  height: 2rem !important;
-  border-radius: 9999px !important;
+  border: 1px solid #666666;
+  background-color: #666666;
+  color: #ffffff;
+  transition: all 300ms;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
 }
 
-/* Hover state for Follow button */
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button.follow-button:hover,
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='follow']:hover {
-  background-color: #e0e0e0 !important;
-  color: #262626 !important;
-  border-color: #cccccc !important;
+  background-color: #e0e0e0;
+  color: #262626;
+  border-color: #cccccc;
 }
 
-/* Hover state for Following button - Red warning for unfollow */
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button.following-button:hover,
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following']:hover {
-  background-color: #ffeeee !important;
-  color: #ef4444 !important;
-  border-color: #ffcaca !important;
+  background-color: #ffeeee;
+  color: #ef4444;
+  border-color: #ffcaca;
 }
 
-/* SVG icon styling */
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 button svg {
-  pointer-events: none !important;
-  width: 1rem !important;
-  height: 1rem !important;
-  flex-shrink: 0 !important;
+  pointer-events: none;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
-/* Following state icons - ensure visibility on dark gray background */
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button.following-button
@@ -1513,10 +1398,9 @@ html {
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following']
   svg {
-  filter: brightness(1) invert(1) !important;
+  filter: brightness(1) invert(1);
 }
 
-/* Following hover state icons */
 .light
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button.following-button:hover
@@ -1525,23 +1409,340 @@ html {
   .bg-dark-2.rounded-2xl.p-4.border.border-dark-4
   button[data-state='following']:hover
   svg {
-  filter: none !important;
+  filter: none;
 }
 
-/* Focus and disabled states */
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 button:focus-visible {
-  outline: none !important;
-  ring: 2px !important;
-  ring-offset: 2px !important;
+  outline: none;
+  ring: 2px;
+  ring-offset: 2px;
 }
 
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 button:disabled {
-  pointer-events: none !important;
-  opacity: 0.5 !important;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
-/* Container background and border in light mode */
 .light .bg-dark-2.rounded-2xl.p-4.border.border-dark-4 {
-  background-color: #ffffff !important;
-  border-color: #dbdbdb !important;
+  background-color: #ffffff;
+  border-color: #dbdbdb;
+}
+
+.light button svg.lucide-user-plus {
+  color: white;
+}
+.light button:hover svg.lucide-user-check {
+  color: #ef4444;
+}
+.light .text-light-3.text-sm.hover\:text-light-2:hover {
+  color: #3a3a3a;
+}
+
+.light .leftsidebar-link.bg-primary-500,
+.light a.bg-primary-500,
+.light li a.bg-primary-500 {
+  color: white;
+  background-color: #877eff;
+  box-shadow: 0 2px 5px rgba(135, 126, 255, 0.3);
+}
+
+.light .leftsidebar ul li a:hover:not([class*='bg-primary-500']) {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #262626;
+}
+
+.light .leftsidebar ul li a.hover\:bg-dark-3:hover {
+  color: #262626;
+}
+
+.light .leftsidebar ul li a[class*='bg-primary-500'] {
+  color: white;
+  background-color: #877eff;
+}
+
+.light .leftsidebar ul li a[class*='bg-primary-500']:hover {
+  color: white;
+}
+
+.light .leftsidebar ul li a:not([class*='bg-primary-500']) div img {
+  filter: brightness(0.2);
+}
+.light .leftsidebar ul li a[class*='bg-primary-500'] div img {
+  filter: brightness(1) invert(1);
+}
+
+.light .h-14.w-14.rounded-full,
+.light a img[alt='Horizon'],
+.light a img[alt='profile'],
+.light img.rounded-full.object-cover,
+.light .flex.gap-3.items-center img {
+  filter: none;
+}
+
+.light .text-light-text-1 {
+  color: #262626;
+}
+
+.light .text-primary-500.text-xs.px-2.py-1.rounded-full.bg-primary-500\/10 {
+  background-color: rgba(135, 126, 255, 0.15);
+  color: #6b5fdb;
+}
+
+.light
+  .text-primary-500.text-xs.px-2.py-1.rounded-full.bg-primary-500\/10:hover {
+  background-color: rgba(135, 126, 255, 0.25);
+}
+
+.light .leftsidebar .mb-10 a:hover,
+.light .leftsidebar .flex.gap-3.items-center.mb-8:hover {
+  background-color: transparent !important;
+}
+
+.light .leftsidebar ul li a[class*='bg-primary-500']:hover {
+  background-color: #877eff !important;
+}
+
+.light .leftsidebar ul li a:hover:not([class*='bg-primary-500']) {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .leftsidebar button.w-full.py-3.px-3.rounded-xl:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .leftsidebar ul li a[class*='bg-primary-500'] div img,
+.light .leftsidebar ul li a[class*='bg-primary-500'] img {
+  filter: brightness(0) invert(1) !important;
+}
+
+.light .leftsidebar ul li a:not([class*='bg-primary-500']) div img,
+.light .leftsidebar ul li a:not([class*='bg-primary-500']) img {
+  filter: brightness(0.2) !important;
+}
+
+.light .leftsidebar button img {
+  filter: brightness(0.2) !important;
+}
+
+.light .leftsidebar > div > a img,
+.light .leftsidebar .mb-10 a img,
+.light .leftsidebar .flex.gap-3.items-center.mb-8 img,
+.light .leftsidebar a[href^='/profile/'] img.h-14.w-14 {
+  filter: none !important;
+}
+
+.light .px-4.py-2.rounded-full.text-sm.font-medium.bg-dark-3:hover {
+  color: #6b5fdb !important;
+  background-color: rgba(135, 126, 255, 0.1) !important;
+}
+
+.light .px-4.py-2.rounded-full.text-sm.font-medium.bg-primary-500 {
+  background-color: #877eff !important;
+  color: white !important;
+}
+
+.light
+  .mt-6.bg-primary-500.hover\:bg-primary-600.text-white.px-6.py-2.rounded-full:hover {
+  background-color: #7a70ff !important;
+  color: white !important;
+}
+
+.light
+  .mt-6.bg-primary-500.hover\:bg-primary-600.text-white.px-6.py-2.rounded-full {
+  background-color: #877eff !important;
+  color: white !important;
+}
+
+.light
+  .flex.items-center.gap-1.text-light-3.hover\:text-light-2.text-sm.transition.bg-dark-3.px-3.py-1\.5.rounded-full:hover {
+  background-color: #e0e0e0 !important;
+  color: #262626 !important;
+}
+
+.light .hover\:bg-dark-3:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .text-light-4.hover\:text-light-1:hover {
+  color: #ef4444 !important;
+  background-color: transparent !important;
+}
+
+.light button.absolute.right-3.top-3.text-light-4.hover\:text-light-1:hover {
+  background-color: transparent !important;
+}
+
+.light
+  button.absolute.right-3.top-3.text-light-4.hover\:text-light-1:hover
+  svg {
+  color: #ef4444 !important;
+}
+
+.light .w-2.h-2.bg-primary-500.rounded-full {
+  background-color: #877eff !important;
+}
+
+.light
+  .mt-4.bg-primary-500.hover\:bg-primary-600.px-5.py-2.rounded-lg.text-light-1:hover {
+  background-color: #7a70ff !important;
+}
+
+.light .mt-2.rounded-lg.overflow-hidden.w-12.h-12 {
+  border: 1px solid #e0e0e0 !important;
+}
+
+.light [role='tablist'] {
+  background-color: #f0f0f5 !important;
+  border: 1px solid #dbdbdb !important;
+}
+
+.light [role='tab'] {
+  color: #555770 !important;
+  background-color: transparent !important;
+}
+
+.light [role='tab']:hover:not([data-state='active']) {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  color: #555770 !important;
+}
+
+.light [role='tab'][data-state='active'] {
+  background-color: #877eff !important;
+  color: white !important;
+  box-shadow: 0 2px 4px rgba(135, 126, 255, 0.3) !important;
+}
+
+.light [role='tab'][data-state='active']:hover {
+  background-color: #877eff !important;
+  color: white !important;
+}
+
+.light [role='tab'][data-state='active'] svg {
+  color: white !important;
+}
+
+.light
+  button.flex.items-center.justify-center.w-10.h-10.rounded-full.transition-colors.hover\:bg-primary-500\/20 {
+  color: #262626;
+  background-color: transparent;
+}
+
+.light
+  button.flex.items-center.justify-center.w-10.h-10.rounded-full.transition-colors.hover\:bg-primary-500\/20:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.light
+  button.flex.items-center.justify-center.w-10.h-10.rounded-full.transition-colors.hover\:bg-primary-500\/20
+  svg {
+  color: #262626 !important;
+}
+
+.light .grid-post_link {
+  border: 1px solid #e0e0e0 !important;
+  overflow: hidden !important;
+}
+
+.light .grid-post_link img.object-cover.transition-all.hover\:scale-105 {
+  transform-origin: center !important;
+  transition: transform 0.3s ease-out !important;
+}
+
+.light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/like.svg'],
+.light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/comment.svg'],
+.light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/save.svg'] {
+  filter: brightness(0) invert(1) !important;
+}
+
+.light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/liked.svg'],
+.light .opacity-0.hover\:opacity-100 img[src*='/assets/icons/saved.svg'] {
+  filter: none !important;
+}
+
+.light .flex.items-center.gap-4 img[src*='/assets/icons/like.svg'],
+.light .flex.items-center.gap-4 img[src*='/assets/icons/comment.svg'],
+.light .flex.items-center.gap-4 img[src*='/assets/icons/save.svg'],
+.light .flex.items-center.gap-4 img[src*='/assets/icons/share.svg'] {
+  filter: brightness(0.2) !important;
+}
+
+.light .ml-1.text-sm.text-light-2 {
+  color: #3a3a3a !important;
+}
+.light .text-sm.text-light-2.font-medium {
+  color: #3a3a3a !important;
+}
+
+.light button.text-xs.px-3.py-1.h-8.bg-primary-500.text-white {
+  color: white !important;
+}
+
+.light
+  button.text-xs.px-3.py-1.h-8.bg-dark-3.text-light-3.hover\:text-light-1:hover {
+  background-color: rgba(135, 126, 255, 0.1) !important;
+  color: #6b5fdb !important;
+}
+
+.light .ring-offset-dark-2 {
+  --tw-ring-offset-color: #ffffff !important;
+}
+
+.light .ring-dark-4 {
+  --tw-ring-color: #e0e0e0 !important;
+}
+
+.light
+  button.flex.items-center.gap-2.bg-primary-500.hover\:bg-primary-600.text-light-1.py-2.px-6.rounded-lg,
+.light
+  button.bg-primary-500.hover\:bg-primary-600.text-light-1.py-2.px-6.rounded-lg {
+  color: white !important;
+}
+
+.light button.bg-primary-500,
+.light .bg-primary-500 {
+  color: white !important;
+}
+
+.light .common-container h2.h3-bold.md\:h2-bold {
+  color: #262626 !important;
+}
+
+.light .create-post-container button,
+.light .common-container button.shad-button_primary {
+  color: white !important;
+}
+
+.light .create-post-container h2,
+.light .create-post-container p,
+.light .create-post-container span {
+  color: #262626 !important;
+}
+
+.light span.cursor-pointer.text-primary-500.small-semibold {
+  color: #6b5fdb !important;
+}
+
+.light span.cursor-pointer.text-primary-500.small-semibold:hover {
+  text-decoration: underline;
+}
+
+.light .tips-container,
+.light .tips-container p,
+.light .tips-container li,
+.light .tips-container h3 {
+  color: #262626 !important;
+}
+
+.light .text-light-1.shad-form_label {
+  color: #262626 !important;
+}
+
+.light button.cancel-button {
+  background-color: #f0f0f5 !important;
+  color: #555770 !important;
+  border: 1px solid #dbdbdb !important;
+}
+
+.light button.cancel-button:hover {
+  background-color: #e8e8f0 !important;
 }
