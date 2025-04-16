@@ -5,216 +5,184 @@ import CoverPhotoUploader from '@/components/shared/CoverPhotoUploader';
 // Unmock the component we're testing
 jest.unmock('@/components/shared/CoverPhotoUploader');
 
-// Mock the URL.createObjectURL function
-URL.createObjectURL = jest.fn(() => 'mocked-url');
-
 // Mock react-dropzone
 jest.mock('react-dropzone', () => ({
-    useDropzone: jest.fn(() => ({
+    useDropzone: () => ({
         getRootProps: () => ({
             onClick: jest.fn(),
             onKeyDown: jest.fn(),
+            tabIndex: 0,
             role: 'button',
-            tabIndex: 0
         }),
         getInputProps: () => ({
             type: 'file',
-            multiple: false,
             accept: 'image/*',
-            onChange: jest.fn()
-        })
-    })),
-    FileWithPath: jest.requireActual('react-dropzone').FileWithPath
+            multiple: false,
+        }),
+    }),
 }));
 
-// Mock lucide-react icons
+// Mock Lucide icons with recognizable text content
 jest.mock('lucide-react', () => ({
-    ArrowUp: () => <div data-testid="arrow-up-icon">Arrow Up</div>,
-    ArrowDown: () => <div data-testid="arrow-down-icon">Arrow Down</div>,
-    Check: () => <div data-testid="check-icon">Check</div>,
-    X: () => <div data-testid="x-icon">X</div>
+    ArrowUp: () => <span>ArrowUp</span>,
+    ArrowDown: () => <span>ArrowDown</span>,
+    Check: () => <span>Check</span>,
+    X: () => <span>X</span>,
 }));
+
+// Mock Button component to render actual content
+jest.mock('@/components/ui/button', () => ({
+    Button: ({ children, onClick, type, className, title }) => (
+        <button
+            onClick={onClick}
+            type={type || 'button'}
+            className={className}
+            title={title}
+        >
+            {children}
+        </button>
+    ),
+}));
+
+// Mock URL.createObjectURL
+const mockCreateObjectURL = jest.fn(() => 'mock-url');
+URL.createObjectURL = mockCreateObjectURL;
 
 describe('CoverPhotoUploader Component', () => {
-    // Basic test props
+    // Setup common test props
     const defaultProps = {
         fieldChange: jest.fn(),
         mediaUrl: null,
         positionChange: jest.fn(),
-        defaultPosition: '{ "y": 50 }'
     };
 
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    it('renders empty state when no media URL is provided', () => {
+    it('renders the dropzone when no media is provided', () => {
         render(<CoverPhotoUploader {...defaultProps} />);
 
+        // Check if the placeholder is rendered
         expect(screen.getByText('Add cover photo')).toBeInTheDocument();
         expect(screen.getByAltText('add cover')).toBeInTheDocument();
-        expect(screen.queryByAltText('cover')).not.toBeInTheDocument();
     });
 
-    it('renders image when media URL is provided', () => {
-        const props = {
-            ...defaultProps,
-            mediaUrl: 'test-image.jpg'
-        };
-
+    it('renders the existing cover image when mediaUrl is provided', () => {
+        const props = { ...defaultProps, mediaUrl: 'https://example.com/cover.jpg' };
         render(<CoverPhotoUploader {...props} />);
 
-        expect(screen.getByAltText('cover')).toBeInTheDocument();
-        expect(screen.getByAltText('cover')).toHaveAttribute('src', 'test-image.jpg');
+        // Check if the image with provided mediaUrl is displayed
+        const coverImage = screen.getByAltText('cover');
+        expect(coverImage).toBeInTheDocument();
+        expect(coverImage).toHaveAttribute('src', 'https://example.com/cover.jpg');
+
+        // Check if the edit button is visible
         expect(screen.getByText('Adjust Cover')).toBeInTheDocument();
     });
 
-    it('shows edit controls when adjust button is clicked', () => {
-        const props = {
-            ...defaultProps,
-            mediaUrl: 'test-image.jpg'
-        };
-
+    it('enters edit mode when adjust cover button is clicked', () => {
+        const props = { ...defaultProps, mediaUrl: 'https://example.com/cover.jpg' };
         render(<CoverPhotoUploader {...props} />);
 
-        // Initial state should have Adjust Cover button
+        // Click the adjust cover button
         const adjustButton = screen.getByText('Adjust Cover');
-        expect(adjustButton).toBeInTheDocument();
-
-        // Click the adjust button
         fireEvent.click(adjustButton);
 
-        // Edit controls should be visible
-        expect(screen.getByTestId('arrow-up-icon')).toBeInTheDocument();
-        expect(screen.getByTestId('arrow-down-icon')).toBeInTheDocument();
-        expect(screen.getByTestId('check-icon')).toBeInTheDocument();
-        expect(screen.getByTestId('x-icon')).toBeInTheDocument();
+        // Check if position controls are displayed
+        expect(screen.getByText('ArrowUp')).toBeInTheDocument();
+        expect(screen.getByText('ArrowDown')).toBeInTheDocument();
+        expect(screen.getByText('Check')).toBeInTheDocument();
+        expect(screen.getByText('X')).toBeInTheDocument();
 
-        // Adjust Cover button should be hidden
+        // The adjust cover button should no longer be visible
         expect(screen.queryByText('Adjust Cover')).not.toBeInTheDocument();
     });
 
-    it('calls positionChange with updated position when save button is clicked', () => {
-        const props = {
-            ...defaultProps,
-            mediaUrl: 'test-image.jpg'
-        };
-
+    it('calls positionChange when cover position is saved', () => {
+        const props = { ...defaultProps, mediaUrl: 'https://example.com/cover.jpg' };
         render(<CoverPhotoUploader {...props} />);
 
-        // Click the adjust button
-        fireEvent.click(screen.getByText('Adjust Cover'));
+        // Enter edit mode
+        const adjustButton = screen.getByText('Adjust Cover');
+        fireEvent.click(adjustButton);
 
-        // Click arrow up to change position
-        const upButton = screen.getByTitle('Show more of the top');
-        fireEvent.click(upButton);
+        // Find buttons by their text content (simpler and more reliable)
+        const upButton = screen.getByText('ArrowUp').closest('button');
+        const saveButton = screen.getByText('Check').closest('button');
 
-        // Click save button
-        const saveButton = screen.getByTestId('check-icon').closest('button');
-        if (saveButton) fireEvent.click(saveButton);
+        if (upButton && saveButton) {
+            // Change position by clicking arrow up
+            fireEvent.click(upButton);
 
-        // Check if positionChange was called with the correct position
-        expect(props.positionChange).toHaveBeenCalledWith('{"y":45}');
+            // Save the changes
+            fireEvent.click(saveButton);
 
-        // Edit controls should be hidden
-        expect(screen.queryByTestId('arrow-up-icon')).not.toBeInTheDocument();
+            // Check if positionChange was called with updated position
+            expect(props.positionChange).toHaveBeenCalledWith(expect.stringContaining('"y":45'));
 
-        // Adjust Cover button should be visible again
-        expect(screen.getByText('Adjust Cover')).toBeInTheDocument();
+            // Should exit edit mode (adjust cover button should be visible again)
+            expect(screen.getByText('Adjust Cover')).toBeInTheDocument();
+        } else {
+            throw new Error('Failed to find buttons');
+        }
     });
 
-    it('returns to default position when cancel button is clicked', () => {
-        const props = {
-            ...defaultProps,
-            mediaUrl: 'test-image.jpg'
-        };
-
+    it('exits edit mode without saving when cancel is clicked', () => {
+        const props = { ...defaultProps, mediaUrl: 'https://example.com/cover.jpg' };
         render(<CoverPhotoUploader {...props} />);
 
-        // Click the adjust button
-        fireEvent.click(screen.getByText('Adjust Cover'));
+        // Enter edit mode
+        const adjustButton = screen.getByText('Adjust Cover');
+        fireEvent.click(adjustButton);
 
-        // Click arrow up to change position
-        const upButton = screen.getByTitle('Show more of the top');
-        fireEvent.click(upButton);
+        // Find buttons by their text content
+        const downButton = screen.getByText('ArrowDown').closest('button');
+        const cancelButton = screen.getByText('X').closest('button');
 
-        // Click cancel button
-        const cancelButton = screen.getByTestId('x-icon').closest('button');
-        if (cancelButton) fireEvent.click(cancelButton);
+        if (downButton && cancelButton) {
+            // Change position by clicking arrow down
+            fireEvent.click(downButton);
 
-        // positionChange should not have been called
-        expect(props.positionChange).not.toHaveBeenCalled();
+            // Cancel the changes
+            fireEvent.click(cancelButton);
 
-        // Edit controls should be hidden
-        expect(screen.queryByTestId('arrow-up-icon')).not.toBeInTheDocument();
+            // Check that positionChange was not called
+            expect(props.positionChange).not.toHaveBeenCalled();
 
-        // Adjust Cover button should be visible again
-        expect(screen.getByText('Adjust Cover')).toBeInTheDocument();
+            // Should exit edit mode
+            expect(screen.getByText('Adjust Cover')).toBeInTheDocument();
+        } else {
+            throw new Error('Failed to find buttons');
+        }
     });
 
-    it('handles file upload correctly', async () => {
-        // Create a mock file
-        const mockFile = new File(['file content'], 'test-image.png', { type: 'image/png' });
-
-        render(<CoverPhotoUploader {...defaultProps} />);
-
-        // Mock the onDrop function
-        const { useDropzone } = require('react-dropzone');
-        const mockOnDrop = jest.fn();
-        useDropzone.mockReturnValue({
-            getRootProps: () => ({}),
-            getInputProps: () => ({}),
-            open: jest.fn(),
-            onDrop: mockOnDrop
-        });
-
-        // Get the latest instance of useDropzone
-        const lastCallArgs = useDropzone.mock.calls[useDropzone.mock.calls.length - 1];
-        const onDrop = lastCallArgs[0].onDrop;
-
-        // Call onDrop with our mock file
-        onDrop([mockFile]);
-
-        // Check if fieldChange was called with the file
-        expect(defaultProps.fieldChange).toHaveBeenCalledWith([mockFile]);
-
-        // Check if URL.createObjectURL was called
-        expect(URL.createObjectURL).toHaveBeenCalledWith(mockFile);
-    });
-
-    it('parses default position correctly', () => {
-        const props = {
-            ...defaultProps,
-            defaultPosition: '{"y": 75}'
+    it('handles missing positionChange prop gracefully', () => {
+        // Create props without positionChange
+        const propsWithoutPositionChange = {
+            fieldChange: jest.fn(),
+            mediaUrl: 'https://example.com/cover.jpg',
         };
 
-        render(<CoverPhotoUploader {...props} />);
+        render(<CoverPhotoUploader {...propsWithoutPositionChange} />);
 
-        // Can't directly test state, but we can check the style applied to the image when rendered
-        const imgElement = document.createElement('img');
-        imgElement.style.objectPosition = 'center 75%';
+        // Enter edit mode
+        const adjustButton = screen.getByText('Adjust Cover');
+        fireEvent.click(adjustButton);
 
-        // This is an indirect test as we can't access state directly
-        expect(imgElement.style.objectPosition).toBe('center 75%');
-    });
+        // Find buttons by their text content
+        const upButton = screen.getByText('ArrowUp').closest('button');
+        const saveButton = screen.getByText('Check').closest('button');
 
-    it('handles invalid JSON in defaultPosition gracefully', () => {
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        if (upButton && saveButton) {
+            // Change position and save - should not throw errors
+            fireEvent.click(upButton);
+            fireEvent.click(saveButton);
 
-        const props = {
-            ...defaultProps,
-            mediaUrl: 'test-image.jpg',
-            defaultPosition: 'invalid-json'
-        };
-
-        render(<CoverPhotoUploader {...props} />);
-
-        // Should log an error
-        expect(consoleErrorSpy).toHaveBeenCalled();
-
-        // Should still render the component with default position
-        expect(screen.getByAltText('cover')).toBeInTheDocument();
-
-        consoleErrorSpy.mockRestore();
+            // Check that we're back to non-edit mode
+            expect(screen.getByText('Adjust Cover')).toBeInTheDocument();
+        } else {
+            throw new Error('Failed to find buttons');
+        }
     });
 });

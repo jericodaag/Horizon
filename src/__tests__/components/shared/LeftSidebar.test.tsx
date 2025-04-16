@@ -1,184 +1,298 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import LeftSidebar from '@/components/shared/LeftSidebar';
+import { useUserContext } from '@/context/AuthContext';
+import { useSignOutAccount } from '@/lib/react-query/queries';
+import { useSocket } from '@/context/SocketContext';
+import { useTheme } from '@/context/ThemeContext';
 
 // Unmock the component we're testing
 jest.unmock('@/components/shared/LeftSidebar');
 
-// Mock necessary dependencies
+// Mock react-router-dom
 jest.mock('react-router-dom', () => ({
-  Link: ({ children, to, className }) => (
-    <a href={to} className={className} data-testid={`link-to-${to}`}>
-      {children}
-    </a>
-  ),
-  NavLink: ({ children, to, className }) => (
-    <a href={to} className={className} data-testid={`navlink-to-${to}`}>
-      {children}
-    </a>
-  ),
-  useLocation: () => ({
-    pathname: '/explore',
-  }),
+  Link: ({ children, to, className }) => {
+    // Convert to string to handle all types of paths
+    const toStr = String(to);
+    return (
+      <a href={toStr} className={className}>
+        {children}
+      </a>
+    );
+  },
+  NavLink: ({ children, to, className }) => {
+    // Call className function if it's a function to simulate active state
+    const resolvedClassName = typeof className === 'function'
+      ? className({ isActive: to === '/explore' })
+      : className;
+
+    return (
+      <a
+        href={to}
+        className={resolvedClassName}
+      >
+        {children}
+      </a>
+    );
+  },
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/explore' }),
 }));
 
-// Mock constants
+// Mock dependencies
+jest.mock('@/context/AuthContext', () => ({
+  useUserContext: jest.fn(),
+}));
+
+jest.mock('@/lib/react-query/queries', () => ({
+  useSignOutAccount: jest.fn(),
+}));
+
+jest.mock('@/context/SocketContext', () => ({
+  useSocket: jest.fn(),
+}));
+
+jest.mock('@/context/ThemeContext', () => ({
+  useTheme: jest.fn(),
+}));
+
+// Mock Button component
+jest.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, disabled, variant, className }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      data-variant={variant}
+      className={className}
+      data-testid="logout-button"
+    >
+      {children}
+    </button>
+  ),
+}));
+
+// Mock Lucide icons
+jest.mock('lucide-react', () => ({
+  Loader2: () => <div data-testid="loader-icon">Loading...</div>,
+}));
+
+// Mock framer-motion
+jest.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, className }) => (
+      <div className={className} data-testid="notification-badge">
+        {children}
+      </div>
+    ),
+  },
+}));
+
+// Define constant for sidebar links to use in tests if needed
 jest.mock('@/constants', () => ({
   sidebarLinks: [
-    { label: 'Home', route: '/', imgURL: '/assets/icons/home.svg' },
-    {
-      label: 'Explore',
-      route: '/explore',
-      imgURL: '/assets/icons/explore.svg',
-    },
-    { label: 'People', route: '/people', imgURL: '/assets/icons/people.svg' },
-    { label: 'Saved', route: '/saved', imgURL: '/assets/icons/saved.svg' },
-    {
-      label: 'Create Post',
-      route: '/create-post',
-      imgURL: '/assets/icons/create.svg',
-    },
+    { imgURL: '/assets/icons/home.svg', route: '/home', label: 'Home' },
+    { imgURL: '/assets/icons/notification.svg', route: '/notifications', label: 'Notifications' },
+    { imgURL: '/assets/icons/wallpaper.svg', route: '/explore', label: 'Explore' },
+    { imgURL: '/assets/icons/people.svg', route: '/all-users', label: 'People' },
+    { imgURL: '/assets/icons/bookmark.svg', route: '/saved', label: 'Saved' },
+    { imgURL: '/assets/icons/message.svg', route: '/messages', label: 'Messages' },
+    { imgURL: '/assets/icons/gallery-add.svg', route: '/create-post', label: 'Create Post' }
   ],
 }));
 
-// Mock AuthContext
-jest.mock('@/context/AuthContext', () => ({
-  useUserContext: () => ({
-    user: {
-      id: 'user123',
-      name: 'Test User',
-      username: 'testuser',
-      imageUrl: '/assets/icons/profile-placeholder.svg',
-    },
-  }),
-}));
-
-// Mock React Query
-jest.mock('@/lib/react-query/queries', () => ({
-  useSignOutAccount: () => ({
-    mutate: jest.fn(),
-    isSuccess: false,
-    isPending: false,
-  }),
-}));
-
-// Mock lucide-react icons
-jest.mock('lucide-react', () => ({
-  Loader2: () => <div data-testid='loader-icon'>Loading Icon</div>,
-}));
-
 describe('LeftSidebar Component', () => {
-  it('renders logo, profile, and navigation links', () => {
-    render(<LeftSidebar />);
+  // Common test data
+  const mockUser = {
+    id: 'user-123',
+    name: 'Test User',
+    username: 'testuser',
+    imageUrl: '/test-user.jpg',
+  };
 
-    // Check if logo is rendered
-    expect(screen.getByAltText('logo')).toBeInTheDocument();
+  // Mock implementations
+  const mockSignOut = jest.fn();
 
-    // Check if profile is rendered
-    expect(screen.getByText('Test User')).toBeInTheDocument();
-    expect(screen.getByText('@testuser')).toBeInTheDocument();
+  // Setup before each test
+  beforeEach(() => {
+    jest.clearAllMocks();
 
-    // Check if all navigation links are rendered
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Explore')).toBeInTheDocument();
-    expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByText('Saved')).toBeInTheDocument();
-    expect(screen.getByText('Create Post')).toBeInTheDocument();
-
-    // Check if logout button is rendered
-    expect(screen.getByText('Logout')).toBeInTheDocument();
+    // Setup default mocks
+    (useUserContext as jest.Mock).mockReturnValue({ user: mockUser });
+    (useSignOutAccount as jest.Mock).mockReturnValue({
+      mutate: mockSignOut,
+      isSuccess: false,
+      isPending: false,
+    });
+    (useSocket as jest.Mock).mockReturnValue({
+      totalUnreadMessages: 0,
+      totalUnreadNotifications: 0
+    });
+    (useTheme as jest.Mock).mockReturnValue({ theme: 'dark' });
   });
 
-  it('highlights the active navigation link', () => {
+  it('renders user profile information correctly', () => {
     render(<LeftSidebar />);
 
-    // Get all sidebar links
-    const sidebarItems = screen.getAllByRole('listitem');
+    // Check user profile section
+    expect(screen.getByText(mockUser.name)).toBeInTheDocument();
+    expect(screen.getByText(`@${mockUser.username}`)).toBeInTheDocument();
 
-    // Find the Explore item (index 1) which should be active based on our mock
-    const exploreItem = sidebarItems.find((item) =>
-      item.textContent?.includes('Explore')
+    // Check profile image
+    const profileImg = screen.getByAltText('profile');
+    expect(profileImg).toBeInTheDocument();
+    expect(profileImg).toHaveAttribute('src', mockUser.imageUrl);
+
+    // Check profile link exists (without using testId)
+    const profileLinks = screen.getAllByRole('link');
+    const profileLink = profileLinks.find(link =>
+      link.getAttribute('href')?.includes(`/profile/${mockUser.id}`)
     );
-    expect(exploreItem).toHaveClass('bg-primary-500');
-
-    // Find a non-active item (Home) and check it doesn't have the active class
-    const homeItem = sidebarItems.find((item) =>
-      item.textContent?.includes('Home')
-    );
-    expect(homeItem).not.toHaveClass('bg-primary-500');
-  });
-
-  it('applies invert-white class to active link icon', () => {
-    render(<LeftSidebar />);
-
-    // Find all navigation item images
-    const navImages = screen
-      .getAllByRole('img')
-      .filter(
-        (img) =>
-          img.getAttribute('alt') !== 'logo' &&
-          img.getAttribute('alt') !== 'profile' &&
-          img.getAttribute('alt') !== 'logout'
-      );
-
-    // Find the Explore icon which should have invert-white
-    const exploreIcon = navImages.find(
-      (img) => img.getAttribute('alt') === 'Explore'
-    );
-    expect(exploreIcon).toHaveClass('invert-white');
-
-    // Find the Home icon which should not have invert-white
-    const homeIcon = navImages.find(
-      (img) => img.getAttribute('alt') === 'Home'
-    );
-    expect(homeIcon).not.toHaveClass('invert-white');
-  });
-
-  it('shows loading state when signing out', () => {
-    // Override the mock to simulate loading state
-    jest
-      .spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount')
-      .mockReturnValue({
-        mutate: jest.fn(),
-        isSuccess: false,
-        isPending: true,
-      });
-
-    render(<LeftSidebar />);
-
-    // Check if loading text is displayed
-    expect(screen.getByText('Logging out...')).toBeInTheDocument();
-    expect(screen.queryByText('Logout')).not.toBeInTheDocument();
-  });
-
-  it('calls signOut function when logout button is clicked', () => {
-    const mockSignOut = jest.fn();
-
-    // Override the mock to provide our mock function
-    jest
-      .spyOn(require('@/lib/react-query/queries'), 'useSignOutAccount')
-      .mockReturnValue({
-        mutate: mockSignOut,
-        isSuccess: false,
-        isPending: false,
-      });
-
-    render(<LeftSidebar />);
-
-    // Find and click logout button
-    fireEvent.click(screen.getByText('Logout'));
-
-    // Verify the signOut function was called
-    expect(mockSignOut).toHaveBeenCalled();
-  });
-
-  it('navigates to profile page when profile link is clicked', () => {
-    render(<LeftSidebar />);
-
-    // Find profile link
-    const profileLink = screen.getByTestId('link-to-/profile/user123');
     expect(profileLink).toBeInTheDocument();
-    expect(profileLink).toHaveAttribute('href', '/profile/user123');
+  });
+
+  it('renders correct logo for dark theme', () => {
+    render(<LeftSidebar />);
+
+    const logo = screen.getByAltText('Horizon');
+    expect(logo).toBeInTheDocument();
+    expect(logo).toHaveAttribute('src', '/assets/images/logo.svg');
+  });
+
+  it('renders correct logo for light theme', () => {
+    (useTheme as jest.Mock).mockReturnValue({ theme: 'light' });
+
+    render(<LeftSidebar />);
+
+    const logo = screen.getByAltText('Horizon');
+    expect(logo).toBeInTheDocument();
+    expect(logo).toHaveAttribute('src', '/assets/images/logo-dark.svg');
+  });
+
+  it('renders all sidebar links from constants', () => {
+    render(<LeftSidebar />);
+
+    // Check if all sidebar links are rendered by their label text
+    const expectedLabels = [
+      'Home', 'Notifications', 'Explore', 'People',
+      'Saved', 'Messages', 'Create Post'
+    ];
+
+    expectedLabels.forEach(label => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    // Verify we can find all the navigation links
+    const navLinks = screen.getAllByRole('link');
+    expect(navLinks.length).toBeGreaterThanOrEqual(expectedLabels.length);
+  });
+
+  it('shows notification badge for unread messages', () => {
+    (useSocket as jest.Mock).mockReturnValue({
+      totalUnreadMessages: 5,
+      totalUnreadNotifications: 0
+    });
+
+    render(<LeftSidebar />);
+
+    // Find the Messages nav item by text
+    const messagesLink = screen.getByText('Messages').closest('a');
+    expect(messagesLink).toBeInTheDocument();
+
+    // Check that the badge is shown with correct number
+    const badges = screen.getAllByTestId('notification-badge');
+    expect(badges.length).toBeGreaterThan(0);
+
+    // Check that at least one badge contains "5"
+    const messageBadge = badges.find(badge => badge.textContent === '5');
+    expect(messageBadge).toBeInTheDocument();
+  });
+
+  it('shows notification badge for unread notifications', () => {
+    (useSocket as jest.Mock).mockReturnValue({
+      totalUnreadMessages: 0,
+      totalUnreadNotifications: 3
+    });
+
+    render(<LeftSidebar />);
+
+    // Find the Notifications nav item by text
+    const notificationsLink = screen.getByText('Notifications').closest('a');
+    expect(notificationsLink).toBeInTheDocument();
+
+    // Check that the badge is shown with correct number
+    const badges = screen.getAllByTestId('notification-badge');
+    expect(badges.length).toBeGreaterThan(0);
+
+    // Check that at least one badge contains "3"
+    const notificationBadge = badges.find(badge => badge.textContent === '3');
+    expect(notificationBadge).toBeInTheDocument();
+  });
+
+  it('shows "9+" when there are more than 9 unread messages', () => {
+    (useSocket as jest.Mock).mockReturnValue({
+      totalUnreadMessages: 12,
+      totalUnreadNotifications: 0
+    });
+
+    render(<LeftSidebar />);
+
+    // Check that the badge shows "9+"
+    const badges = screen.getAllByTestId('notification-badge');
+    const messageBadge = badges.find(badge => badge.textContent === '9+');
+    expect(messageBadge).toBeInTheDocument();
+  });
+
+  it('triggers sign out when logout button is clicked', () => {
+    render(<LeftSidebar />);
+
+    // Find the logout button
+    const logoutButton = screen.getByTestId('logout-button');
+    expect(logoutButton).toBeInTheDocument();
+    expect(logoutButton).toHaveTextContent('Logout');
+
+    // Click the logout button
+    fireEvent.click(logoutButton);
+
+    // Check that the sign out function was called
+    expect(mockSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows loading state during sign out', () => {
+    // Set the sign out state to loading
+    (useSignOutAccount as jest.Mock).mockReturnValue({
+      mutate: mockSignOut,
+      isSuccess: false,
+      isPending: true,
+    });
+
+    render(<LeftSidebar />);
+
+    // Check that the button shows loading state
+    const logoutButton = screen.getByTestId('logout-button');
+    expect(logoutButton).toBeInTheDocument();
+    expect(logoutButton).toBeDisabled();
+
+    // Check that the loading spinner is shown
+    expect(screen.getByTestId('loader-icon')).toBeInTheDocument();
+    expect(screen.getByText('Logging out...')).toBeInTheDocument();
+  });
+
+  it('displays correct icon variants based on theme', () => {
+    // Test with dark theme
+    (useTheme as jest.Mock).mockReturnValue({ theme: 'dark' });
+
+    const { rerender } = render(<LeftSidebar />);
+
+    // Check logout icon in dark theme
+    let logoutIcon = screen.getByAltText('logout');
+    expect(logoutIcon).toHaveAttribute('src', '/assets/icons/logout.svg');
+
+    // Change to light theme and re-render
+    (useTheme as jest.Mock).mockReturnValue({ theme: 'light' });
+    rerender(<LeftSidebar />);
+
+    // Check logout icon in light theme
+    logoutIcon = screen.getByAltText('logout');
+    expect(logoutIcon).toHaveAttribute('src', '/assets/icons/logout-dark.svg');
   });
 });

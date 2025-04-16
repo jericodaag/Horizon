@@ -4,11 +4,10 @@ import CommentSection from '@/components/shared/CommentSection';
 import { useUserContext } from '@/context/AuthContext';
 import { databases } from '@/lib/appwrite/config';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCreateComment } from '@/lib/react-query/queries';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/CommentSection');
 
-// Mock dependencies
 jest.mock('react-router-dom', () => ({
   Link: ({ children, to, className }) => (
     <a href={to} className={className} data-testid={`link-to-${to.replace(/\//g, '-')}`}>
@@ -17,17 +16,16 @@ jest.mock('react-router-dom', () => ({
   )
 }));
 
-// Mock Auth Context
 jest.mock('@/context/AuthContext', () => ({
   useUserContext: jest.fn()
 }));
 
-// Mock AppWrite databases
 jest.mock('@/lib/appwrite/config', () => ({
   appwriteConfig: {
     databaseId: 'test-db',
     commentsCollectionId: 'test-comments',
-    userCollectionId: 'test-users'
+    userCollectionId: 'test-users',
+    postCollectionId: 'test-posts'
   },
   databases: {
     listDocuments: jest.fn(),
@@ -38,12 +36,17 @@ jest.mock('@/lib/appwrite/config', () => ({
   }
 }));
 
-// Mock React Query
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: jest.fn()
 }));
 
-// Mock components that might cause issues
+jest.mock('@/lib/react-query/queries', () => ({
+  useCreateComment: jest.fn(),
+  QUERY_KEYS: {
+    GET_POST_COMMENTS: 'GET_POST_COMMENTS'
+  }
+}));
+
 jest.mock('@/components/shared/GiphyPicker', () => ({
   __esModule: true,
   default: ({ onGifSelect, onClose }) => (
@@ -77,20 +80,31 @@ jest.mock('@/components/shared/DeleteConfirmationModal', () => ({
   )
 }));
 
-// Mock utility functions
 jest.mock('@/lib/utils', () => ({
   multiFormatDateString: jest.fn(() => 'Today at 12:34 PM')
 }));
 
-// Mock Lucide icons
 jest.mock('lucide-react', () => ({
   Loader: () => <div data-testid="loader-icon">Loading...</div>,
   X: () => <div data-testid="x-icon">X</div>,
   SmilePlus: () => <div data-testid="smile-plus-icon">Smile Plus</div>
 }));
 
+jest.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, type, disabled, className, title }) => (
+    <button
+      onClick={onClick}
+      type={type || 'button'}
+      disabled={disabled}
+      className={className}
+      title={title}
+    >
+      {children}
+    </button>
+  )
+}));
+
 describe('CommentSection Component', () => {
-  // Setup common test data
   const mockPostId = 'test-post-123';
   const mockPostCreatorId = 'creator-456';
   const mockUser = {
@@ -103,6 +117,8 @@ describe('CommentSection Component', () => {
   const mockQueryClient = {
     invalidateQueries: jest.fn()
   };
+
+  const mockCreateCommentMutate = jest.fn();
 
   const mockComments = [
     {
@@ -142,11 +158,12 @@ describe('CommentSection Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Setup mocks for each test
     (useUserContext as jest.Mock).mockReturnValue({ user: mockUser });
     (useQueryClient as jest.Mock).mockReturnValue(mockQueryClient);
+    (useCreateComment as jest.Mock).mockReturnValue({
+      mutate: mockCreateCommentMutate
+    });
 
-    // Mock database responses
     (databases.listDocuments as jest.Mock).mockResolvedValue({
       documents: mockComments.map(comment => ({
         ...comment,
@@ -169,12 +186,11 @@ describe('CommentSection Component', () => {
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
     expect(screen.getByPlaceholderText('Write a comment...')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument();
-    expect(screen.getByTitle('Add a GIF')).toBeInTheDocument();
+    expect(screen.getByText('Post')).toBeInTheDocument();
+    expect(screen.getByTestId('smile-plus-icon')).toBeInTheDocument();
   });
 
   it('shows loading state when fetching comments', () => {
-    // Override the mock to simulate loading
     (databases.listDocuments as jest.Mock).mockReturnValue(new Promise(() => { })); // Never resolves
 
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
@@ -185,18 +201,15 @@ describe('CommentSection Component', () => {
   it('renders comments when data is loaded', async () => {
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
-    // Wait for comments to load
     await waitFor(() => {
       expect(screen.getByText('This is a test comment')).toBeInTheDocument();
       expect(screen.getByText('Another test comment')).toBeInTheDocument();
     });
 
-    // Check user information is displayed
     expect(screen.getByText('Test User')).toBeInTheDocument();
     expect(screen.getByText('@testuser')).toBeInTheDocument();
     expect(screen.getByText('Other User')).toBeInTheDocument();
 
-    // Check GIF is rendered for the second comment
     const gifImage = screen.getByAltText('Comment GIF');
     expect(gifImage).toBeInTheDocument();
     expect(gifImage).toHaveAttribute('src', 'https://test-gif.com/example.gif');
@@ -205,81 +218,57 @@ describe('CommentSection Component', () => {
   it('allows submitting a new text comment', async () => {
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
-    // Type in the comment input
     const commentInput = screen.getByPlaceholderText('Write a comment...');
     fireEvent.change(commentInput, { target: { value: 'My new comment' } });
 
-    // Submit the form
-    const submitButton = screen.getByRole('button', { name: 'Post' });
+    const submitButton = screen.getByText('Post');
     fireEvent.click(submitButton);
 
-    // Verify the comment was submitted
-    await waitFor(() => {
-      expect(databases.createDocument).toHaveBeenCalledWith(
-        'test-db',
-        'test-comments',
-        expect.any(String),
-        expect.objectContaining({
-          postId: mockPostId,
-          content: 'My new comment',
-          userId: mockUser.id
-        })
-      );
+    expect(mockCreateCommentMutate).toHaveBeenCalledWith({
+      postId: mockPostId,
+      userId: mockUser.id,
+      content: 'My new comment',
+      gifUrl: undefined,
+      gifId: undefined
     });
-
-    // Verify queries were invalidated
-    expect(mockQueryClient.invalidateQueries).toHaveBeenCalled();
   });
 
   it('allows selecting and posting a GIF', async () => {
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
-    // Open GIF picker
-    const gifButton = screen.getByTitle('Add a GIF');
-    fireEvent.click(gifButton);
+    const gifButton = screen.getByTestId('smile-plus-icon').closest('button');
+    fireEvent.click(gifButton!);
 
-    // Verify GIF picker is shown
     expect(screen.getByTestId('giphy-picker')).toBeInTheDocument();
 
-    // Select a GIF
     const selectGifButton = screen.getByText('Select Test GIF');
     fireEvent.click(selectGifButton);
 
-    // Verify GIF preview is shown
-    expect(screen.getByAltText('Selected GIF')).toBeInTheDocument();
+    const gifPreview = await screen.findByAltText('Selected GIF');
+    expect(gifPreview).toBeInTheDocument();
 
-    // Submit the form with the GIF
-    const submitButton = screen.getByRole('button', { name: 'Post' });
+    const submitButton = screen.getByText('Post');
     fireEvent.click(submitButton);
 
-    // Verify the comment with GIF was submitted
-    await waitFor(() => {
-      expect(databases.createDocument).toHaveBeenCalledWith(
-        'test-db',
-        'test-comments',
-        expect.any(String),
-        expect.objectContaining({
-          postId: mockPostId,
-          gifUrl: 'https://test-gif.com/test.gif',
-          gifId: 'test-gif-id'
-        })
-      );
+    expect(mockCreateCommentMutate).toHaveBeenCalledWith({
+      postId: mockPostId,
+      userId: mockUser.id,
+      content: '',
+      gifUrl: 'https://test-gif.com/test.gif',
+      gifId: 'test-gif-id'
     });
   });
 
   it('allows liking and unliking a comment', async () => {
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
-    // Wait for comments to load
     await waitFor(() => {
       expect(screen.getByText('This is a test comment')).toBeInTheDocument();
     });
 
-    // Find and click the like button on the first comment
     const likeButtons = screen.getAllByText(/like/i);
     fireEvent.click(likeButtons[0]);
 
-    // Verify the like was added
     await waitFor(() => {
       expect(databases.updateDocument).toHaveBeenCalledWith(
         'test-db',
@@ -295,23 +284,18 @@ describe('CommentSection Component', () => {
   it('allows deleting a comment when user is authorized', async () => {
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
-    // Wait for comments to load
     await waitFor(() => {
       expect(screen.getByText('This is a test comment')).toBeInTheDocument();
     });
 
-    // Find and click delete button
     const deleteButtons = screen.getAllByText('Delete');
     fireEvent.click(deleteButtons[0]);
 
-    // Verify delete modal appears
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
 
-    // Confirm deletion
     const confirmButton = screen.getByTestId('confirm-delete');
     fireEvent.click(confirmButton);
 
-    // Verify the comment was deleted
     await waitFor(() => {
       expect(databases.deleteDocument).toHaveBeenCalledWith(
         'test-db',
@@ -322,14 +306,12 @@ describe('CommentSection Component', () => {
   });
 
   it('shows empty state when no comments exist', async () => {
-    // Override mock to return no comments
     (databases.listDocuments as jest.Mock).mockResolvedValue({
       documents: []
     });
 
     render(<CommentSection postId={mockPostId} postCreatorId={mockPostCreatorId} />);
 
-    // Check for the empty state message
     await waitFor(() => {
       expect(screen.getByText('No comments yet. Be the first to comment!')).toBeInTheDocument();
     });
