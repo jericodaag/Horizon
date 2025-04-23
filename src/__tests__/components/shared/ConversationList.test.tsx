@@ -4,15 +4,12 @@ import ConversationList from '@/components/shared/ConversationList';
 import { useSocket } from '@/context/SocketContext';
 import { IConversation } from '@/types';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/ConversationList');
 
-// Mock dependencies
 jest.mock('@/context/SocketContext', () => ({
   useSocket: jest.fn()
 }));
 
-// Mock UI components
 jest.mock('@/components/ui/input', () => ({
   Input: ({ placeholder, value, onChange, className }) => (
     <input
@@ -38,7 +35,6 @@ jest.mock('@/components/ui/button', () => ({
   )
 }));
 
-// Mock framer-motion to avoid animation issues in tests
 jest.mock('framer-motion', () => ({
   motion: {
     div: ({ children, className, onClick }) => (
@@ -49,13 +45,11 @@ jest.mock('framer-motion', () => ({
   }
 }));
 
-// Mock OnlineStatusIndicator component
 jest.mock('@/components/shared/OnlineStatusIndicator', () => ({
   __esModule: true,
   default: ({ userId }) => <div data-testid={`online-status-${userId}`}>⚪</div>
 }));
 
-// Mock Lucide icons
 jest.mock('lucide-react', () => ({
   Search: () => <div data-testid="search-icon">🔍</div>,
   FilterX: () => <div data-testid="filter-x-icon">❌</div>,
@@ -65,7 +59,6 @@ jest.mock('lucide-react', () => ({
 }));
 
 describe('ConversationList Component', () => {
-  // Mock data for testing
   const mockConversations: IConversation[] = [
     {
       user: {
@@ -103,7 +96,6 @@ describe('ConversationList Component', () => {
     }
   ];
 
-  // Mock socket context values
   const mockSocketContextValues = {
     latestMessages: {},
     notificationCount: { user1: 1 },
@@ -128,15 +120,12 @@ describe('ConversationList Component', () => {
       />
     );
 
-    // Check if search input is rendered
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
 
-    // Check if filter buttons are rendered
     expect(screen.getByText('All')).toBeInTheDocument();
     expect(screen.getByText('Online')).toBeInTheDocument();
     expect(screen.getByText('Unread')).toBeInTheDocument();
 
-    // Check if conversations are rendered
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     expect(screen.getByText('Bob Johnson')).toBeInTheDocument();
   });
@@ -165,18 +154,14 @@ describe('ConversationList Component', () => {
       />
     );
 
-    // Get the search input and type in it
     const searchInput = screen.getByTestId('search-input');
     fireEvent.change(searchInput, { target: { value: 'alice' } });
 
-    // Alice should be visible, Bob should not
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     expect(screen.queryByText('Bob Johnson')).not.toBeInTheDocument();
 
-    // Clear search
     fireEvent.change(searchInput, { target: { value: '' } });
 
-    // Both should be visible again
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     expect(screen.getByText('Bob Johnson')).toBeInTheDocument();
   });
@@ -193,10 +178,8 @@ describe('ConversationList Component', () => {
       />
     );
 
-    // Click on Bob's conversation
     fireEvent.click(screen.getByText('Bob Johnson'));
 
-    // Check if the callback was called with Bob's user data
     expect(onSelectConversation).toHaveBeenCalledWith(mockConversations[1].user);
   });
 });

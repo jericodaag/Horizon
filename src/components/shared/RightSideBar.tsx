@@ -4,7 +4,6 @@ import { Loader, Hash, TrendingUp } from 'lucide-react';
 import FollowButton from './FollowButton';
 import { Models } from 'appwrite';
 import { ICreatorWithFollowers } from '@/types';
-import { useTheme } from '@/context/ThemeContext';
 
 const transformCreator = (doc: Models.Document): ICreatorWithFollowers => ({
   id: doc.$id,
@@ -55,8 +54,6 @@ const TrendingCard = ({
   tag: string;
   postCount: number;
 }) => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
 
   return (
     <div className='group flex items-center justify-between py-2 px-3 hover:bg-dark-3 transition-colors cursor-pointer rounded-lg'>

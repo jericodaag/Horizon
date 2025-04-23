@@ -2,10 +2,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DeleteConfirmationModal from '@/components/shared/DeleteConfirmationModal';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/DeleteConfirmationModal');
 
-// Mock the UI components
 jest.mock('@/components/ui/button', () => ({
     Button: ({ children, onClick, type, variant, className }) => (
         <button
@@ -41,7 +39,6 @@ jest.mock('@/components/ui/dialog', () => ({
 }));
 
 describe('DeleteConfirmationModal Component', () => {
-    // Setup common test props
     const defaultProps = {
         isOpen: true,
         onClose: jest.fn(),
@@ -55,16 +52,13 @@ describe('DeleteConfirmationModal Component', () => {
     it('renders when isOpen is true', () => {
         render(<DeleteConfirmationModal {...defaultProps} />);
 
-        // The dialog should be visible
         expect(screen.getByTestId('dialog')).toBeInTheDocument();
 
-        // Check for title and description with default values
         expect(screen.getByTestId('dialog-title')).toHaveTextContent('Delete Post');
         expect(screen.getByTestId('dialog-description')).toHaveTextContent(
             'Are you sure you want to delete this post? This action cannot be undone.'
         );
 
-        // Check for buttons
         expect(screen.getByText('Cancel')).toBeInTheDocument();
         expect(screen.getByText('Delete')).toBeInTheDocument();
     });
@@ -72,7 +66,6 @@ describe('DeleteConfirmationModal Component', () => {
     it('does not render when isOpen is false', () => {
         render(<DeleteConfirmationModal {...defaultProps} isOpen={false} />);
 
-        // The dialog should not be visible
         expect(screen.queryByTestId('dialog')).not.toBeInTheDocument();
     });
 
@@ -85,7 +78,6 @@ describe('DeleteConfirmationModal Component', () => {
 
         render(<DeleteConfirmationModal {...customProps} />);
 
-        // Check for custom title and description
         expect(screen.getByTestId('dialog-title')).toHaveTextContent('Custom Title');
         expect(screen.getByTestId('dialog-description')).toHaveTextContent(
             'Custom description text for testing.'
@@ -95,22 +87,17 @@ describe('DeleteConfirmationModal Component', () => {
     it('calls onClose when Cancel button is clicked', () => {
         render(<DeleteConfirmationModal {...defaultProps} />);
 
-        // Click the Cancel button
         fireEvent.click(screen.getByText('Cancel'));
 
-        // onClose should be called
         expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
-        // onConfirm should not be called
         expect(defaultProps.onConfirm).not.toHaveBeenCalled();
     });
 
     it('calls both onConfirm and onClose when Delete button is clicked', () => {
         render(<DeleteConfirmationModal {...defaultProps} />);
 
-        // Click the Delete button
         fireEvent.click(screen.getByText('Delete'));
 
-        // Both callbacks should be called
         expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
         expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
     });

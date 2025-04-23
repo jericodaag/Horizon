@@ -6,10 +6,8 @@ import { useUserContext } from '@/context/AuthContext';
 import { useFollowUser, useUnfollowUser, useIsFollowing } from '@/lib/react-query/queries';
 import { useToast } from '@/components/ui/use-toast';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/FollowButton');
 
-// Mock dependencies
 jest.mock('@/context/AuthContext', () => ({
     useUserContext: jest.fn()
 }));
@@ -41,7 +39,6 @@ jest.mock('@/components/ui/button', () => ({
     )
 }));
 
-// Mock Framer Motion
 jest.mock('framer-motion', () => ({
     motion: {
         div: ({ children, ...props }) => <div {...props}>{children}</div>
@@ -49,7 +46,6 @@ jest.mock('framer-motion', () => ({
     AnimatePresence: ({ children }) => <>{children}</>
 }));
 
-// Mock Lucide icons
 jest.mock('lucide-react', () => ({
     UserPlus: () => <div data-testid="user-plus-icon">UserPlus</div>,
     UserCheck: ({ className, size }) => (
@@ -60,7 +56,6 @@ jest.mock('lucide-react', () => ({
 }));
 
 describe('FollowButton Component', () => {
-    // Common test data
     const mockUser = {
         id: 'current-user-123',
         name: 'Current User',
@@ -70,7 +65,6 @@ describe('FollowButton Component', () => {
 
     const otherUserId = 'other-user-456';
 
-    // Mock implementations
     const mockToast = jest.fn();
     const mockFollowMutate = jest.fn();
     const mockUnfollowMutate = jest.fn();
@@ -78,7 +72,6 @@ describe('FollowButton Component', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Setup default mocks
         (useUserContext as jest.Mock).mockReturnValue({ user: mockUser });
         (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
         (useFollowUser as jest.Mock).mockReturnValue({ mutate: mockFollowMutate });
@@ -120,12 +113,10 @@ describe('FollowButton Component', () => {
         const button = screen.getByTestId('follow-button');
         expect(button).toHaveTextContent('Following');
 
-        // Hover over button
         fireEvent.mouseEnter(button);
 
         expect(button).toHaveTextContent('Unfollow');
 
-        // Hover out
         fireEvent.mouseLeave(button);
 
         expect(button).toHaveTextContent('Following');
@@ -189,14 +180,11 @@ describe('FollowButton Component', () => {
 
     it('shows loading spinner when in loading state', async () => {
         jest.spyOn(React, 'useState')
-            // First useState call is for isLoading
             .mockImplementationOnce(() => [true, jest.fn()])
-            // Second useState call is for isHovering
             .mockImplementationOnce(() => [false, jest.fn()]);
 
         render(<FollowButton userId={otherUserId} />);
 
-        // In loading state, the button should contain a div with spinner classes
         const button = screen.getByTestId('follow-button');
         expect(button).toBeInTheDocument();
         expect(button).toBeDisabled();
@@ -204,7 +192,6 @@ describe('FollowButton Component', () => {
         const spinnerDiv = button.querySelector('div');
         expect(spinnerDiv).toBeTruthy();
 
-        // Reset mock
         jest.spyOn(React, 'useState').mockRestore();
     });
 });

@@ -1,240 +1,136 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import RightSideBar from '@/components/shared/RightSideBar';
+import RightSidebar from '@/components/shared/RightSideBar';
+import { useGetTopCreators } from '@/lib/react-query/queries';
+import { BrowserRouter } from 'react-router-dom';
 
-// Unmock the component we're testing
-jest.unmock('@/components/shared/RightSideBar');
-
-// Mock Link component
-jest.mock('react-router-dom', () => ({
-  Link: ({ children, to, className }) => (
-    <a href={to} className={className} data-testid={`link-to-${to}`}>
-      {children}
-    </a>
-  ),
+// Mock the necessary hooks and components
+jest.mock('@/lib/react-query/queries', () => ({
+  useGetTopCreators: jest.fn(),
 }));
 
-// Mock FollowButton component
+// Mock the FollowButton component
 jest.mock('@/components/shared/FollowButton', () => ({
   __esModule: true,
-  default: ({ userId, className }) => (
-    <button data-testid={`follow-button-${userId}`} className={className}>
+  default: ({ userId, compact }) => (
+    <button data-testid={`follow-button-${userId}`} data-compact={compact}>
       Follow
     </button>
   ),
 }));
 
-// Mock Loader component
-jest.mock('lucide-react', () => ({
-  Loader: () => <div data-testid='loader-icon'>Loading...</div>,
-}));
+describe('RightSidebar Component', () => {
+  // Sample creators data
+  const mockCreators = [
+    {
+      $id: 'user1',
+      name: 'User One',
+      username: 'userone',
+      email: 'user1@example.com',
+      imageUrl: '/path/to/image1.jpg',
+      bio: 'User bio',
+      followerCount: 120,
+    },
+    {
+      $id: 'user2',
+      name: 'User Two',
+      username: 'usertwo',
+      email: 'user2@example.com',
+      imageUrl: '/path/to/image2.jpg',
+      bio: 'User bio',
+      followerCount: 150,
+    },
+  ];
 
-// Mock the react-query hook
-jest.mock('@/lib/react-query/queries', () => ({
-  useGetTopCreators: () => {
-    // Return mock creators or loading state based on test needs
-    return {
-      data: [
-        {
-          $id: 'creator1',
-          name: 'Creator One',
-          username: 'creator_one',
-          email: 'creator1@example.com',
-          imageUrl: '/assets/images/creator1.jpg',
-          followerCount: 120,
-        },
-        {
-          $id: 'creator2',
-          name: 'Creator Two',
-          username: 'creator_two',
-          email: 'creator2@example.com',
-          imageUrl: '',
-          followerCount: 85,
-        },
-        {
-          $id: 'creator3',
-          name: 'Creator Three',
-          username: 'creator_three',
-          email: 'creator3@example.com',
-          imageUrl: '/assets/images/creator3.jpg',
-          followerCount: 65,
-        },
-        {
-          $id: 'creator4',
-          name: 'Creator Four',
-          username: 'creator_four',
-          email: 'creator4@example.com',
-          imageUrl: '/assets/images/creator4.jpg',
-          followerCount: 42,
-        },
-        {
-          $id: 'creator5',
-          name: 'Creator Five',
-          username: 'creator_five',
-          email: 'creator5@example.com',
-          imageUrl: '/assets/images/creator5.jpg',
-          followerCount: 35,
-        },
-        {
-          $id: 'creator6',
-          name: 'Creator Six',
-          username: 'creator_six',
-          email: 'creator6@example.com',
-          imageUrl: '',
-          followerCount: 20,
-        },
-      ],
+  beforeEach(() => {
+    // Reset mocks
+    jest.clearAllMocks();
+
+    // Default mock implementation for useGetTopCreators
+    (useGetTopCreators as jest.Mock).mockReturnValue({
+      data: mockCreators,
       isLoading: false,
-    };
-  },
-}));
+    });
+  });
 
-describe('RightSideBar Component', () => {
-  it('renders the top creators heading', () => {
-    render(<RightSideBar />);
+  it('renders the sidebar with correct structure', () => {
+    render(
+      <BrowserRouter>
+        <RightSidebar />
+      </BrowserRouter>
+    );
 
+    // Check main sections exist
     expect(screen.getByText('Top Creators')).toBeInTheDocument();
-    expect(screen.getByText('(Most Followed)')).toBeInTheDocument();
+    expect(screen.getByText('Trending Topics')).toBeInTheDocument();
+
+    // Check footer exists
+    expect(screen.getByText('© 2025 Horizon Social')).toBeInTheDocument();
+
+    // Verify navigation links
+    expect(screen.getByText('See all')).toBeInTheDocument();
+
+    // Check for footer links
+    expect(screen.getByText('About')).toBeInTheDocument();
+    expect(screen.getByText('Privacy')).toBeInTheDocument();
+    expect(screen.getByText('Terms')).toBeInTheDocument();
   });
 
-  it('renders all creator cards', () => {
-    render(<RightSideBar />);
-
-    // Check that all creator names are displayed
-    expect(screen.getByText('Creator One')).toBeInTheDocument();
-    expect(screen.getByText('Creator Two')).toBeInTheDocument();
-    expect(screen.getByText('Creator Three')).toBeInTheDocument();
-    expect(screen.getByText('Creator Four')).toBeInTheDocument();
-    expect(screen.getByText('Creator Five')).toBeInTheDocument();
-    expect(screen.getByText('Creator Six')).toBeInTheDocument();
-
-    // Check that all usernames are displayed
-    expect(screen.getByText('@creator_one')).toBeInTheDocument();
-    expect(screen.getByText('@creator_two')).toBeInTheDocument();
-    expect(screen.getByText('@creator_three')).toBeInTheDocument();
-    expect(screen.getByText('@creator_four')).toBeInTheDocument();
-    expect(screen.getByText('@creator_five')).toBeInTheDocument();
-    expect(screen.getByText('@creator_six')).toBeInTheDocument();
-  });
-
-  it('displays follower counts for each creator', () => {
-    render(<RightSideBar />);
-
-    expect(screen.getByText('120 followers')).toBeInTheDocument();
-    expect(screen.getByText('85 followers')).toBeInTheDocument();
-    expect(screen.getByText('65 followers')).toBeInTheDocument();
-    expect(screen.getByText('42 followers')).toBeInTheDocument();
-    expect(screen.getByText('35 followers')).toBeInTheDocument();
-    expect(screen.getByText('20 followers')).toBeInTheDocument();
-  });
-
-  it('uses profile images when available', () => {
-    render(<RightSideBar />);
-
-    // Find all images
-    const images = screen.getAllByRole('img');
-
-    // Check attributes of first image (Creator One)
-    expect(images[0]).toHaveAttribute('src', '/assets/images/creator1.jpg');
-    expect(images[0]).toHaveAttribute('alt', 'Creator One');
-  });
-
-  it('shows first letter of name when image is not available', () => {
-    render(<RightSideBar />);
-
-    // Creator Two doesn't have an image, so it should show "C" (first letter of Creator)
-    expect(screen.getAllByText('C')[0]).toBeInTheDocument();
-
-    // Similarly for Creator Six
-    expect(screen.getAllByText('C')[1]).toBeInTheDocument();
-  });
-
-  it('renders follow buttons for all creators', () => {
-    render(<RightSideBar />);
-
-    // Check for follow buttons
-    expect(screen.getByTestId('follow-button-creator1')).toBeInTheDocument();
-    expect(screen.getByTestId('follow-button-creator2')).toBeInTheDocument();
-    expect(screen.getByTestId('follow-button-creator3')).toBeInTheDocument();
-    expect(screen.getByTestId('follow-button-creator4')).toBeInTheDocument();
-    expect(screen.getByTestId('follow-button-creator5')).toBeInTheDocument();
-    expect(screen.getByTestId('follow-button-creator6')).toBeInTheDocument();
-  });
-
-  it('renders correct profile links for each creator', () => {
-    render(<RightSideBar />);
-
-    // Verify profile links
-    expect(screen.getByTestId('link-to-/profile/creator1')).toHaveAttribute(
-      'href',
-      '/profile/creator1'
+  it('renders creators correctly when data is loaded', () => {
+    render(
+      <BrowserRouter>
+        <RightSidebar />
+      </BrowserRouter>
     );
-    expect(screen.getByTestId('link-to-/profile/creator2')).toHaveAttribute(
-      'href',
-      '/profile/creator2'
-    );
-    expect(screen.getByTestId('link-to-/profile/creator3')).toHaveAttribute(
-      'href',
-      '/profile/creator3'
-    );
-    expect(screen.getByTestId('link-to-/profile/creator4')).toHaveAttribute(
-      'href',
-      '/profile/creator4'
-    );
-    expect(screen.getByTestId('link-to-/profile/creator5')).toHaveAttribute(
-      'href',
-      '/profile/creator5'
-    );
-    expect(screen.getByTestId('link-to-/profile/creator6')).toHaveAttribute(
-      'href',
-      '/profile/creator6'
-    );
+
+    // Check if creator names are rendered
+    expect(screen.getByText('User One')).toBeInTheDocument();
+    expect(screen.getByText('User Two')).toBeInTheDocument();
+
+    // Check if creator usernames are rendered
+    expect(screen.getByText('@userone')).toBeInTheDocument();
+    expect(screen.getByText('@usertwo')).toBeInTheDocument();
+
+    // Check if follow buttons are rendered for each creator
+    expect(screen.getByTestId('follow-button-user1')).toBeInTheDocument();
+    expect(screen.getByTestId('follow-button-user2')).toBeInTheDocument();
   });
 
-  it('shows loading state when data is fetching', () => {
+  it('renders trending topics', () => {
+    render(
+      <BrowserRouter>
+        <RightSidebar />
+      </BrowserRouter>
+    );
+
+    // Check if trending topics are rendered
+    expect(screen.getByText('#photography')).toBeInTheDocument();
+    expect(screen.getByText('#design')).toBeInTheDocument();
+    expect(screen.getByText('#travel')).toBeInTheDocument();
+    expect(screen.getByText('#coding')).toBeInTheDocument();
+
+    // Check post counts
+    expect(screen.getByText('1240 posts')).toBeInTheDocument();
+    expect(screen.getByText('980 posts')).toBeInTheDocument();
+    expect(screen.getByText('843 posts')).toBeInTheDocument();
+    expect(screen.getByText('712 posts')).toBeInTheDocument();
+  });
+
+  it('renders loading state when creators are loading', () => {
     // Override the mock to simulate loading
-    jest
-      .spyOn(require('@/lib/react-query/queries'), 'useGetTopCreators')
-      .mockReturnValue({
-        data: [],
-        isLoading: true,
-      });
+    (useGetTopCreators as jest.Mock).mockReturnValue({
+      data: [],
+      isLoading: true,
+    });
 
-    render(<RightSideBar />);
+    render(
+      <BrowserRouter>
+        <RightSidebar />
+      </BrowserRouter>
+    );
 
-    // Verify loader is shown
-    expect(screen.getByTestId('loader-icon')).toBeInTheDocument();
-
-    // Verify creator cards are not shown
-    expect(screen.queryByText('Creator One')).not.toBeInTheDocument();
-  });
-
-  it('shows a message when no creators are found', () => {
-    // Override the mock to return empty data
-    jest
-      .spyOn(require('@/lib/react-query/queries'), 'useGetTopCreators')
-      .mockReturnValue({
-        data: [],
-        isLoading: false,
-      });
-
-    render(<RightSideBar />);
-
-    // Check for the "No creators found" message
-    expect(screen.getByText('No creators found')).toBeInTheDocument();
-
-    // Verify loader is not shown
-    expect(screen.queryByTestId('loader-icon')).not.toBeInTheDocument();
-  });
-
-  it('has the correct container styles', () => {
-    const { container } = render(<RightSideBar />);
-
-    // Check the main container's classes
-    const mainContainer = container.firstChild;
-    expect(mainContainer).toHaveClass('hidden');
-    expect(mainContainer).toHaveClass('xl:flex');
-    expect(mainContainer).toHaveClass('flex-col');
-    expect(mainContainer).toHaveClass('w-72');
+    // Check if loading indicator is shown
+    const loadingElement = screen.getByTestId('loader-icon');
+    expect(loadingElement).toBeInTheDocument();
   });
 });

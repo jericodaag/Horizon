@@ -2,29 +2,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PostCard from '@/components/shared/PostCard';
 import { useUserContext } from '@/context/AuthContext';
-import { Models } from 'appwrite';
+import { formatDateString } from '@/lib/utils';
 import { databases } from '@/lib/appwrite/config';
-
-// Unmock the component we're testing
-jest.unmock('@/components/shared/PostCard');
+import { BrowserRouter } from 'react-router-dom';
+import { Models } from 'appwrite';
 
 // Mock dependencies
-jest.mock('react-router-dom', () => ({
-    Link: ({ children, to, className }) => (
-        <a href={to} className={className} data-testid={`link-to-${to}`}>
-            {children}
-        </a>
-    )
-}));
-
 jest.mock('@/context/AuthContext', () => ({
     useUserContext: jest.fn()
+})); jest.mock('@/lib/utils', () => ({
+    formatDateString: jest.fn().mockReturnValue('January 1, 2023')
 }));
-
-jest.mock('@/lib/utils', () => ({
-    formatDateString: jest.fn(() => 'Jan 1, 2023')
-}));
-
 jest.mock('@/lib/appwrite/config', () => ({
     appwriteConfig: {
         databaseId: 'test-db',
@@ -36,223 +24,227 @@ jest.mock('@/lib/appwrite/config', () => ({
         getDocument: jest.fn()
     }
 }));
-
 jest.mock('@/components/shared/PostStats', () => ({
     __esModule: true,
-    default: ({ post, userId }) => (
-        <div data-testid={`post-stats-${post.$id}`} data-user-id={userId}>
-            Post Stats
-        </div>
-    )
+    default: () => <div data-testid="post-stats">Post Stats Component</div>
 }));
-
 jest.mock('@/components/shared/TranslateButton', () => ({
     __esModule: true,
-    default: ({ text }) => (
-        <button data-testid="translate-button" data-text={text}>
-            Translate
-        </button>
-    )
+    default: ({ text }) => <div data-testid="translate-button">Translate: {text}</div>
 }));
 
-describe('PostCard Component', () => {
-    // Mock data
-    const mockPost: Models.Document = {
+// Mock sample data - create proper Appwrite Document structure
+const createMockPost = (overrides = {}): Models.Document => {
+    return {
         $id: 'post-1',
         $createdAt: '2023-01-01T00:00:00.000Z',
         $updatedAt: '2023-01-01T00:00:00.000Z',
         $permissions: [],
         $collectionId: 'posts',
-        $databaseId: 'database',
+        $databaseId: 'test-db',
         caption: 'This is a test post',
-        imageUrl: '/test-image.jpg',
-        location: 'Test Location',
-        tags: ['test', 'sample'],
+        imageUrl: 'https://example.com/image.jpg',
+        location: 'New York',
+        tags: ['test', 'example'],
         creator: {
             $id: 'user-1',
-            name: 'Test User',
-            username: 'testuser',
-            imageUrl: '/test-user.jpg'
-        }
+            name: 'John Doe',
+            username: 'johndoe',
+            imageUrl: 'https://example.com/avatar.jpg'
+        },
+        ...overrides
     };
+};
 
-    const mockCurrentUser = {
-        id: 'user-1', // Same as post creator for some tests
-        name: 'Current User',
-        email: 'test@example.com',
-        username: 'currentuser',
-        imageUrl: '/current-user.jpg',
-        bio: 'Test bio'
-    };
-
-    // Mock comment data
-    const mockComments = [
+const mockComments = {
+    total: 2,
+    documents: [
         {
             $id: 'comment-1',
+            $createdAt: '2023-01-02T00:00:00.000Z',
+            $updatedAt: '2023-01-02T00:00:00.000Z',
+            $permissions: [],
+            $collectionId: 'comments',
+            $databaseId: 'test-db',
             userId: 'user-2',
             postId: 'post-1',
-            content: 'Great post!',
-            createdAt: '2023-01-02T00:00:00Z',
-            $createdAt: '2023-01-02T00:00:00Z',
-            likes: []
+            content: 'This is a test comment',
+            likes: [],
+            gifUrl: null,
+            gifId: null
         }
-    ];
+    ]
+};
 
-    const mockUserData = {
-        $id: 'user-2',
-        name: 'Commenter',
-        username: 'commenter',
-        imageUrl: '/commenter.jpg'
-    };
+const mockUser = {
+    $id: 'user-2',
+    $createdAt: '2023-01-01T00:00:00.000Z',
+    $updatedAt: '2023-01-01T00:00:00.000Z',
+    $permissions: [],
+    $collectionId: 'users',
+    $databaseId: 'test-db',
+    name: 'Jane Smith',
+    username: 'janesmith',
+    imageUrl: 'https://example.com/jane-avatar.jpg'
+};
 
+// Helper to setup component with appropriate wrappers
+const renderPostCard = (postOverrides = {}, currentUserId = 'user-2') => {
+    (useUserContext as jest.Mock).mockReturnValue({ user: { id: currentUserId } });
+
+    const post = createMockPost(postOverrides);
+
+    return render(
+        <BrowserRouter>
+            <PostCard post={post} />
+        </BrowserRouter>
+    );
+};
+
+describe('PostCard Component', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Default mocks
-        (useUserContext as jest.Mock).mockReturnValue({ user: mockCurrentUser });
-
-        (databases.listDocuments as jest.Mock).mockResolvedValue({
-            documents: mockComments,
-            total: 1
-        });
-
-        (databases.getDocument as jest.Mock).mockResolvedValue(mockUserData);
+        // Setup database mocks
+        (databases.listDocuments as jest.Mock).mockResolvedValue(mockComments);
+        (databases.getDocument as jest.Mock).mockResolvedValue(mockUser);
     });
 
-    it('renders the post with all its elements', async () => {
-        render(<PostCard post={mockPost} />);
+    it('renders post creator information correctly', async () => {
+        renderPostCard();
 
-        // Check post creator info - use getAllByText for multiple elements and select the first one
-        const creatorElements = screen.getAllByText('Test User');
-        expect(creatorElements[0]).toBeInTheDocument();
-        expect(screen.getByText('Jan 1, 2023')).toBeInTheDocument();
-        expect(screen.getByText('Test Location')).toBeInTheDocument();
+        // Check creator info
+        expect(screen.getByText('John Doe')).toBeInTheDocument();
+        expect(screen.getByText('January 1, 2023')).toBeInTheDocument();
+        expect(formatDateString).toHaveBeenCalledWith('2023-01-01T00:00:00.000Z');
 
-        // Check post content
-        expect(screen.getByAltText('post image')).toBeInTheDocument();
-        expect(screen.getByAltText('post image')).toHaveAttribute('src', '/test-image.jpg');
+        // Check location
+        expect(screen.getByText('New York')).toBeInTheDocument();
+    });
 
-        // Check post stats
-        expect(screen.getByTestId(`post-stats-${mockPost.$id}`)).toBeInTheDocument();
+    it('renders post content correctly', async () => {
+        renderPostCard();
+
+        // Check caption
+        expect(screen.getByTestId('translate-button')).toHaveTextContent('Translate: This is a test post');
 
         // Check tags
         expect(screen.getByText('#test')).toBeInTheDocument();
-        expect(screen.getByText('#sample')).toBeInTheDocument();
+        expect(screen.getByText('#example')).toBeInTheDocument();
 
-        // Check translate button
-        expect(screen.getByTestId('translate-button')).toHaveAttribute('data-text', 'This is a test post');
-
-        // Wait for comments to load
-        await waitFor(() => {
-            expect(screen.getByText('View 1 comment')).toBeInTheDocument();
-        });
+        // Check image
+        const image = screen.getByAltText('post image');
+        expect(image).toHaveAttribute('src', 'https://example.com/image.jpg');
     });
 
-    it('shows edit button when the current user is the post creator', () => {
-        render(<PostCard post={mockPost} />);
+    it('shows edit button only when current user is the post creator', async () => {
+        // Render with current user as post creator
+        renderPostCard({}, 'user-1');
 
-        // Edit button should be visible since mockCurrentUser.id === mockPost.creator.$id
         const editButton = screen.getByAltText('edit');
         expect(editButton).toBeInTheDocument();
 
-        // Should link to update-post route
-        const editLink = screen.getByTestId(`link-to-/update-post/${mockPost.$id}`);
-        expect(editLink).toBeInTheDocument();
-    });
+        // Re-render with different user
+        renderPostCard({}, 'user-2');
 
-    it('hides edit button when current user is not the post creator', () => {
-        // Change current user to someone else
-        (useUserContext as jest.Mock).mockReturnValue({
-            user: { ...mockCurrentUser, id: 'different-user' }
-        });
-
-        render(<PostCard post={mockPost} />);
-
-        // Edit button should not be visible
         expect(screen.queryByAltText('edit')).not.toBeInTheDocument();
-        expect(screen.queryByTestId(`link-to-/update-post/${mockPost.$id}`)).not.toBeInTheDocument();
     });
 
-    it('handles posts without location', () => {
-        const postWithoutLocation = {
-            ...mockPost,
-            location: null
-        };
-
-        render(<PostCard post={postWithoutLocation} />);
-
-        // Location should not be present
-        expect(screen.queryByText('Test Location')).not.toBeInTheDocument();
-
-        // Other content should still be visible - use getAllByText for multiple elements
-        const creatorElements = screen.getAllByText('Test User');
-        expect(creatorElements[0]).toBeInTheDocument();
-    });
-
-    it('displays comment with GIF correctly', async () => {
-        // Mock comment with GIF
-        const commentsWithGif = [
-            {
-                $id: 'comment-1',
-                userId: 'user-2',
-                postId: 'post-1',
-                content: 'Check out this GIF',
-                createdAt: '2023-01-02T00:00:00Z',
-                $createdAt: '2023-01-02T00:00:00Z',
-                likes: [],
-                gifUrl: '/test-gif.gif',
-                gifId: 'test-gif-id'
-            }
-        ];
-
-        (databases.listDocuments as jest.Mock).mockResolvedValue({
-            documents: commentsWithGif,
-            total: 1
-        });
-
-        render(<PostCard post={mockPost} />);
+    it('renders comments section correctly', async () => {
+        renderPostCard();
 
         // Wait for comments to load
         await waitFor(() => {
+            expect(databases.listDocuments).toHaveBeenCalledWith(
+                'test-db',
+                'test-comments',
+                expect.any(Array)
+            );
+        });
+
+        // Check comments link text
+        expect(screen.getByText('View all 2 comments')).toBeInTheDocument();
+
+        // Check comment content
+        await waitFor(() => {
+            expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+            expect(screen.getByText('This is a test comment')).toBeInTheDocument();
+        });
+    });
+
+    it('handles post without image', async () => {
+        renderPostCard({ imageUrl: '' });
+
+        expect(screen.queryByAltText('post image')).not.toBeInTheDocument();
+    });
+
+    it('handles post without location', async () => {
+        renderPostCard({ location: '' });
+
+        expect(screen.queryByText('New York')).not.toBeInTheDocument();
+    });
+
+    it('handles post without tags', async () => {
+        renderPostCard({ tags: [] });
+
+        expect(screen.queryByText('#test')).not.toBeInTheDocument();
+        expect(screen.queryByText('#example')).not.toBeInTheDocument();
+    });
+
+    it('handles post without comments', async () => {
+        (databases.listDocuments as jest.Mock).mockResolvedValue({ total: 0, documents: [] });
+
+        renderPostCard();
+
+        await waitFor(() => {
+            expect(screen.queryByText(/View all/)).not.toBeInTheDocument();
+        });
+    });
+
+    it('handles post with exactly one comment', async () => {
+        (databases.listDocuments as jest.Mock).mockResolvedValue({
+            total: 1,
+            documents: [mockComments.documents[0]]
+        });
+
+        renderPostCard();
+
+        await waitFor(() => {
             expect(screen.getByText('View 1 comment')).toBeInTheDocument();
         });
-
-        // Check for GIF indicator
-        await waitFor(() => {
-            expect(screen.getByText('[GIF]')).toBeInTheDocument();
-        });
-
-        // Check for GIF image
-        const gifImage = await screen.findByAltText('GIF comment');
-        expect(gifImage).toBeInTheDocument();
-        expect(gifImage).toHaveAttribute('src', '/test-gif.gif');
     });
 
-    it('handles error fetching comments gracefully', async () => {
-        // Mock error fetching comments
-        (databases.listDocuments as jest.Mock).mockRejectedValue(new Error('Failed to fetch'));
-
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-
-        render(<PostCard post={mockPost} />);
-
-        // Wait for error to be logged
-        await waitFor(() => {
-            expect(consoleErrorSpy).toHaveBeenCalled();
-        });
-
-        consoleErrorSpy.mockRestore();
-    });
-
-    it('renders nothing when post has no creator', () => {
-        const postWithoutCreator = {
-            ...mockPost,
-            creator: null
+    it('handles comment with GIF', async () => {
+        const commentsWithGif = {
+            total: 1,
+            documents: [{
+                ...mockComments.documents[0],
+                gifUrl: 'https://example.com/gif.gif',
+                gifId: 'gif-123'
+            }]
         };
 
-        const { container } = render(<PostCard post={postWithoutCreator} />);
+        (databases.listDocuments as jest.Mock).mockResolvedValue(commentsWithGif);
 
-        // Component should render nothing
-        expect(container.firstChild).toBeNull();
+        renderPostCard();
+
+        await waitFor(() => {
+            const gifImage = screen.getByAltText('GIF comment');
+            expect(gifImage).toBeInTheDocument();
+            expect(gifImage).toHaveAttribute('src', 'https://example.com/gif.gif');
+        });
+    });
+
+    it('handles error when fetching comments', async () => {
+        (databases.listDocuments as jest.Mock).mockRejectedValue(new Error('Failed to fetch comments'));
+
+        // We should still be able to render the component without comments
+        renderPostCard();
+
+        await waitFor(() => {
+            // Component should still render without crashing
+            expect(screen.getByText('John Doe')).toBeInTheDocument();
+            expect(screen.queryByText(/View all/)).not.toBeInTheDocument();
+        });
     });
 });

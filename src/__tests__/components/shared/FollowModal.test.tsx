@@ -5,10 +5,8 @@ import { useGetFollowers, useGetFollowing } from '@/lib/react-query/queries';
 import { useUserContext } from '@/context/AuthContext';
 import { Models } from 'appwrite';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/FollowModal');
 
-// Mock dependencies
 jest.mock('@/lib/react-query/queries', () => ({
   useGetFollowers: jest.fn(),
   useGetFollowing: jest.fn(),
@@ -80,14 +78,12 @@ jest.mock('lucide-react', () => ({
 }));
 
 describe('FollowModal Component', () => {
-  // Mock data
   const mockUserId = 'user-123';
   const mockCurrentUser = {
     id: 'current-user',
     name: 'Current User',
   };
 
-  // Create mock document that satisfies the Models.Document type
   const createMockDocument = (
     id: string,
     name: string,
@@ -99,7 +95,6 @@ describe('FollowModal Component', () => {
       name,
       username,
       imageUrl,
-      // Add required Document properties
       $collectionId: 'test-collection',
       $databaseId: 'test-database',
       $createdAt: '2023-01-01T00:00:00Z',
@@ -150,7 +145,6 @@ describe('FollowModal Component', () => {
     jest.clearAllMocks();
     (useUserContext as jest.Mock).mockReturnValue({ user: mockCurrentUser });
 
-    // Default mocks for both hooks to avoid errors
     (useGetFollowers as jest.Mock).mockReturnValue({
       data: [],
       isLoading: false,
@@ -163,7 +157,6 @@ describe('FollowModal Component', () => {
   });
 
   it('renders followers modal with user list', () => {
-    // Mock followers data
     (useGetFollowers as jest.Mock).mockReturnValue({
       data: mockFollowers,
       isLoading: false,
@@ -178,23 +171,18 @@ describe('FollowModal Component', () => {
       />
     );
 
-    // Check if dialog is open with the correct title
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByTestId('dialog-title')).toHaveTextContent('Followers');
 
-    // Check if the search input is rendered
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
 
-    // Check if followers are rendered
     expect(screen.getByText('Follower One')).toBeInTheDocument();
     expect(screen.getByText('Follower Two')).toBeInTheDocument();
 
-    // Check if profile links are rendered correctly
     expect(
       screen.getByTestId('link-to--profile-follower-1')
     ).toBeInTheDocument();
 
-    // Check that follow button is not rendered for current user
     expect(
       screen.queryByTestId('follow-button-current-user')
     ).not.toBeInTheDocument();
@@ -202,7 +190,6 @@ describe('FollowModal Component', () => {
   });
 
   it('renders following modal with user list', () => {
-    // Mock following data
     (useGetFollowing as jest.Mock).mockReturnValue({
       data: mockFollowing,
       isLoading: false,
@@ -217,16 +204,13 @@ describe('FollowModal Component', () => {
       />
     );
 
-    // Check if dialog has the correct title
     expect(screen.getByTestId('dialog-title')).toHaveTextContent('Following');
 
-    // Check if following users are rendered
     expect(screen.getByText('Following One')).toBeInTheDocument();
     expect(screen.getByText('Following Two')).toBeInTheDocument();
   });
 
   it('shows loading state and empty state appropriately', () => {
-    // Test loading state
     (useGetFollowers as jest.Mock).mockReturnValue({
       data: null,
       isLoading: true,
@@ -241,10 +225,8 @@ describe('FollowModal Component', () => {
       />
     );
 
-    // Check loading state
     expect(screen.getByTestId('loader')).toBeInTheDocument();
 
-    // Test empty state
     (useGetFollowers as jest.Mock).mockReturnValue({
       data: [],
       isLoading: false,
@@ -259,7 +241,6 @@ describe('FollowModal Component', () => {
       />
     );
 
-    // Check empty state
     expect(screen.getByText('No followers yet')).toBeInTheDocument();
   });
 
@@ -278,18 +259,14 @@ describe('FollowModal Component', () => {
       />
     );
 
-    // Type in search box
     const searchInput = screen.getByTestId('search-input');
     fireEvent.change(searchInput, { target: { value: 'One' } });
 
-    // Check that only matching users are shown
     expect(screen.getByText('Follower One')).toBeInTheDocument();
     expect(screen.queryByText('Follower Two')).not.toBeInTheDocument();
 
-    // Clear search
     fireEvent.change(searchInput, { target: { value: '' } });
 
-    // All users should be visible again
     expect(screen.getByText('Follower One')).toBeInTheDocument();
     expect(screen.getByText('Follower Two')).toBeInTheDocument();
   });
@@ -309,7 +286,6 @@ describe('FollowModal Component', () => {
       />
     );
 
-    // Dialog should not be in the document
     expect(screen.queryByTestId('dialog')).not.toBeInTheDocument();
   });
 });

@@ -6,13 +6,10 @@ import { useSignOutAccount } from '@/lib/react-query/queries';
 import { useSocket } from '@/context/SocketContext';
 import { useTheme } from '@/context/ThemeContext';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/LeftSidebar');
 
-// Mock react-router-dom
 jest.mock('react-router-dom', () => ({
   Link: ({ children, to, className }) => {
-    // Convert to string to handle all types of paths
     const toStr = String(to);
     return (
       <a href={toStr} className={className}>
@@ -21,7 +18,6 @@ jest.mock('react-router-dom', () => ({
     );
   },
   NavLink: ({ children, to, className }) => {
-    // Call className function if it's a function to simulate active state
     const resolvedClassName = typeof className === 'function'
       ? className({ isActive: to === '/explore' })
       : className;
@@ -39,7 +35,6 @@ jest.mock('react-router-dom', () => ({
   useLocation: () => ({ pathname: '/explore' }),
 }));
 
-// Mock dependencies
 jest.mock('@/context/AuthContext', () => ({
   useUserContext: jest.fn(),
 }));
@@ -56,7 +51,6 @@ jest.mock('@/context/ThemeContext', () => ({
   useTheme: jest.fn(),
 }));
 
-// Mock Button component
 jest.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, variant, className }) => (
     <button
@@ -71,12 +65,10 @@ jest.mock('@/components/ui/button', () => ({
   ),
 }));
 
-// Mock Lucide icons
 jest.mock('lucide-react', () => ({
   Loader2: () => <div data-testid="loader-icon">Loading...</div>,
 }));
 
-// Mock framer-motion
 jest.mock('framer-motion', () => ({
   motion: {
     div: ({ children, className }) => (
@@ -87,7 +79,6 @@ jest.mock('framer-motion', () => ({
   },
 }));
 
-// Define constant for sidebar links to use in tests if needed
 jest.mock('@/constants', () => ({
   sidebarLinks: [
     { imgURL: '/assets/icons/home.svg', route: '/home', label: 'Home' },
@@ -101,7 +92,6 @@ jest.mock('@/constants', () => ({
 }));
 
 describe('LeftSidebar Component', () => {
-  // Common test data
   const mockUser = {
     id: 'user-123',
     name: 'Test User',
@@ -109,14 +99,11 @@ describe('LeftSidebar Component', () => {
     imageUrl: '/test-user.jpg',
   };
 
-  // Mock implementations
   const mockSignOut = jest.fn();
 
-  // Setup before each test
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Setup default mocks
     (useUserContext as jest.Mock).mockReturnValue({ user: mockUser });
     (useSignOutAccount as jest.Mock).mockReturnValue({
       mutate: mockSignOut,
@@ -133,16 +120,13 @@ describe('LeftSidebar Component', () => {
   it('renders user profile information correctly', () => {
     render(<LeftSidebar />);
 
-    // Check user profile section
     expect(screen.getByText(mockUser.name)).toBeInTheDocument();
     expect(screen.getByText(`@${mockUser.username}`)).toBeInTheDocument();
 
-    // Check profile image
     const profileImg = screen.getByAltText('profile');
     expect(profileImg).toBeInTheDocument();
     expect(profileImg).toHaveAttribute('src', mockUser.imageUrl);
 
-    // Check profile link exists (without using testId)
     const profileLinks = screen.getAllByRole('link');
     const profileLink = profileLinks.find(link =>
       link.getAttribute('href')?.includes(`/profile/${mockUser.id}`)
@@ -171,7 +155,6 @@ describe('LeftSidebar Component', () => {
   it('renders all sidebar links from constants', () => {
     render(<LeftSidebar />);
 
-    // Check if all sidebar links are rendered by their label text
     const expectedLabels = [
       'Home', 'Notifications', 'Explore', 'People',
       'Saved', 'Messages', 'Create Post'
@@ -181,7 +164,6 @@ describe('LeftSidebar Component', () => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
 
-    // Verify we can find all the navigation links
     const navLinks = screen.getAllByRole('link');
     expect(navLinks.length).toBeGreaterThanOrEqual(expectedLabels.length);
   });
@@ -194,15 +176,12 @@ describe('LeftSidebar Component', () => {
 
     render(<LeftSidebar />);
 
-    // Find the Messages nav item by text
     const messagesLink = screen.getByText('Messages').closest('a');
     expect(messagesLink).toBeInTheDocument();
 
-    // Check that the badge is shown with correct number
     const badges = screen.getAllByTestId('notification-badge');
     expect(badges.length).toBeGreaterThan(0);
 
-    // Check that at least one badge contains "5"
     const messageBadge = badges.find(badge => badge.textContent === '5');
     expect(messageBadge).toBeInTheDocument();
   });
@@ -215,15 +194,12 @@ describe('LeftSidebar Component', () => {
 
     render(<LeftSidebar />);
 
-    // Find the Notifications nav item by text
     const notificationsLink = screen.getByText('Notifications').closest('a');
     expect(notificationsLink).toBeInTheDocument();
 
-    // Check that the badge is shown with correct number
     const badges = screen.getAllByTestId('notification-badge');
     expect(badges.length).toBeGreaterThan(0);
 
-    // Check that at least one badge contains "3"
     const notificationBadge = badges.find(badge => badge.textContent === '3');
     expect(notificationBadge).toBeInTheDocument();
   });
@@ -236,7 +212,6 @@ describe('LeftSidebar Component', () => {
 
     render(<LeftSidebar />);
 
-    // Check that the badge shows "9+"
     const badges = screen.getAllByTestId('notification-badge');
     const messageBadge = badges.find(badge => badge.textContent === '9+');
     expect(messageBadge).toBeInTheDocument();
@@ -245,20 +220,16 @@ describe('LeftSidebar Component', () => {
   it('triggers sign out when logout button is clicked', () => {
     render(<LeftSidebar />);
 
-    // Find the logout button
     const logoutButton = screen.getByTestId('logout-button');
     expect(logoutButton).toBeInTheDocument();
     expect(logoutButton).toHaveTextContent('Logout');
 
-    // Click the logout button
     fireEvent.click(logoutButton);
 
-    // Check that the sign out function was called
     expect(mockSignOut).toHaveBeenCalledTimes(1);
   });
 
   it('shows loading state during sign out', () => {
-    // Set the sign out state to loading
     (useSignOutAccount as jest.Mock).mockReturnValue({
       mutate: mockSignOut,
       isSuccess: false,
@@ -267,31 +238,25 @@ describe('LeftSidebar Component', () => {
 
     render(<LeftSidebar />);
 
-    // Check that the button shows loading state
     const logoutButton = screen.getByTestId('logout-button');
     expect(logoutButton).toBeInTheDocument();
     expect(logoutButton).toBeDisabled();
 
-    // Check that the loading spinner is shown
     expect(screen.getByTestId('loader-icon')).toBeInTheDocument();
     expect(screen.getByText('Logging out...')).toBeInTheDocument();
   });
 
   it('displays correct icon variants based on theme', () => {
-    // Test with dark theme
     (useTheme as jest.Mock).mockReturnValue({ theme: 'dark' });
 
     const { rerender } = render(<LeftSidebar />);
 
-    // Check logout icon in dark theme
     let logoutIcon = screen.getByAltText('logout');
     expect(logoutIcon).toHaveAttribute('src', '/assets/icons/logout.svg');
 
-    // Change to light theme and re-render
     (useTheme as jest.Mock).mockReturnValue({ theme: 'light' });
     rerender(<LeftSidebar />);
 
-    // Check logout icon in light theme
     logoutIcon = screen.getByAltText('logout');
     expect(logoutIcon).toHaveAttribute('src', '/assets/icons/logout-dark.svg');
   });
