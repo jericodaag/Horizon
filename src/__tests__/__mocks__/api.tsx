@@ -34,7 +34,35 @@ export const mockUnfollowUser = jest.fn();
 export const mockGetFollowers = jest.fn().mockReturnValue([]);
 export const mockGetFollowing = jest.fn().mockReturnValue([]);
 export const mockIsFollowing = jest.fn().mockReturnValue({ data: false });
-export const mockGetTopCreators = jest.fn();
+export const mockGetTopCreators = jest.fn().mockReturnValue([
+    {
+        $id: 'user1',
+        name: 'John Doe',
+        username: 'johndoe',
+        email: 'john@example.com',
+        imageUrl: '/path/to/image1.jpg',
+        bio: 'Developer',
+        followerCount: 120,
+    },
+    {
+        $id: 'user2',
+        name: 'Jane Smith',
+        username: 'janesmith',
+        email: 'jane@example.com',
+        imageUrl: '/path/to/image2.jpg',
+        bio: 'Designer',
+        followerCount: 85,
+    },
+    {
+        $id: 'user3',
+        name: 'Alex Johnson',
+        username: 'alexj',
+        email: 'alex@example.com',
+        imageUrl: null,
+        bio: 'Photographer',
+        followerCount: 210,
+    },
+]);
 
 // Export mock functions for comments
 export const mockCreateComment = jest.fn();
@@ -48,6 +76,12 @@ export const mockGetConversation = jest.fn();
 export const mockGetUserConversations = jest.fn().mockReturnValue({ data: [] });
 export const mockMarkMessagesAsRead = jest.fn();
 
+// Export mock functions for notifications
+export const mockCreateNotification = jest.fn();
+export const mockGetUserNotifications = jest.fn();
+export const mockMarkNotificationsAsRead = jest.fn();
+export const mockDeleteNotification = jest.fn();
+
 // Mock the react-query hooks
 jest.mock('@/lib/react-query/queries', () => ({
     // Auth queries
@@ -60,7 +94,7 @@ jest.mock('@/lib/react-query/queries', () => ({
         isPending: false
     }),
     useSignOutAccount: () => ({
-        mutateAsync: mockSignOutAccount,
+        mutate: mockSignOutAccount,
         isPending: false
     }),
     useGetCurrentUser: () => ({
@@ -135,15 +169,15 @@ jest.mock('@/lib/react-query/queries', () => ({
         isLoading: false
     }),
     useUpdateUser: () => ({
-        mutateAsync: mockUpdateUser,
-        isPending: false
+        mutateAsync: mockUpdateUser().mutateAsync,
+        isPending: mockUpdateUser().isPending
     }),
     useFollowUser: () => ({
-        mutateAsync: mockFollowUser,
+        mutate: mockFollowUser,
         isPending: false
     }),
     useUnfollowUser: () => ({
-        mutateAsync: mockUnfollowUser,
+        mutate: mockUnfollowUser,
         isPending: false
     }),
     useGetFollowers: () => ({
@@ -155,7 +189,7 @@ jest.mock('@/lib/react-query/queries', () => ({
         isLoading: false
     }),
     useIsFollowing: () => ({
-        data: mockIsFollowing(),
+        data: mockIsFollowing().data,
         isLoading: false
     }),
     useGetTopCreators: () => ({
@@ -191,11 +225,29 @@ jest.mock('@/lib/react-query/queries', () => ({
         isLoading: false
     }),
     useGetUserConversations: () => ({
-        data: mockGetUserConversations(),
+        data: mockGetUserConversations().data,
         isLoading: false
     }),
     useMarkMessagesAsRead: () => ({
         mutateAsync: mockMarkMessagesAsRead,
+        isPending: false
+    }),
+
+    // Notification queries
+    useCreateNotification: () => ({
+        mutateAsync: mockCreateNotification,
+        isPending: false
+    }),
+    useGetUserNotifications: () => ({
+        data: mockGetUserNotifications(),
+        isLoading: false
+    }),
+    useMarkNotificationsAsRead: () => ({
+        mutate: mockMarkNotificationsAsRead,
+        isPending: false
+    }),
+    useDeleteNotification: () => ({
+        mutate: mockDeleteNotification,
         isPending: false
     })
 }));
@@ -234,7 +286,11 @@ jest.mock('@/lib/appwrite/api', () => ({
     getUserConversations: mockGetUserConversations,
     markMessagesAsRead: mockMarkMessagesAsRead,
     getLikedPosts: mockGetLikedPosts,
-    getUsers: mockGetUsers
+    getUsers: mockGetUsers,
+    createNotification: mockCreateNotification,
+    deleteNotification: mockDeleteNotification,
+    markNotificationsAsRead: mockMarkNotificationsAsRead,
+    getUserNotifications: mockGetUserNotifications
 }));
 
 // Mock Appwrite config
@@ -248,7 +304,8 @@ jest.mock('@/lib/appwrite/config', () => ({
         savesCollectionId: 'testSavesCollectionId',
         followsCollectionId: 'testFollowsCollectionId',
         commentsCollectionId: 'testCommentsCollectionId',
-        messagesCollectionId: 'testMessagesCollectionId'
+        messagesCollectionId: 'testMessagesCollectionId',
+        notificationsCollectionId: 'testNotificationsCollectionId'
     },
     client: {},
     account: {},

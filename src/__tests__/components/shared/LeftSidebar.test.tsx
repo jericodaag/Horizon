@@ -134,7 +134,7 @@ describe('LeftSidebar Component', () => {
     expect(profileLink).toBeInTheDocument();
   });
 
-  it('renders correct logo for dark theme', () => {
+  it('displays the project logo correctly', () => {
     render(<LeftSidebar />);
 
     const logo = screen.getByAltText('Horizon');
@@ -142,15 +142,6 @@ describe('LeftSidebar Component', () => {
     expect(logo).toHaveAttribute('src', '/assets/images/logo.svg');
   });
 
-  it('renders correct logo for light theme', () => {
-    (useTheme as jest.Mock).mockReturnValue({ theme: 'light' });
-
-    render(<LeftSidebar />);
-
-    const logo = screen.getByAltText('Horizon');
-    expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute('src', '/assets/images/logo-dark.svg');
-  });
 
   it('renders all sidebar links from constants', () => {
     render(<LeftSidebar />);

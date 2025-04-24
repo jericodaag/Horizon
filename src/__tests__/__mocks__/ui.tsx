@@ -1,4 +1,3 @@
-// Export mock functions
 export const mockToast = jest.fn();
 
 // Mock UI components - Button

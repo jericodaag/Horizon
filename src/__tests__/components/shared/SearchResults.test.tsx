@@ -3,10 +3,8 @@ import '@testing-library/jest-dom';
 import SearchResults from '@/components/shared/SearchResults';
 import { Models } from 'appwrite';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/SearchResults');
 
-// Mock dependencies
 jest.mock('lucide-react', () => ({
   Loader: () => <div data-testid='loader'>Loading...</div>,
 }));

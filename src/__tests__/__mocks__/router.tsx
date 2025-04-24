@@ -1,12 +1,10 @@
 import React from 'react';
 
-// Export mock functions so tests can configure them
 export const mockNavigate = jest.fn();
 
-// Change the type definition for mockLocation to allow for state to be any type
 export const mockLocation: {
     pathname: string;
-    state: any; // Changed from null to any to allow different state types
+    state: any;
 } = {
     pathname: '/sign-in',
     state: null

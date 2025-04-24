@@ -87,7 +87,10 @@ export const mockSocketContextDefault = {
     isConnected: true,
     onlineUsers: defaultOnlineUsers,
     notificationCount: defaultNotificationCount,
+    totalUnreadMessages: 1,
+    totalUnreadNotifications: 2,
     clearNotifications: jest.fn(),
+    clearAllNotifications: jest.fn(),
     latestMessages: {},
     trackSentMessage: jest.fn(),
     typingUsers: {},
@@ -101,7 +104,9 @@ export const mockSocketContextDisconnected = {
     ...mockSocketContextDefault,
     socket: null,
     isConnected: false,
-    onlineUsers: []
+    onlineUsers: [],
+    totalUnreadMessages: 0,
+    totalUnreadNotifications: 0
 };
 
 // Socket context with active typing

@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import TermsModal from '@/components/shared/TermsModal';
 
-// Mock dependencies
 jest.mock('lucide-react', () => ({
     X: () => <div data-testid="x-icon">X Icon</div>
 }));
@@ -124,9 +123,8 @@ describe('TermsModal Component', () => {
             />
         );
 
-        // Get the first motion-div which should be the backdrop
         const backdropElements = screen.getAllByTestId('motion-div');
-        const backdrop = backdropElements[0]; // First motion-div is the backdrop
+        const backdrop = backdropElements[0];
 
         fireEvent.click(backdrop);
 
@@ -142,7 +140,6 @@ describe('TermsModal Component', () => {
             />
         );
 
-        // Check that list items are displayed
         expect(screen.getByText(/Offering personalized opportunities/)).toBeInTheDocument();
         expect(screen.getByText(/Fostering a positive, inclusive/)).toBeInTheDocument();
         expect(screen.getByText(/Developing and using technologies/)).toBeInTheDocument();
@@ -158,7 +155,6 @@ describe('TermsModal Component', () => {
             />
         );
 
-        // Check that list items are displayed
         expect(screen.getByText(/Information you provide to us directly/)).toBeInTheDocument();
         expect(screen.getByText(/Information we collect when you use our services/)).toBeInTheDocument();
         expect(screen.getByText(/Information we obtain from other sources/)).toBeInTheDocument();
@@ -187,23 +183,19 @@ describe('TermsModal Component', () => {
             />
         );
 
-        // Test for modal container styling
         const modalContainers = screen.getAllByTestId('motion-div');
-        const modalContent = modalContainers[1]; // Second motion-div is modal content
+        const modalContent = modalContainers[1];
         expect(modalContent).toHaveClass('bg-dark-2');
         expect(modalContent).toHaveClass('rounded-lg');
 
-        // Test for header styling
         const header = screen.getByText('Terms of Service').closest('div');
         expect(header).toHaveClass('border-b');
         expect(header).toHaveClass('border-dark-4');
 
-        // Test for footer styling
         const footer = screen.getByText('Close').closest('div');
         expect(footer).toHaveClass('border-t');
         expect(footer).toHaveClass('border-dark-4');
 
-        // Test for close button styling
         const closeButton = screen.getByText('Close');
         expect(closeButton).toHaveClass('bg-primary-500');
     });

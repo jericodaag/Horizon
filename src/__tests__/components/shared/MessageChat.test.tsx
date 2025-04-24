@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MessageChat from '@/components/shared/MessageChat';
 import {
@@ -10,10 +10,8 @@ import {
 import { useSocket } from '@/context/SocketContext';
 import { IUser } from '@/types';
 
-// Unmock the component we're testing
 jest.unmock('@/components/shared/MessageChat');
 
-// Mock the hooks and dependencies
 jest.mock('@/hooks/useMessagingRealtime', () => ({
   useMessagingRealtime: jest.fn(),
 }));
@@ -33,7 +31,6 @@ jest.mock('@/lib/appwrite/api', () => ({
   getFilePreview: jest.fn(),
 }));
 
-// Mock UI components
 jest.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, className, variant }) => (
     <button
@@ -41,6 +38,7 @@ jest.mock('@/components/ui/button', () => ({
       disabled={disabled}
       className={className}
       data-variant={variant}
+      data-testid="button"
     >
       {children}
     </button>
@@ -66,7 +64,6 @@ jest.mock('@/components/shared/OnlineStatusIndicator', () => ({
   ),
 }));
 
-// Mock Lucide icons
 jest.mock('lucide-react', () => ({
   Loader: () => <div data-testid="loader-icon">Loading...</div>,
   ArrowLeft: () => <div data-testid="arrow-left-icon">←</div>,
@@ -77,7 +74,6 @@ jest.mock('lucide-react', () => ({
   Video: () => <div data-testid="video-icon">📹</div>,
 }));
 
-// Mock framer-motion
 jest.mock('framer-motion', () => ({
   motion: {
     div: ({ children, className }) => (
@@ -87,11 +83,9 @@ jest.mock('framer-motion', () => ({
   AnimatePresence: ({ children }) => <>{children}</>,
 }));
 
-// Mock URL.createObjectURL
 global.URL.createObjectURL = jest.fn(() => 'mock-object-url');
 
 describe('MessageChat Component', () => {
-  // Test data
   const mockConversation: IUser = {
     id: 'user123',
     name: 'Test User',
@@ -124,7 +118,6 @@ describe('MessageChat Component', () => {
     ],
   };
 
-  // Mock functions
   const mockSendMessage = jest.fn();
   const mockMarkAsRead = jest.fn();
   const mockMarkMessageAsRead = jest.fn();
@@ -132,15 +125,14 @@ describe('MessageChat Component', () => {
   const mockSetTyping = jest.fn();
   const mockTrackSentMessage = jest.fn();
   const mockOnBack = jest.fn();
+  const mockSocketEmit = jest.fn();
 
-  // Mock scrollIntoView
   const mockScrollIntoView = jest.fn();
   HTMLDivElement.prototype.scrollIntoView = mockScrollIntoView;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Set up default mocks
     (useGetConversation as jest.Mock).mockReturnValue({
       data: mockMessages,
       isLoading: false,
@@ -156,7 +148,11 @@ describe('MessageChat Component', () => {
     });
 
     (useSocket as jest.Mock).mockReturnValue({
-      socket: { on: jest.fn(), off: jest.fn(), emit: jest.fn() },
+      socket: {
+        on: jest.fn(),
+        off: jest.fn(),
+        emit: mockSocketEmit
+      },
       isConnected: true,
       onlineUsers: ['user123'],
       clearNotifications: mockClearNotifications,
@@ -167,7 +163,6 @@ describe('MessageChat Component', () => {
       markMessageAsRead: mockMarkMessageAsRead,
     });
 
-    // Reset scroll mock
     mockScrollIntoView.mockClear();
   });
 
@@ -180,21 +175,18 @@ describe('MessageChat Component', () => {
       />
     );
 
-    // Check user information in header
     expect(screen.getByText('Test User')).toBeInTheDocument();
     expect(screen.getByText('@testuser')).toBeInTheDocument();
 
-    // Check user avatar
-    const avatar = screen.getByAltText('Test User');
+    const headerSection = screen.getByText('Test User').closest('div')?.parentElement;
+    const avatar = headerSection?.querySelector('img');
     expect(avatar).toBeInTheDocument();
     expect(avatar).toHaveAttribute('src', '/test-user.jpg');
 
-    // Check online status
     expect(screen.getByText('Online')).toBeInTheDocument();
   });
 
   it('displays empty state when there are no messages', () => {
-    // Override the mock to return empty messages
     (useGetConversation as jest.Mock).mockReturnValue({
       data: { documents: [] },
       isLoading: false,
@@ -208,11 +200,10 @@ describe('MessageChat Component', () => {
       />
     );
 
-    // Check empty state message
     expect(screen.getByText('No messages yet. Say hello!')).toBeInTheDocument();
   });
 
-  it('handles sending a new text message', () => {
+  it('handles sending a new text message', async () => {
     render(
       <MessageChat
         conversation={mockConversation}
@@ -221,25 +212,36 @@ describe('MessageChat Component', () => {
       />
     );
 
-    // Type a message
     const inputElement = screen.getByTestId('message-input');
     fireEvent.change(inputElement, { target: { value: 'New test message' } });
 
-    // Click send button
-    const sendButtons = screen.getAllByRole('button');
-    const sendButton = sendButtons.find(button =>
+    const sendButton = screen.getAllByTestId('button').find(button =>
       button.contains(screen.getByTestId('send-icon'))
     );
+
+    expect(sendButton).toBeDefined();
 
     if (sendButton) {
       fireEvent.click(sendButton);
 
-      // Check if the send message function was called
-      expect(mockSendMessage).toHaveBeenCalledWith(expect.objectContaining({
-        senderId: currentUserId,
-        receiverId: mockConversation.id,
-        content: 'New test message',
-      }));
+      await waitFor(() => {
+        expect(mockSocketEmit).toHaveBeenCalledWith(
+          'send_message',
+          expect.objectContaining({
+            senderId: currentUserId,
+            receiverId: mockConversation.id,
+            content: 'New test message',
+          })
+        );
+
+        expect(mockSendMessage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            senderId: currentUserId,
+            receiverId: mockConversation.id,
+            content: 'New test message',
+          })
+        );
+      });
     }
   });
 
@@ -252,15 +254,12 @@ describe('MessageChat Component', () => {
       />
     );
 
-    // Find and click the back button
-    const backButtons = screen.getAllByRole('button');
-    const backButton = backButtons.find(button =>
+    const backButton = screen.getAllByTestId('button').find(button =>
       button.contains(screen.getByTestId('arrow-left-icon'))
     );
 
     if (backButton) {
       fireEvent.click(backButton);
-      // Check if the onBack callback was called
       expect(mockOnBack).toHaveBeenCalledTimes(1);
     }
   });

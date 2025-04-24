@@ -8,10 +8,8 @@ import {
 import '@testing-library/jest-dom';
 import Home from '@/_root/pages/Home';
 
-// Import specific mocks we need
 import { mockGetRecentPosts } from '@/__tests__/__mocks__/api';
 
-// Mock the PostCard component
 jest.mock('@/components/shared/PostCard', () => ({
   __esModule: true,
   default: ({ post }) => (
@@ -19,13 +17,11 @@ jest.mock('@/components/shared/PostCard', () => ({
   ),
 }));
 
-// Mock the PostCardSkeleton component
 jest.mock('@/components/shared/PostCardSkeleton', () => ({
   __esModule: true,
   default: () => <div data-testid='post-skeleton'>Loading...</div>,
 }));
 
-// Mock the ArrowUp icon
 jest.mock('lucide-react', () => ({
   ArrowUp: () => <div data-testid='arrow-up-icon'>↑</div>,
 }));
@@ -55,18 +51,15 @@ describe('Home Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset window scrollY
     Object.defineProperty(window, 'scrollY', {
       configurable: true,
       value: 0,
     });
 
-    // Mock scrollTo
     global.scrollTo = jest.fn();
   });
 
   it('renders the home feed header', () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: { documents: [] },
       isPending: false,
@@ -77,7 +70,6 @@ describe('Home Component', () => {
   });
 
   it('shows loading state when fetching posts', () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: undefined,
       isPending: true,
@@ -85,13 +77,11 @@ describe('Home Component', () => {
 
     render(<Home />);
 
-    // Check for skeleton loaders
     const postCardSkeletons = screen.getAllByTestId('post-skeleton');
-    expect(postCardSkeletons.length).toBe(2); // We render 2 skeletons
+    expect(postCardSkeletons.length).toBe(2);
   });
 
   it('renders posts when data is loaded', () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: {
         documents: mockPostData,
@@ -101,14 +91,12 @@ describe('Home Component', () => {
 
     render(<Home />);
 
-    // Check for posts
     mockPostData.forEach((post) => {
       expect(screen.getByTestId(`post-card-${post.$id}`)).toBeInTheDocument();
     });
   });
 
   it('does not display scroll-to-top button initially', () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: { documents: [] },
       isPending: false,
@@ -116,12 +104,10 @@ describe('Home Component', () => {
 
     render(<Home />);
 
-    // Button should not be visible initially
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('displays scroll-to-top button after scrolling down', async () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: { documents: [] },
       isPending: false,
@@ -129,7 +115,6 @@ describe('Home Component', () => {
 
     render(<Home />);
 
-    // Simulate scrolling down
     act(() => {
       Object.defineProperty(window, 'scrollY', {
         configurable: true,
@@ -138,7 +123,6 @@ describe('Home Component', () => {
       window.dispatchEvent(new Event('scroll'));
     });
 
-    // Wait for button to appear
     await waitFor(() => {
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
@@ -146,7 +130,6 @@ describe('Home Component', () => {
   });
 
   it('scrolls to top when button is clicked', async () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: { documents: [] },
       isPending: false,
@@ -154,7 +137,6 @@ describe('Home Component', () => {
 
     render(<Home />);
 
-    // Simulate scrolling down
     act(() => {
       Object.defineProperty(window, 'scrollY', {
         configurable: true,
@@ -163,13 +145,11 @@ describe('Home Component', () => {
       window.dispatchEvent(new Event('scroll'));
     });
 
-    // Wait for button to appear and click it
     await waitFor(() => {
       const button = screen.getByRole('button');
       fireEvent.click(button);
     });
 
-    // Check if scrollTo was called with correct parameters
     expect(global.scrollTo).toHaveBeenCalledWith({
       top: 0,
       behavior: 'smooth',
@@ -177,28 +157,23 @@ describe('Home Component', () => {
   });
 
   it('removes scroll event listener on unmount', () => {
-    // Configure the mock for this test
     mockGetRecentPosts.mockReturnValue({
       data: { documents: [] },
       isPending: false,
     });
 
-    // Spy on event listeners
     const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
     const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
 
     const { unmount } = render(<Home />);
 
-    // Check if addEventListener was called with 'scroll'
     expect(addEventListenerSpy).toHaveBeenCalledWith(
       'scroll',
       expect.any(Function)
     );
 
-    // Unmount the component
     unmount();
 
-    // Check if removeEventListener was called with 'scroll'
     expect(removeEventListenerSpy).toHaveBeenCalledWith(
       'scroll',
       expect.any(Function)

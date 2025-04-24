@@ -1,4 +1,3 @@
-// Mock utility functions
 export const mockCn = jest.fn((...inputs) => {
     // Actually use the inputs to silence TypeScript warnings
     const inputsString = inputs.join(' ');

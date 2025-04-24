@@ -1,23 +1,35 @@
 import { render, screen } from '@testing-library/react';
-import AuthLayout from '@/_auth/AuthLayout';
 import '@testing-library/jest-dom';
+import AuthLayout from '@/_auth/AuthLayout';
 
-describe('AuthLayout', () => {
-  it('renders the layout with correct structure', () => {
+jest.mock('react-router-dom', () => ({
+  Outlet: () => <div data-testid="mock-outlet">Outlet Content</div>,
+}));
+
+describe('AuthLayout Component', () => {
+  it('renders with correct structure', () => {
+    const { container } = render(<AuthLayout />);
+
+    const sectionElement = container.querySelector('section');
+    expect(sectionElement).toBeInTheDocument();
+    expect(sectionElement).toHaveClass('h-screen');
+    expect(sectionElement).toHaveClass('w-full');
+  });
+
+  it('renders the Outlet component for child routes', () => {
     render(<AuthLayout />);
 
-    const outletElement = screen.getByTestId('outlet-mock');
+    const outletElement = screen.getByTestId('mock-outlet');
     expect(outletElement).toBeInTheDocument();
+    expect(outletElement).toHaveTextContent('Outlet Content');
+  });
 
-    const sectionElement = outletElement.closest('section');
-    expect(sectionElement).toBeInTheDocument();
-    expect(sectionElement).toHaveClass(
-      'flex',
-      'flex-1',
-      'justify-center',
-      'items-center',
-      'flex-col',
-      'py-10'
-    );
+  it('contains only the section and Outlet without additional elements', () => {
+    const { container } = render(<AuthLayout />);
+
+    expect(container.childNodes.length).toBe(1);
+
+    const sectionElement = container.querySelector('section');
+    expect(sectionElement?.childNodes.length).toBe(1);
   });
 });
