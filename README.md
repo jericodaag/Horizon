@@ -1,4 +1,4 @@
-# 🔮 Horizon - Full-Stack Social Media Application
+# Horizon - Full-Stack Social Media Application
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
@@ -11,37 +11,37 @@
 [![React Hook Form](https://img.shields.io/badge/React_Hook_Form-EC5990?style=for-the-badge&logo=react-hook-form&logoColor=white)](https://react-hook-form.com/)
 [![Zod](https://img.shields.io/badge/Zod-3068B7?style=for-the-badge&logo=zod&logoColor=white)](https://zod.dev/)
 
-## 📌 Project Overview
+## Project Overview
 
 Horizon is a modern social media platform built with cutting-edge technologies, offering users a seamless and engaging experience for content creation and social interaction. The application provides a complete social media experience with features like post creation, user follows, real-time messaging, notifications, and more.
 
-## 🚀 Key Features
+## Key Features
 
-- 🔐 **Secure Authentication**
+🔐 **Secure Authentication**
   - Email & Password login
   - Protected routes & sessions
   - User profile management
 
-- 📱 **Core Social Features**
+📱 **Core Social Features**
   - Create, edit & delete posts with images
   - Like & save functionality
   - Follow/unfollow users
   - Personalized feed
   - Explore page with search functionality
 
-- 💬 **Interactive Elements**
+💬 **Interactive Elements**
   - Real-time notifications for likes, comments, and follows
   - Live chat messaging with read receipts
   - Post comments with GIF support
   - Media sharing capabilities
 
-- 🎨 **Modern UI/UX**
+🎨 **Modern UI/UX**
   - Responsive design (mobile & desktop)
   - Dark/Light themes
   - Animated transitions using Framer Motion
   - Infinite scrolling for posts
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend Technologies
 <p align="left">
@@ -73,7 +73,7 @@ Horizon is a modern social media platform built with cutting-edge technologies, 
 - **GIPHY API** - GIF integration
 - **Google Translate API** - Translation capabilities
 
-## 🔧 Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 - Node.js (v16 or later)
@@ -239,7 +239,7 @@ Horizon is a modern social media platform built with cutting-edge technologies, 
 7. **Open your browser**
    The application will be available at `http://localhost:5173`
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 horizon/
@@ -273,7 +273,7 @@ horizon/
 └── package.json                     # Dependencies and scripts
 ```
 
-## 📱 Features Walkthrough
+## Features Walkthrough
 
 ### Authentication
 - Sign up with email, password, and username
@@ -367,7 +367,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgements
+## 🙇🏻‍♂️ Acknowledgements
 
 - [Appwrite](https://appwrite.io/) for the backend services
 - [TanStack Query](https://tanstack.com/query) for data fetching
