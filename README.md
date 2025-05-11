@@ -320,7 +320,7 @@ yarn build
 
 The build artifacts will be stored in the `dist/` directory, ready to be deployed to your hosting provider of choice.
 
-## 🧠 Advanced Features
+## Advanced Features
 
 ### Real-time Communication
 The application uses Socket.io for real-time features including:
@@ -362,10 +362,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙇🏻‍♂️ Acknowledgements
 
